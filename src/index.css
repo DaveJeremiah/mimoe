@@ -47,6 +47,9 @@
 
     --success: 145 63% 42%;
     --success-foreground: 0 0% 100%;
+
+    --warning: 45 93% 55%;
+    --warning-foreground: 0 0% 10%;
   }
 }
 
