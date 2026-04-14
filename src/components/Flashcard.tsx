@@ -25,6 +25,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
   const micActivatedRef = useRef(false);
   const resultHandledRef = useRef(false);
   const shouldRestartRef = useRef(false);
+  const attemptRef = useRef(0);
   const startMicRef = useRef<() => void>(() => {});
 
   const stopMic = useCallback(() => {
