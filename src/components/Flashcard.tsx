@@ -12,7 +12,7 @@ interface FlashcardProps {
   remaining: number;
 }
 
-type CardState = "prompt" | "correct" | "incorrect";
+type CardState = "prompt" | "correct" | "incorrect" | "retry";
 
 export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: FlashcardProps) {
   const [state, setState] = useState<CardState>("prompt");
@@ -25,6 +25,8 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
   const micActivatedRef = useRef(false);
   const resultHandledRef = useRef(false);
   const shouldRestartRef = useRef(false);
+  const attemptRef = useRef(0);
+  const startMicRef = useRef<() => void>(() => {});
 
   const stopMic = useCallback(() => {
     shouldRestartRef.current = false;
@@ -44,8 +46,25 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
         setTimeout(onCorrect, 400);
       }, 300);
     } else {
-      setState("incorrect");
-      setTimeout(() => speakFrench(card.french), 150);
+      attemptRef.current += 1;
+      if (attemptRef.current >= 2) {
+        // Second wrong attempt — flag as incorrect
+        setState("incorrect");
+        setTimeout(() => speakFrench(card.french), 150);
+      } else {
+        // First wrong attempt — give another try
+        setState("retry");
+        setSpokenText(answer);
+        // Auto-restart mic after brief pause
+        setTimeout(() => {
+          setState("prompt");
+          setSpokenText("");
+          resultHandledRef.current = false;
+          if (micActivatedRef.current) {
+            startMicRef.current();
+          }
+        }, 1500);
+      }
     }
   }, [card.french, onCorrect, stopMic]);
 
@@ -135,6 +154,8 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
     }
   }, [card.french, handleResult]);
 
+  startMicRef.current = startMic;
+
   useEffect(() => {
     setState("prompt");
     setTextInput("");
@@ -145,6 +166,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
     resultHandledRef.current = false;
     shouldRestartRef.current = false;
     recognitionRef.current = null;
+    attemptRef.current = 0;
 
     if (micActivatedRef.current) {
       const t = window.setTimeout(() => startMic(), 200);
@@ -191,10 +213,13 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
   };
 
   const isIncorrect = state === "incorrect";
+  const isRetry = state === "retry";
   const ringColor = isIncorrect
     ? "ring-destructive/40 shadow-[0_0_20px_-4px_hsl(var(--destructive)/0.3)]"
+    : isRetry
+    ? "ring-yellow-400/40 shadow-[0_0_20px_-4px_rgba(250,204,21,0.25)]"
     : "ring-success/30 shadow-[0_0_20px_-4px_hsl(var(--success)/0.25)]";
-  const stackBorder = isIncorrect ? "border-destructive/20" : "border-success/20";
+  const stackBorder = isIncorrect ? "border-destructive/20" : isRetry ? "border-yellow-400/20" : "border-success/20";
 
   return (
     <div className="flex flex-col items-center gap-5 w-full animate-card-enter">
@@ -238,6 +263,23 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
               </>
             )}
 
+            {state === "retry" && (
+              <>
+                <span className="text-xs font-semibold uppercase tracking-widest text-warning mb-3">
+                  Try once more!
+                </span>
+                <h2 className="font-display text-2xl font-bold text-foreground text-center leading-snug">
+                  {card.english}
+                </h2>
+                {spokenText && (
+                  <p className="mt-3 text-sm text-muted-foreground italic">"{spokenText}"</p>
+                )}
+                <div className="mt-4 flex items-center gap-2 text-yellow-400 animate-fade-in">
+                  <X className="w-5 h-5" />
+                  <span className="font-semibold text-sm">Not quite — one more try!</span>
+                </div>
+              </>
+            )}
             {state === "correct" && (
               <>
                 <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
