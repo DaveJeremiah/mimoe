@@ -22,7 +22,9 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
   const [animatingOut, setAnimatingOut] = useState(false);
   const [animatingBack, setAnimatingBack] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const micActivatedRef = useRef(false);
 
+  // Auto-start mic on new card if user has activated it once
   useEffect(() => {
     setState("prompt");
     setTextInput("");
@@ -30,28 +32,29 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
     setIsListening(false);
     setAnimatingOut(false);
     setAnimatingBack(false);
+
+    if (micActivatedRef.current) {
+      // Small delay to let state settle
+      const t = setTimeout(() => startMic(), 300);
+      return () => clearTimeout(t);
+    }
   }, [card.id]);
 
   const handleResult = useCallback((answer: string) => {
     if (isMatch(answer, card.french)) {
       setState("correct");
+      // Quick transition — show checkmark briefly then move on
       setTimeout(() => {
         setAnimatingOut(true);
-        setTimeout(onCorrect, 500);
-      }, 800);
+        setTimeout(onCorrect, 400);
+      }, 400);
     } else {
       setState("incorrect");
       speakFrench(card.french);
     }
   }, [card.french, onCorrect]);
 
-  const toggleMic = useCallback(() => {
-    if (isListening) {
-      recognitionRef.current?.stop();
-      setIsListening(false);
-      return;
-    }
-
+  const startMic = useCallback(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       alert("Speech recognition not supported. Please type your answer.");
@@ -98,7 +101,17 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
     } catch {
       setIsListening(false);
     }
-  }, [isListening, card.french, handleResult]);
+  }, [card.french, handleResult]);
+
+  const toggleMic = useCallback(() => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+    micActivatedRef.current = true;
+    startMic();
+  }, [isListening, startMic]);
 
   const handleTextSubmit = (e: React.FormEvent) => {
     e.preventDefault();
