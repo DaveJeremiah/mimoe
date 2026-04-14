@@ -80,10 +80,14 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        "card-flip-out": {
-          "0%": { transform: "rotateY(0deg) translateX(0)", opacity: "1" },
-          "50%": { transform: "rotateY(90deg) translateX(50px)", opacity: "0.5" },
-          "100%": { transform: "rotateY(180deg) translateX(200px)", opacity: "0" },
+        "card-drop-off": {
+          "0%": { transform: "translateX(0) translateY(0) rotate(0deg)", opacity: "1" },
+          "100%": { transform: "translateX(120%) translateY(-30px) rotate(15deg)", opacity: "0" },
+        },
+        "card-to-back": {
+          "0%": { transform: "translateX(0) translateY(0) scale(1)", opacity: "1" },
+          "40%": { transform: "translateX(-40px) translateY(10px) scale(0.95)", opacity: "0.7" },
+          "100%": { transform: "translateX(0) translateY(12px) scale(0.92)", opacity: "0" },
         },
         "card-flip": {
           "0%": { transform: "rotateY(0deg)" },
