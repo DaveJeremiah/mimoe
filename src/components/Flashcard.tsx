@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { MicButton } from "./MicButton";
-import { isMatch, speakFrench } from "@/lib/speechUtils";
+import { isMatch, primeFrenchSpeech, speakFrench } from "@/lib/speechUtils";
 import type { FlashcardItem } from "@/lib/flashcardData";
 import { Check, X, Send } from "lucide-react";
 
@@ -23,38 +23,27 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
   const [animatingBack, setAnimatingBack] = useState(false);
   const recognitionRef = useRef<any>(null);
   const micActivatedRef = useRef(false);
-
-  // Auto-start mic on new card if user has activated it once
-  useEffect(() => {
-    setState("prompt");
-    setTextInput("");
-    setSpokenText("");
-    setIsListening(false);
-    setAnimatingOut(false);
-    setAnimatingBack(false);
-
-    if (micActivatedRef.current) {
-      // Small delay to let state settle
-      const t = setTimeout(() => startMic(), 300);
-      return () => clearTimeout(t);
-    }
-  }, [card.id]);
+  const resultHandledRef = useRef(false);
 
   const handleResult = useCallback((answer: string) => {
+    recognitionRef.current?.stop();
+    setIsListening(false);
+
     if (isMatch(answer, card.french)) {
       setState("correct");
-      // Quick transition — show checkmark briefly then move on
       setTimeout(() => {
         setAnimatingOut(true);
-        setTimeout(onCorrect, 400);
-      }, 400);
+        setTimeout(onCorrect, 250);
+      }, 150);
     } else {
       setState("incorrect");
-      speakFrench(card.french);
+      window.setTimeout(() => speakFrench(card.french), 120);
     }
   }, [card.french, onCorrect]);
 
   const startMic = useCallback(() => {
+    resultHandledRef.current = false;
+
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       alert("Speech recognition not supported. Please type your answer.");
@@ -65,57 +54,101 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
     recognition.lang = "fr-FR";
     recognition.interimResults = true;
     recognition.continuous = false;
-    recognition.maxAlternatives = 5;
+    recognition.maxAlternatives = 3;
     recognitionRef.current = recognition;
 
-    recognition.onresult = (event: any) => {
-      const lastResult = event.results[event.results.length - 1];
+    const submitAnswer = (answer: string) => {
+      if (resultHandledRef.current) return;
+      resultHandledRef.current = true;
+      handleResult(answer);
+    };
 
-      if (!lastResult.isFinal) {
-        setSpokenText(lastResult[0].transcript);
-        return;
+    const sessionTimeout = window.setTimeout(() => {
+      recognition.stop();
+    }, 5000);
+
+    recognition.onresult = (event: any) => {
+      const latestResult = event.results[event.results.length - 1];
+      const latestTranscript = latestResult?.[0]?.transcript?.trim() ?? "";
+
+      if (latestTranscript) {
+        setSpokenText(latestTranscript);
       }
 
-      let matched = false;
-      for (let i = 0; i < lastResult.length; i++) {
-        const transcript = lastResult[i].transcript;
-        if (isMatch(transcript, card.french)) {
-          setSpokenText(transcript);
-          matched = true;
-          break;
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+
+        for (let j = 0; j < result.length; j++) {
+          const transcript = result[j].transcript.trim();
+          if (isMatch(transcript, card.french)) {
+            setSpokenText(transcript);
+            submitAnswer(card.french);
+            return;
+          }
         }
       }
-      if (!matched) {
-        setSpokenText(lastResult[0].transcript);
+
+      if (latestResult?.isFinal && latestTranscript) {
+        submitAnswer(latestTranscript);
       }
-      handleResult(matched ? card.french : lastResult[0].transcript);
+    };
+
+    recognition.onspeechend = () => {
+      recognition.stop();
+    };
+
+    recognition.onerror = () => {
+      window.clearTimeout(sessionTimeout);
       setIsListening(false);
     };
 
-    recognition.onerror = () => setIsListening(false);
-    recognition.onend = () => setIsListening(false);
+    recognition.onend = () => {
+      window.clearTimeout(sessionTimeout);
+      setIsListening(false);
+    };
 
     try {
       recognition.start();
       setIsListening(true);
     } catch {
+      window.clearTimeout(sessionTimeout);
       setIsListening(false);
     }
   }, [card.french, handleResult]);
 
+  useEffect(() => {
+    setState("prompt");
+    setTextInput("");
+    setSpokenText("");
+    setIsListening(false);
+    setAnimatingOut(false);
+    setAnimatingBack(false);
+    resultHandledRef.current = false;
+
+    if (micActivatedRef.current) {
+      const t = window.setTimeout(() => startMic(), 150);
+      return () => window.clearTimeout(t);
+    }
+  }, [card.id, startMic]);
+
   const toggleMic = useCallback(() => {
     if (isListening) {
+      micActivatedRef.current = false;
       recognitionRef.current?.stop();
       setIsListening(false);
       return;
     }
+
     micActivatedRef.current = true;
+    primeFrenchSpeech();
     startMic();
   }, [isListening, startMic]);
 
   const handleTextSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!textInput.trim()) return;
+
+    primeFrenchSpeech();
     setSpokenText(textInput.trim());
     handleResult(textInput.trim());
   };
