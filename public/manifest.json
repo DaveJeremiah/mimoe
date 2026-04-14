@@ -1,0 +1,21 @@
+{
+  "name": "Mimoe — French Flashcard Trainer",
+  "short_name": "Mimoe",
+  "description": "Learn French vocabulary and phrases with speech recognition flashcards",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1f2e",
+  "theme_color": "#3b6de8",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
