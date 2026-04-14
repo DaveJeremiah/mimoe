@@ -71,7 +71,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
   const startMic = useCallback(() => {
     if (recognitionRef.current) return;
     resultHandledRef.current = false;
-    shouldRestartRef.current = true;
+    shouldRestartRef.current = false;
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -82,7 +82,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
     const recognition = new SpeechRecognition();
     recognition.lang = "fr-FR";
     recognition.interimResults = true;
-    recognition.continuous = true;
+    recognition.continuous = false;
     recognition.maxAlternatives = 5;
     recognitionRef.current = recognition;
 
@@ -126,24 +126,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
 
     recognition.onend = () => {
       recognitionRef.current = null;
-      if (shouldRestartRef.current && !resultHandledRef.current && micActivatedRef.current) {
-        try {
-          const newRecognition = new SpeechRecognition();
-          newRecognition.lang = "fr-FR";
-          newRecognition.interimResults = true;
-          newRecognition.continuous = true;
-          newRecognition.maxAlternatives = 5;
-          newRecognition.onresult = recognition.onresult;
-          newRecognition.onerror = recognition.onerror;
-          newRecognition.onend = recognition.onend;
-          recognitionRef.current = newRecognition;
-          newRecognition.start();
-        } catch {
-          setIsListening(false);
-        }
-      } else {
-        setIsListening(false);
-      }
+      setIsListening(false);
     };
 
     try {
@@ -217,13 +200,12 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
   const ringColor = isIncorrect
     ? "ring-destructive/40 shadow-[0_0_20px_-4px_hsl(var(--destructive)/0.3)]"
     : isRetry
-    ? "ring-secondary/35 shadow-[0_0_20px_-4px_hsl(var(--secondary)/0.25)]"
-    : "ring-success/30 shadow-[0_0_20px_-4px_hsl(var(--success)/0.25)]";
-  const stackBorder = isIncorrect ? "border-destructive/20" : isRetry ? "border-secondary/20" : "border-success/20";
+    ? "ring-warning/35 shadow-[0_0_20px_-4px_hsl(var(--warning)/0.25)]"
+    : "ring-success/30 shadow-[0_0_24px_-4px_hsl(var(--success)/0.35)]";
   const cardSurface = isIncorrect
     ? "bg-destructive"
     : isRetry
-    ? "bg-gradient-to-br from-secondary/15 via-card to-card"
+    ? "bg-gradient-to-br from-warning/15 via-card to-card"
     : "bg-gradient-to-br from-card via-card to-primary/10";
 
   return (
@@ -240,12 +222,12 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
       <div className="relative w-full max-w-[300px]">
         {remaining > 2 && (
           <div
-            className={`pointer-events-none absolute inset-0 aspect-[3/4] rounded-[1.75rem] border ${stackBorder} bg-gradient-to-br from-secondary/35 via-secondary/10 to-card -translate-x-6 translate-y-6 rotate-[-15deg] scale-[0.95] opacity-90`}
+            className="pointer-events-none absolute inset-0 aspect-[3/4] rounded-[1.75rem] border border-muted/30 bg-gradient-to-br from-primary/20 via-card to-card -translate-x-5 translate-y-8 scale-[0.92] opacity-70"
           />
         )}
         {remaining > 1 && (
           <div
-            className={`pointer-events-none absolute inset-0 aspect-[3/4] rounded-[1.75rem] border ${stackBorder} bg-gradient-to-br from-primary/30 via-primary/10 to-card translate-x-4 translate-y-3 rotate-[10deg] scale-[0.98] opacity-95`}
+            className="pointer-events-none absolute inset-0 aspect-[3/4] rounded-[1.75rem] border border-muted/40 bg-gradient-to-br from-accent/25 via-card to-card -translate-x-3 translate-y-4 scale-[0.96] opacity-85"
           />
         )}
 
@@ -274,7 +256,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
 
             {state === "retry" && (
               <>
-                <span className="mb-3 text-xs font-semibold uppercase tracking-widest text-secondary">
+                <span className="mb-3 text-xs font-semibold uppercase tracking-widest text-warning">
                   Try once more!
                 </span>
                 <h2 className="font-display text-2xl font-bold text-foreground text-center leading-snug">
@@ -283,7 +265,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
                 {spokenText && (
                   <p className="mt-3 text-sm text-muted-foreground italic">"{spokenText}"</p>
                 )}
-                <div className="mt-4 flex items-center gap-2 text-secondary animate-fade-in">
+                <div className="mt-4 flex items-center gap-2 text-warning animate-fade-in">
                   <X className="w-5 h-5" />
                   <span className="font-semibold text-sm">Not quite — one more try!</span>
                 </div>
