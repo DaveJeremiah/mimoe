@@ -63,13 +63,28 @@ if (typeof window !== "undefined" && window.speechSynthesis) {
 export function speakFrench(text: string): void {
   speechSynthesis.cancel();
 
+  // Create utterance synchronously (must be in gesture context for desktop browsers)
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = "fr-FR";
   utterance.rate = 0.82;
   utterance.pitch = 1.05;
 
-  getBestFrenchVoice().then((voice) => {
-    if (voice) utterance.voice = voice;
-    speechSynthesis.speak(utterance);
-  });
+  // Try to set voice synchronously from cache first
+  if (cachedFrenchVoice) {
+    utterance.voice = cachedFrenchVoice;
+  } else {
+    // Fallback: try to grab voices synchronously
+    const voices = speechSynthesis.getVoices();
+    const frVoice = voices.find((v) => v.lang.startsWith("fr"));
+    if (frVoice) {
+      utterance.voice = frVoice;
+      cachedFrenchVoice = frVoice;
+    }
+  }
+
+  // Speak immediately — no async delay
+  speechSynthesis.speak(utterance);
+
+  // Also warm up cache for next time
+  if (!voicesLoaded) getBestFrenchVoice();
 }
