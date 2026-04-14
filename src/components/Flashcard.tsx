@@ -45,8 +45,25 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
         setTimeout(onCorrect, 400);
       }, 300);
     } else {
-      setState("incorrect");
-      setTimeout(() => speakFrench(card.french), 150);
+      attemptRef.current += 1;
+      if (attemptRef.current >= 2) {
+        // Second wrong attempt — flag as incorrect
+        setState("incorrect");
+        setTimeout(() => speakFrench(card.french), 150);
+      } else {
+        // First wrong attempt — give another try
+        setState("retry");
+        setSpokenText(answer);
+        // Auto-restart mic after brief pause
+        setTimeout(() => {
+          setState("prompt");
+          setSpokenText("");
+          resultHandledRef.current = false;
+          if (micActivatedRef.current) {
+            startMic();
+          }
+        }, 1500);
+      }
     }
   }, [card.french, onCorrect, stopMic]);
 
