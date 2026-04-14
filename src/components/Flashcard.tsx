@@ -260,6 +260,23 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
               </>
             )}
 
+            {state === "retry" && (
+              <>
+                <span className="text-xs font-semibold uppercase tracking-widest text-warning mb-3">
+                  Try once more!
+                </span>
+                <h2 className="font-display text-2xl font-bold text-foreground text-center leading-snug">
+                  {card.english}
+                </h2>
+                {spokenText && (
+                  <p className="mt-3 text-sm text-muted-foreground italic">"{spokenText}"</p>
+                )}
+                <div className="mt-4 flex items-center gap-2 text-yellow-400 animate-fade-in">
+                  <X className="w-5 h-5" />
+                  <span className="font-semibold text-sm">Not quite — one more try!</span>
+                </div>
+              </>
+            )}
             {state === "correct" && (
               <>
                 <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
