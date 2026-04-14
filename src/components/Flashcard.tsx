@@ -25,7 +25,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
   const micActivatedRef = useRef(false);
   const resultHandledRef = useRef(false);
   const shouldRestartRef = useRef(false);
-  const attemptRef = useRef(0);
+  const startMicRef = useRef<() => void>(() => {});
 
   const stopMic = useCallback(() => {
     shouldRestartRef.current = false;
@@ -60,7 +60,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
           setSpokenText("");
           resultHandledRef.current = false;
           if (micActivatedRef.current) {
-            startMic();
+            startMicRef.current();
           }
         }, 1500);
       }
@@ -153,6 +153,8 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
     }
   }, [card.french, handleResult]);
 
+  startMicRef.current = startMic;
+
   useEffect(() => {
     setState("prompt");
     setTextInput("");
@@ -163,6 +165,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
     resultHandledRef.current = false;
     shouldRestartRef.current = false;
     recognitionRef.current = null;
+    attemptRef.current = 0;
 
     if (micActivatedRef.current) {
       const t = window.setTimeout(() => startMic(), 200);
