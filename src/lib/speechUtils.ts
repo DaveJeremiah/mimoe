@@ -14,6 +14,7 @@ export function isMatch(spoken: string, expected: string): boolean {
 
 let voicesLoaded = false;
 let cachedFrenchVoice: SpeechSynthesisVoice | null = null;
+let primedUtterance: SpeechSynthesisUtterance | null = null;
 
 function loadVoices(): Promise<SpeechSynthesisVoice[]> {
   return new Promise((resolve) => {
@@ -34,7 +35,6 @@ async function getBestFrenchVoice(): Promise<SpeechSynthesisVoice | null> {
   const voices = await loadVoices();
   voicesLoaded = true;
 
-  // Priority order for natural-sounding French voices
   const priorities = [
     (v: SpeechSynthesisVoice) => v.lang.startsWith("fr") && v.name.toLowerCase().includes("amelie"),
     (v: SpeechSynthesisVoice) => v.lang.startsWith("fr") && v.name.toLowerCase().includes("thomas"),
@@ -55,36 +55,48 @@ async function getBestFrenchVoice(): Promise<SpeechSynthesisVoice | null> {
   return null;
 }
 
-// Pre-load voices on module init
+function applyFrenchVoice(utterance: SpeechSynthesisUtterance): void {
+  utterance.lang = "fr-FR";
+  utterance.rate = 0.88;
+  utterance.pitch = 1.0;
+
+  if (cachedFrenchVoice) {
+    utterance.voice = cachedFrenchVoice;
+    return;
+  }
+
+  const voices = speechSynthesis.getVoices();
+  const frVoice = voices.find((v) => v.lang === "fr-FR") || voices.find((v) => v.lang.startsWith("fr"));
+  if (frVoice) {
+    utterance.voice = frVoice;
+    cachedFrenchVoice = frVoice;
+  }
+}
+
+export function primeFrenchSpeech(): void {
+  if (typeof window === "undefined" || !window.speechSynthesis) return;
+
+  if (!primedUtterance) {
+    primedUtterance = new SpeechSynthesisUtterance("");
+  }
+
+  applyFrenchVoice(primedUtterance);
+  if (!voicesLoaded) getBestFrenchVoice();
+}
+
 if (typeof window !== "undefined" && window.speechSynthesis) {
   getBestFrenchVoice();
 }
 
 export function speakFrench(text: string): void {
+  if (typeof window === "undefined" || !window.speechSynthesis) return;
+
+  const utterance = primedUtterance ?? new SpeechSynthesisUtterance("");
+  utterance.text = text;
+
   speechSynthesis.cancel();
-
-  // Create utterance synchronously (must be in gesture context for desktop browsers)
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = "fr-FR";
-  utterance.rate = 0.82;
-  utterance.pitch = 1.05;
-
-  // Try to set voice synchronously from cache first
-  if (cachedFrenchVoice) {
-    utterance.voice = cachedFrenchVoice;
-  } else {
-    // Fallback: try to grab voices synchronously
-    const voices = speechSynthesis.getVoices();
-    const frVoice = voices.find((v) => v.lang.startsWith("fr"));
-    if (frVoice) {
-      utterance.voice = frVoice;
-      cachedFrenchVoice = frVoice;
-    }
-  }
-
-  // Speak immediately — no async delay
+  applyFrenchVoice(utterance);
   speechSynthesis.speak(utterance);
 
-  // Also warm up cache for next time
   if (!voicesLoaded) getBestFrenchVoice();
 }
