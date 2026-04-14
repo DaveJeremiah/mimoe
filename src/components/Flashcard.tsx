@@ -22,7 +22,9 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
   const [animatingOut, setAnimatingOut] = useState(false);
   const [animatingBack, setAnimatingBack] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const micActivatedRef = useRef(false);
 
+  // Auto-start mic on new card if user has activated it once
   useEffect(() => {
     setState("prompt");
     setTextInput("");
@@ -30,6 +32,12 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
     setIsListening(false);
     setAnimatingOut(false);
     setAnimatingBack(false);
+
+    if (micActivatedRef.current) {
+      // Small delay to let state settle
+      const t = setTimeout(() => startMic(), 300);
+      return () => clearTimeout(t);
+    }
   }, [card.id]);
 
   const handleResult = useCallback((answer: string) => {
