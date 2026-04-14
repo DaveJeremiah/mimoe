@@ -12,7 +12,7 @@ interface FlashcardProps {
   remaining: number;
 }
 
-type CardState = "prompt" | "correct" | "incorrect";
+type CardState = "prompt" | "correct" | "incorrect" | "retry";
 
 export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: FlashcardProps) {
   const [state, setState] = useState<CardState>("prompt");
@@ -25,6 +25,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
   const micActivatedRef = useRef(false);
   const resultHandledRef = useRef(false);
   const shouldRestartRef = useRef(false);
+  const attemptRef = useRef(0);
 
   const stopMic = useCallback(() => {
     shouldRestartRef.current = false;
