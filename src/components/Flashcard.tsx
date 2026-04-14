@@ -217,9 +217,14 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
   const ringColor = isIncorrect
     ? "ring-destructive/40 shadow-[0_0_20px_-4px_hsl(var(--destructive)/0.3)]"
     : isRetry
-    ? "ring-yellow-400/40 shadow-[0_0_20px_-4px_rgba(250,204,21,0.25)]"
+    ? "ring-secondary/35 shadow-[0_0_20px_-4px_hsl(var(--secondary)/0.25)]"
     : "ring-success/30 shadow-[0_0_20px_-4px_hsl(var(--success)/0.25)]";
-  const stackBorder = isIncorrect ? "border-destructive/20" : isRetry ? "border-yellow-400/20" : "border-success/20";
+  const stackBorder = isIncorrect ? "border-destructive/20" : isRetry ? "border-secondary/20" : "border-success/20";
+  const cardSurface = isIncorrect
+    ? "bg-destructive"
+    : isRetry
+    ? "bg-gradient-to-br from-secondary/15 via-card to-card"
+    : "bg-gradient-to-br from-card via-card to-primary/10";
 
   return (
     <div className="flex flex-col items-center gap-5 w-full animate-card-enter">
@@ -234,20 +239,24 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
       {/* Card stack */}
       <div className="relative w-full max-w-[300px]">
         {remaining > 2 && (
-          <div className={`absolute inset-0 aspect-[3/4] rounded-2xl bg-card border ${stackBorder} translate-y-3 scale-[0.92] opacity-40`} />
+          <div
+            className={`pointer-events-none absolute inset-0 aspect-[3/4] rounded-[1.75rem] border ${stackBorder} bg-gradient-to-br from-secondary/35 via-secondary/10 to-card -translate-x-6 translate-y-6 rotate-[-15deg] scale-[0.95] opacity-90`}
+          />
         )}
         {remaining > 1 && (
-          <div className={`absolute inset-0 aspect-[3/4] rounded-2xl bg-card border ${stackBorder} translate-y-1.5 scale-[0.96] opacity-60`} />
+          <div
+            className={`pointer-events-none absolute inset-0 aspect-[3/4] rounded-[1.75rem] border ${stackBorder} bg-gradient-to-br from-primary/30 via-primary/10 to-card translate-x-4 translate-y-3 rotate-[10deg] scale-[0.98] opacity-95`}
+          />
         )}
 
         {/* Main card */}
         <div
           className={`relative aspect-[3/4] rounded-2xl ring-2 ${ringColor} transition-all duration-300 ${
             animatingOut ? "animate-card-drop-off" : ""
-          } ${animatingBack ? "animate-card-to-back" : ""}`}
+          } ${animatingBack ? "animate-card-to-back" : ""} card-shadow-lg`}
         >
           <div className={`w-full h-full rounded-2xl overflow-hidden flex flex-col items-center justify-center p-6 transition-colors duration-300 ${
-            isIncorrect ? "bg-destructive" : "bg-card"
+            cardSurface
           }`}>
             {state === "prompt" && (
               <>
@@ -265,7 +274,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
 
             {state === "retry" && (
               <>
-                <span className="text-xs font-semibold uppercase tracking-widest text-warning mb-3">
+                <span className="mb-3 text-xs font-semibold uppercase tracking-widest text-secondary">
                   Try once more!
                 </span>
                 <h2 className="font-display text-2xl font-bold text-foreground text-center leading-snug">
@@ -274,7 +283,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
                 {spokenText && (
                   <p className="mt-3 text-sm text-muted-foreground italic">"{spokenText}"</p>
                 )}
-                <div className="mt-4 flex items-center gap-2 text-yellow-400 animate-fade-in">
+                <div className="mt-4 flex items-center gap-2 text-secondary animate-fade-in">
                   <X className="w-5 h-5" />
                   <span className="font-semibold text-sm">Not quite — one more try!</span>
                 </div>
