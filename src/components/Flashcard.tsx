@@ -213,10 +213,13 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
   };
 
   const isIncorrect = state === "incorrect";
+  const isRetry = state === "retry";
   const ringColor = isIncorrect
     ? "ring-destructive/40 shadow-[0_0_20px_-4px_hsl(var(--destructive)/0.3)]"
+    : isRetry
+    ? "ring-yellow-400/40 shadow-[0_0_20px_-4px_rgba(250,204,21,0.25)]"
     : "ring-success/30 shadow-[0_0_20px_-4px_hsl(var(--success)/0.25)]";
-  const stackBorder = isIncorrect ? "border-destructive/20" : "border-success/20";
+  const stackBorder = isIncorrect ? "border-destructive/20" : isRetry ? "border-yellow-400/20" : "border-success/20";
 
   return (
     <div className="flex flex-col items-center gap-5 w-full animate-card-enter">
