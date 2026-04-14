@@ -91,12 +91,22 @@ if (typeof window !== "undefined" && window.speechSynthesis) {
 export function speakFrench(text: string): void {
   if (typeof window === "undefined" || !window.speechSynthesis) return;
 
-  const utterance = primedUtterance ?? new SpeechSynthesisUtterance("");
-  utterance.text = text;
-
   speechSynthesis.cancel();
+
+  const utterance = new SpeechSynthesisUtterance(text);
   applyFrenchVoice(utterance);
   speechSynthesis.speak(utterance);
 
   if (!voicesLoaded) getBestFrenchVoice();
+}
+
+export function speakCorrect(text: string): void {
+  if (typeof window === "undefined" || !window.speechSynthesis) return;
+
+  speechSynthesis.cancel();
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  applyFrenchVoice(utterance);
+  utterance.rate = 0.95;
+  speechSynthesis.speak(utterance);
 }

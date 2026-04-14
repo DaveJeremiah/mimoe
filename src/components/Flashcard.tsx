@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { MicButton } from "./MicButton";
-import { isMatch, primeFrenchSpeech, speakFrench } from "@/lib/speechUtils";
+import { isMatch, primeFrenchSpeech, speakFrench, speakCorrect } from "@/lib/speechUtils";
 import type { FlashcardItem } from "@/lib/flashcardData";
 import { Check, X, Send } from "lucide-react";
 
@@ -24,25 +24,35 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
   const recognitionRef = useRef<any>(null);
   const micActivatedRef = useRef(false);
   const resultHandledRef = useRef(false);
+  const shouldRestartRef = useRef(false);
+
+  const stopMic = useCallback(() => {
+    shouldRestartRef.current = false;
+    recognitionRef.current?.stop();
+    recognitionRef.current = null;
+    setIsListening(false);
+  }, []);
 
   const handleResult = useCallback((answer: string) => {
-    recognitionRef.current?.stop();
-    setIsListening(false);
+    stopMic();
 
     if (isMatch(answer, card.french)) {
       setState("correct");
+      speakCorrect(card.french);
       setTimeout(() => {
         setAnimatingOut(true);
-        setTimeout(onCorrect, 250);
-      }, 150);
+        setTimeout(onCorrect, 400);
+      }, 300);
     } else {
       setState("incorrect");
-      window.setTimeout(() => speakFrench(card.french), 120);
+      setTimeout(() => speakFrench(card.french), 150);
     }
-  }, [card.french, onCorrect]);
+  }, [card.french, onCorrect, stopMic]);
 
   const startMic = useCallback(() => {
+    if (recognitionRef.current) return;
     resultHandledRef.current = false;
+    shouldRestartRef.current = true;
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -53,8 +63,8 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
     const recognition = new SpeechRecognition();
     recognition.lang = "fr-FR";
     recognition.interimResults = true;
-    recognition.continuous = false;
-    recognition.maxAlternatives = 3;
+    recognition.continuous = true;
+    recognition.maxAlternatives = 5;
     recognitionRef.current = recognition;
 
     const submitAnswer = (answer: string) => {
@@ -62,10 +72,6 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
       resultHandledRef.current = true;
       handleResult(answer);
     };
-
-    const sessionTimeout = window.setTimeout(() => {
-      recognition.stop();
-    }, 5000);
 
     recognition.onresult = (event: any) => {
       const latestResult = event.results[event.results.length - 1];
@@ -77,7 +83,6 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
-
         for (let j = 0; j < result.length; j++) {
           const transcript = result[j].transcript.trim();
           if (isMatch(transcript, card.french)) {
@@ -93,25 +98,39 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
       }
     };
 
-    recognition.onspeechend = () => {
-      recognition.stop();
-    };
-
-    recognition.onerror = () => {
-      window.clearTimeout(sessionTimeout);
+    recognition.onerror = (e: any) => {
+      if (e.error === "no-speech" || e.error === "aborted") {
+        return;
+      }
       setIsListening(false);
     };
 
     recognition.onend = () => {
-      window.clearTimeout(sessionTimeout);
-      setIsListening(false);
+      recognitionRef.current = null;
+      if (shouldRestartRef.current && !resultHandledRef.current && micActivatedRef.current) {
+        try {
+          const newRecognition = new SpeechRecognition();
+          newRecognition.lang = "fr-FR";
+          newRecognition.interimResults = true;
+          newRecognition.continuous = true;
+          newRecognition.maxAlternatives = 5;
+          newRecognition.onresult = recognition.onresult;
+          newRecognition.onerror = recognition.onerror;
+          newRecognition.onend = recognition.onend;
+          recognitionRef.current = newRecognition;
+          newRecognition.start();
+        } catch {
+          setIsListening(false);
+        }
+      } else {
+        setIsListening(false);
+      }
     };
 
     try {
       recognition.start();
       setIsListening(true);
     } catch {
-      window.clearTimeout(sessionTimeout);
       setIsListening(false);
     }
   }, [card.french, handleResult]);
@@ -124,25 +143,33 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
     setAnimatingOut(false);
     setAnimatingBack(false);
     resultHandledRef.current = false;
+    shouldRestartRef.current = false;
+    recognitionRef.current = null;
 
     if (micActivatedRef.current) {
-      const t = window.setTimeout(() => startMic(), 150);
+      const t = window.setTimeout(() => startMic(), 200);
       return () => window.clearTimeout(t);
     }
   }, [card.id, startMic]);
 
+  useEffect(() => {
+    return () => {
+      shouldRestartRef.current = false;
+      recognitionRef.current?.stop();
+    };
+  }, []);
+
   const toggleMic = useCallback(() => {
     if (isListening) {
       micActivatedRef.current = false;
-      recognitionRef.current?.stop();
-      setIsListening(false);
+      stopMic();
       return;
     }
 
     micActivatedRef.current = true;
     primeFrenchSpeech();
     startMic();
-  }, [isListening, startMic]);
+  }, [isListening, startMic, stopMic]);
 
   const handleTextSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -181,7 +208,6 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
 
       {/* Card stack */}
       <div className="relative w-full max-w-[300px]">
-        {/* Background stack cards */}
         {remaining > 2 && (
           <div className={`absolute inset-0 aspect-[3/4] rounded-2xl bg-card border ${stackBorder} translate-y-3 scale-[0.92] opacity-40`} />
         )}
@@ -195,7 +221,6 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
             animatingOut ? "animate-card-drop-off" : ""
           } ${animatingBack ? "animate-card-to-back" : ""}`}
         >
-          {/* Single face - no 3D flip */}
           <div className={`w-full h-full rounded-2xl overflow-hidden flex flex-col items-center justify-center p-6 transition-colors duration-300 ${
             isIncorrect ? "bg-destructive" : "bg-card"
           }`}>
