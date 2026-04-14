@@ -98,8 +98,8 @@ export default {
           "100%": { transform: "rotateY(180deg)" },
         },
         "card-enter": {
-          "0%": { transform: "scale(0.9) translateY(20px)", opacity: "0" },
-          "100%": { transform: "scale(1) translateY(0)", opacity: "1" },
+          "0%": { transform: "translateX(-60px) scale(0.92)", opacity: "0" },
+          "100%": { transform: "translateX(0) scale(1)", opacity: "1" },
         },
         "slide-up": {
           "0%": { transform: "translateY(100%)" },
