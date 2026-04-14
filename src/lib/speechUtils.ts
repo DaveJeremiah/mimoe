@@ -136,6 +136,7 @@ export function isMatch(spoken: string, expected: string): boolean {
 let voicesLoaded = false;
 let cachedFrenchVoice: SpeechSynthesisVoice | null = null;
 let primedUtterance: SpeechSynthesisUtterance | null = null;
+let activeSpeechRequest = 0;
 
 function loadVoices(): Promise<SpeechSynthesisVoice[]> {
   return new Promise((resolve) => {
@@ -212,22 +213,81 @@ if (typeof window !== "undefined" && window.speechSynthesis) {
 export function speakFrench(text: string): void {
   if (typeof window === "undefined" || !window.speechSynthesis) return;
 
-  speechSynthesis.cancel();
-
-  const utterance = new SpeechSynthesisUtterance(text);
-  applyFrenchVoice(utterance);
-  speechSynthesis.speak(utterance);
-
-  if (!voicesLoaded) getBestFrenchVoice();
+  speakWithRecovery(text, (utterance) => {
+    utterance.rate = 0.88;
+    utterance.pitch = 1.0;
+  });
 }
 
 export function speakCorrect(text: string): void {
   if (typeof window === "undefined" || !window.speechSynthesis) return;
 
-  speechSynthesis.cancel();
+  speakWithRecovery(text, (utterance) => {
+    utterance.rate = 0.95;
+    utterance.pitch = 1.02;
+  });
+}
 
-  const utterance = new SpeechSynthesisUtterance(text);
-  applyFrenchVoice(utterance);
-  utterance.rate = 0.95;
-  speechSynthesis.speak(utterance);
+function speakWithRecovery(
+  text: string,
+  configureUtterance?: (utterance: SpeechSynthesisUtterance) => void,
+): void {
+  const trimmedText = text.trim();
+  if (!trimmedText || typeof window === "undefined" || !window.speechSynthesis) return;
+
+  const synth = window.speechSynthesis;
+  const requestId = ++activeSpeechRequest;
+  const maxAttempts = 3;
+
+  const runSpeakAttempt = (attempt: number) => {
+    if (requestId !== activeSpeechRequest) return;
+
+    const utterance = new SpeechSynthesisUtterance(trimmedText);
+    applyFrenchVoice(utterance);
+    configureUtterance?.(utterance);
+
+    let started = false;
+
+    utterance.onstart = () => {
+      started = true;
+      synth.resume();
+    };
+
+    utterance.onerror = () => {
+      if (requestId !== activeSpeechRequest || attempt >= maxAttempts - 1) return;
+
+      window.setTimeout(() => {
+        if (requestId !== activeSpeechRequest) return;
+        synth.cancel();
+        runSpeakAttempt(attempt + 1);
+      }, 140);
+    };
+
+    synth.cancel();
+
+    window.setTimeout(() => {
+      if (requestId !== activeSpeechRequest) return;
+
+      synth.resume();
+      synth.speak(utterance);
+
+      window.setTimeout(() => {
+        if (started || requestId !== activeSpeechRequest || attempt >= maxAttempts - 1) return;
+
+        synth.cancel();
+        runSpeakAttempt(attempt + 1);
+      }, 320);
+    }, 80);
+  };
+
+  primeFrenchSpeech();
+
+  if (voicesLoaded) {
+    runSpeakAttempt(0);
+    return;
+  }
+
+  void getBestFrenchVoice().finally(() => {
+    runSpeakAttempt(0);
+  });
 }
