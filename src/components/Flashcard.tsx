@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { MicButton } from "./MicButton";
 import { isMatch, primeFrenchSpeech, speakFrench, speakCorrect } from "@/lib/speechUtils";
 import type { FlashcardItem } from "@/lib/flashcardData";
-import { Check, X, Send } from "lucide-react";
+import { Check, X, Send, Mic } from "lucide-react";
 
 interface FlashcardProps {
   card: FlashcardItem;
@@ -21,15 +20,13 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
   const [spokenText, setSpokenText] = useState("");
   const [animatingOut, setAnimatingOut] = useState(false);
   const [animatingBack, setAnimatingBack] = useState(false);
+  const [micPermission, setMicPermission] = useState<"granted" | "denied" | "pending">("pending");
   const recognitionRef = useRef<any>(null);
-  const micActivatedRef = useRef(false);
   const resultHandledRef = useRef(false);
-  const shouldRestartRef = useRef(false);
   const attemptRef = useRef(0);
   const startMicRef = useRef<() => void>(() => {});
 
   const stopMic = useCallback(() => {
-    shouldRestartRef.current = false;
     recognitionRef.current?.stop();
     recognitionRef.current = null;
     setIsListening(false);
@@ -48,21 +45,16 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
     } else {
       attemptRef.current += 1;
       if (attemptRef.current >= 2) {
-        // Second wrong attempt — flag as incorrect
         setState("incorrect");
         speakFrench(card.french);
       } else {
-        // First wrong attempt — give another try
         setState("retry");
         setSpokenText(answer);
-        // Auto-restart mic after brief pause
         setTimeout(() => {
           setState("prompt");
           setSpokenText("");
           resultHandledRef.current = false;
-          if (micActivatedRef.current) {
-            startMicRef.current();
-          }
+          startMicRef.current();
         }, 1500);
       }
     }
@@ -71,13 +63,9 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
   const startMic = useCallback(() => {
     if (recognitionRef.current) return;
     resultHandledRef.current = false;
-    shouldRestartRef.current = false;
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Speech recognition not supported. Please type your answer.");
-      return;
-    }
+    if (!SpeechRecognition) return;
 
     const recognition = new SpeechRecognition();
     recognition.lang = "fr-FR";
@@ -118,27 +106,37 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
     };
 
     recognition.onerror = (e: any) => {
-      if (e.error === "no-speech" || e.error === "aborted") {
+      if (e.error === "not-allowed") {
+        setMicPermission("denied");
+        setIsListening(false);
         return;
       }
+      if (e.error === "no-speech" || e.error === "aborted") return;
       setIsListening(false);
     };
 
     recognition.onend = () => {
       recognitionRef.current = null;
-      setIsListening(false);
+      // Auto-restart if no result was handled yet (keeps listening)
+      if (!resultHandledRef.current && micPermission !== "denied") {
+        setTimeout(() => startMicRef.current(), 100);
+      } else {
+        setIsListening(false);
+      }
     };
 
     try {
       recognition.start();
       setIsListening(true);
+      setMicPermission("granted");
     } catch {
       setIsListening(false);
     }
-  }, [card.french, handleResult]);
+  }, [card.french, handleResult, micPermission]);
 
   startMicRef.current = startMic;
 
+  // Auto-start mic on every new card
   useEffect(() => {
     setState("prompt");
     setTextInput("");
@@ -147,40 +145,30 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
     setAnimatingOut(false);
     setAnimatingBack(false);
     resultHandledRef.current = false;
-    shouldRestartRef.current = false;
     recognitionRef.current = null;
     attemptRef.current = 0;
 
-    if (micActivatedRef.current) {
-      const t = window.setTimeout(() => startMic(), 200);
-      return () => window.clearTimeout(t);
-    }
-  }, [card.id, startMic]);
+    primeFrenchSpeech();
+    const t = window.setTimeout(() => startMicRef.current(), 300);
+    return () => {
+      window.clearTimeout(t);
+      recognitionRef.current?.stop();
+      recognitionRef.current = null;
+    };
+  }, [card.id]);
 
   useEffect(() => {
     return () => {
-      shouldRestartRef.current = false;
       recognitionRef.current?.stop();
     };
   }, []);
-
-  const toggleMic = useCallback(() => {
-    if (isListening) {
-      micActivatedRef.current = false;
-      stopMic();
-      return;
-    }
-
-    micActivatedRef.current = true;
-    primeFrenchSpeech();
-    startMic();
-  }, [isListening, startMic, stopMic]);
 
   const handleTextSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!textInput.trim()) return;
 
     primeFrenchSpeech();
+    stopMic();
     setSpokenText(textInput.trim());
     handleResult(textInput.trim());
   };
@@ -251,6 +239,13 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
                 {spokenText && (
                   <p className="mt-3 text-sm text-muted-foreground italic">"{spokenText}"</p>
                 )}
+                {/* Listening indicator */}
+                {isListening && (
+                  <div className="mt-4 flex items-center gap-2 text-primary/60 animate-fade-in">
+                    <Mic className="w-4 h-4 animate-pulse" />
+                    <span className="text-xs">Listening...</span>
+                  </div>
+                )}
               </>
             )}
 
@@ -319,13 +314,9 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
         </div>
       </div>
 
-      {/* Controls */}
+      {/* Controls — only type input, no mic button */}
       {state === "prompt" && (
         <div className="flex flex-col items-center gap-3 w-full max-w-[300px] animate-fade-in">
-          <MicButton isListening={isListening} onClick={toggleMic} />
-          <span className="text-xs text-muted-foreground">
-            {isListening ? "Listening..." : "Tap to speak"}
-          </span>
           <form onSubmit={handleTextSubmit} className="flex w-full gap-2">
             <input
               type="text"
