@@ -40,18 +40,17 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
 
     if (isMatch(answer, card.french)) {
       setState("correct");
-      // Small delay to ensure cancel() completes before speaking
-      setTimeout(() => speakCorrect(card.french), 50);
+      speakCorrect(card.french);
       setTimeout(() => {
         setAnimatingOut(true);
         setTimeout(onCorrect, 400);
-      }, 1300);
+      }, 1500);
     } else {
       attemptRef.current += 1;
       if (attemptRef.current >= 2) {
         // Second wrong attempt — flag as incorrect
         setState("incorrect");
-        setTimeout(() => speakFrench(card.french), 150);
+        speakFrench(card.french);
       } else {
         // First wrong attempt — give another try
         setState("retry");
@@ -283,15 +282,15 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
             )}
             {state === "correct" && (
               <>
-                <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-                  Translate to French
+                <span className="text-xs font-semibold uppercase tracking-widest text-success mb-3">
+                  Correct!
                 </span>
                 <h2 className="font-display text-2xl font-bold text-foreground text-center leading-snug">
-                  {card.english}
+                  {card.french}
                 </h2>
-                <div className="mt-5 flex items-center gap-2 text-success animate-fade-in">
+                <p className="mt-2 text-sm text-muted-foreground">{card.english}</p>
+                <div className="mt-4 flex items-center gap-2 text-success animate-fade-in">
                   <Check className="w-6 h-6" />
-                  <span className="font-semibold text-lg">Correct!</span>
                 </div>
               </>
             )}
