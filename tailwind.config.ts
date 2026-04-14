@@ -113,7 +113,8 @@ export default {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "card-flip-out": "card-flip-out 0.6s ease-in-out forwards",
+        "card-drop-off": "card-drop-off 0.5s ease-in forwards",
+        "card-to-back": "card-to-back 0.6s ease-in-out forwards",
         "card-flip": "card-flip 0.4s ease-in-out forwards",
         "card-enter": "card-enter 0.4s ease-out",
         "slide-up": "slide-up 0.3s ease-out",
