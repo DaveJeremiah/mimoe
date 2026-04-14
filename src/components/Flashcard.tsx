@@ -40,11 +40,12 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
 
     if (isMatch(answer, card.french)) {
       setState("correct");
-      speakCorrect(card.french);
+      // Small delay to ensure cancel() completes before speaking
+      setTimeout(() => speakCorrect(card.french), 50);
       setTimeout(() => {
         setAnimatingOut(true);
         setTimeout(onCorrect, 400);
-      }, 300);
+      }, 1300);
     } else {
       attemptRef.current += 1;
       if (attemptRef.current >= 2) {
