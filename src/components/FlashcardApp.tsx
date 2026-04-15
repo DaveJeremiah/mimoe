@@ -34,20 +34,28 @@ export function FlashcardApp() {
   }, [selectedLevel, customCards]);
 
   const [queue, setQueue] = useState<string[]>([]);
+  const [isRestoring, setIsRestoring] = useState(false);
 
   // Restore progress on component mount
   useEffect(() => {
-    if (selectedLevelId && savedQueue.length > 0) {
+    if (selectedLevelId && savedQueue.length > 0 && !isRestoring) {
+      setIsRestoring(true);
       // Validate that the saved queue still matches the current level
       const level = levels.find((l) => l.id === selectedLevelId);
       if (level) {
         const custom = customCards[selectedLevelId] || [];
         const allValidIds = [...level.cards, ...custom].map((c) => c.id);
         const validQueue = savedQueue.filter(id => allValidIds.includes(id));
-        setQueue(validQueue);
+        // Use setTimeout to prevent rapid state changes
+        setTimeout(() => {
+          setQueue(validQueue);
+          setIsRestoring(false);
+        }, 100);
+      } else {
+        setIsRestoring(false);
       }
     }
-  }, [selectedLevelId, savedQueue, levels, customCards]);
+  }, [selectedLevelId, savedQueue, levels, customCards, isRestoring]);
 
   // Save queue state whenever it changes
   useEffect(() => {
@@ -74,12 +82,14 @@ export function FlashcardApp() {
   }, [queue, allCards]);
 
   const handleCorrect = useCallback(() => {
+    if (isRestoring) return; // Prevent advancement during restoration
     setQueue((q) => q.slice(1));
-  }, []);
+  }, [isRestoring]);
 
   const handleIncorrect = useCallback(() => {
+    if (isRestoring) return; // Prevent advancement during restoration
     setQueue((q) => [...q.slice(1), q[0]]);
-  }, []);
+  }, [isRestoring]);
 
   const isDeckComplete = queue.length === 0 && selectedLevelId !== null;
 
