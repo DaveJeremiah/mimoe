@@ -1,18 +1,21 @@
 import { useState } from "react";
-import { Trash2, Plus, X, BookOpen } from "lucide-react";
+import { Trash2, Plus, X, BookOpen, Upload } from "lucide-react";
 import type { FlashcardItem } from "@/lib/flashcardData";
+import { BulkImportModal } from "./BulkImportModal";
 
 interface WordBankProps {
   items: FlashcardItem[];
   onAdd: (english: string, french: string) => void;
   onDelete: (id: string) => void;
+  onBulkAdd: (entries: { english: string; french: string }[]) => void;
   label: string;
 }
 
-export function WordBank({ items, onAdd, onDelete, label }: WordBankProps) {
+export function WordBank({ items, onAdd, onDelete, onBulkAdd, label }: WordBankProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [english, setEnglish] = useState("");
   const [french, setFrench] = useState("");
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,28 +73,48 @@ export function WordBank({ items, onAdd, onDelete, label }: WordBankProps) {
               ))}
             </div>
 
-            <form onSubmit={handleAdd} className="p-4 border-t border-border flex gap-2">
-              <input
-                type="text"
-                value={english}
-                onChange={(e) => setEnglish(e.target.value)}
-                placeholder="English"
-                className="flex-1 rounded-xl border border-input bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-              <input
-                type="text"
-                value={french}
-                onChange={(e) => setFrench(e.target.value)}
-                placeholder="French"
-                className="flex-1 rounded-xl border border-input bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              />
+            <div className="p-4 border-t border-border space-y-3">
+              {/* Single Entry Form */}
+              <form onSubmit={handleAdd} className="flex gap-2">
+                <input
+                  type="text"
+                  value={english}
+                  onChange={(e) => setEnglish(e.target.value)}
+                  placeholder="English"
+                  className="flex-1 rounded-xl border border-input bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <input
+                  type="text"
+                  value={french}
+                  onChange={(e) => setFrench(e.target.value)}
+                  placeholder="French"
+                  className="flex-1 rounded-xl border border-input bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <button
+                  type="submit"
+                  className="rounded-xl bg-primary px-4 py-2.5 text-primary-foreground hover:opacity-90 transition-opacity"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </form>
+
+              {/* Bulk Import Button */}
               <button
-                type="submit"
-                className="rounded-xl bg-primary px-4 py-2.5 text-primary-foreground hover:opacity-90 transition-opacity"
+                onClick={() => setIsBulkImportOpen(true)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-amber-100 text-amber-900 hover:bg-amber-200 transition-colors font-medium text-sm"
               >
-                <Plus className="w-4 h-4" />
+                <Upload className="w-4 h-4" />
+                Bulk Import
               </button>
-            </form>
+            </div>
+
+            {/* Bulk Import Modal */}
+            <BulkImportModal
+              isOpen={isBulkImportOpen}
+              onClose={() => setIsBulkImportOpen(false)}
+              onImport={onBulkAdd}
+              existingItems={items}
+            />
           </div>
         </>
       )}
