@@ -225,7 +225,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
             animatingOut ? "animate-card-drop-off" : ""
           } ${animatingBack ? "animate-card-to-back" : ""} card-shadow-lg`}
         >
-          <div className={`w-full h-full rounded-2xl overflow-hidden flex flex-col items-center justify-center p-6 transition-colors duration-300 ${
+          <div className={`w-full h-full overflow-hidden flex flex-col items-center justify-center p-6 transition-colors duration-300 bg-success my-0 border-secondary rounded-md ${
             cardSurface
           }`}>
             {state === "prompt" && (
