@@ -261,10 +261,10 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
             }`}>
             {state === "prompt" && (
               <>
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                <span className="text-[10px] font-semibold uppercase tracking-widest mb-3 text-sidebar">
                   Translate to French
                 </span>
-                <h2 className="font-display text-5xl font-black text-black text-center leading-snug">
+                <h2 className="font-display text-5xl font-black text-center leading-snug text-slate-900">
                   {card.english}
                 </h2>
                 {spokenText && (
