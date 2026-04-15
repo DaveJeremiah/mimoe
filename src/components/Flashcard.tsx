@@ -118,7 +118,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
       if (e.error === "network" || e.error === "service-not-allowed") {
         // Handle focus loss errors by retrying after delay
         setTimeout(() => {
-          if (!resultHandledRef.current && micPermission !== "denied") {
+          if (!resultHandledRef.current && (micPermission as string) !== "denied") {
             startMicRef.current();
           }
         }, 1000);
@@ -130,14 +130,14 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
     recognition.onend = () => {
       recognitionRef.current = null;
       // Auto-restart if no result was handled yet (keeps listening)
-      if (!resultHandledRef.current && micPermission !== "denied") {
+      if (!resultHandledRef.current && (micPermission as string) !== "denied") {
         setTimeout(() => {
           try {
             startMicRef.current();
           } catch (error) {
             // Retry again if it fails
             setTimeout(() => {
-              if (!resultHandledRef.current && micPermission !== "denied") {
+              if (!resultHandledRef.current && (micPermission as string) !== "denied") {
                 startMicRef.current();
               }
             }, 500);
