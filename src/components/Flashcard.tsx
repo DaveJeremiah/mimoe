@@ -22,6 +22,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
   const [animatingBack, setAnimatingBack] = useState(false);
   const [micPermission, setMicPermission] = useState<"granted" | "denied" | "pending">("pending");
   const [cardColorIndex, setCardColorIndex] = useState(0);
+  const [isFirstCard, setIsFirstCard] = useState(true);
   const cardColors = ["bg-indigo-400", "bg-green-400", "bg-yellow-400"];
   const recognitionRef = useRef<any>(null);
   const resultHandledRef = useRef(false);
@@ -114,6 +115,15 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
         return;
       }
       if (e.error === "no-speech" || e.error === "aborted") return;
+      if (e.error === "network" || e.error === "service-not-allowed") {
+        // Handle focus loss errors by retrying after delay
+        setTimeout(() => {
+          if (!resultHandledRef.current && micPermission !== "denied") {
+            startMicRef.current();
+          }
+        }, 1000);
+        return;
+      }
       setIsListening(false);
     };
 
@@ -121,7 +131,18 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
       recognitionRef.current = null;
       // Auto-restart if no result was handled yet (keeps listening)
       if (!resultHandledRef.current && micPermission !== "denied") {
-        setTimeout(() => startMicRef.current(), 100);
+        setTimeout(() => {
+          try {
+            startMicRef.current();
+          } catch (error) {
+            // Retry again if it fails
+            setTimeout(() => {
+              if (!resultHandledRef.current && micPermission !== "denied") {
+                startMicRef.current();
+              }
+            }, 500);
+          }
+        }, 100);
       } else {
         setIsListening(false);
       }
@@ -150,8 +171,11 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
     recognitionRef.current = null;
     attemptRef.current = 0;
 
-    // Cycle to next color for new card
-    setCardColorIndex((prev) => (prev + 1) % cardColors.length);
+    // Cycle to next color for new card (but not for the very first card)
+    if (!isFirstCard) {
+      setCardColorIndex((prev) => (prev + 1) % cardColors.length);
+    }
+    setIsFirstCard(false);
 
     primeFrenchSpeech();
     const t = window.setTimeout(() => startMicRef.current(), 300);
@@ -189,6 +213,17 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
     }
   };
 
+  const handleDontKnow = () => {
+    stopMic();
+    setState("incorrect");
+    speakFrench(card.french);
+    // Move card to back of queue after showing answer
+    setTimeout(() => {
+      setAnimatingBack(true);
+      setTimeout(onIncorrect, 2000);
+    }, 2000);
+  };
+
   const cycleCardColor = useCallback(() => {
     setCardColorIndex((prev) => (prev + 1) % cardColors.length);
   }, [cardColors.length]);
@@ -214,20 +249,8 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
         <span>cards remaining</span>
       </div>
 
-      {/* Card stack */}
+      {/* Main card */}
       <div className="relative w-full max-w-[300px]">
-        {remaining > 2 && (
-          <div
-            className="pointer-events-none absolute inset-0 aspect-[3/4] rounded-[1.75rem] border border-muted/30 bg-green-400 -translate-x-5 translate-y-8 scale-[0.92] opacity-70"
-          />
-        )}
-        {remaining > 1 && (
-          <div
-            className="pointer-events-none absolute inset-0 aspect-[3/4] rounded-[1.75rem] border border-muted/40 bg-yellow-400 -translate-x-3 translate-y-4 scale-[0.96] opacity-85"
-          />
-        )}
-
-        {/* Main card */}
         <div
           className={`relative aspect-[3/4] rounded-2xl ring-2 ${ringColor} transition-all duration-300 ${
             animatingOut ? "animate-card-drop-off" : ""
@@ -345,26 +368,37 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
         </div>
       </div>
 
-      {/* Controls — only type input, no mic button */}
-      {state === "prompt" && (
-        <div className="flex flex-col items-center gap-6 w-full max-w-[300px] animate-fade-in mt-8">
-          <form onSubmit={handleTextSubmit} className="flex w-full gap-3 items-center">
-            <input
-              type="text"
-              value={textInput}
-              onChange={(e) => setTextInput(e.target.value)}
-              placeholder="Or type in French..."
-              className="flex-1 rounded-full border border-input bg-card px-5 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-            <button
-              type="submit"
-              className="w-12 h-12 rounded-full bg-amber-100 text-blue-900 hover:bg-amber-200 transition-colors flex items-center justify-center flex-shrink-0"
-            >
-              <Send className="w-5 h-5" />
-            </button>
-          </form>
-        </div>
-      )}
+      {/* I don't know button - always visible to maintain structure */}
+      <div className="flex justify-center mt-8">
+        <button
+          onClick={handleDontKnow}
+          disabled={state !== "prompt"}
+          className="px-6 py-3 rounded-full bg-gray-900 text-white hover:bg-gray-800 transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          I don't know
+        </button>
+      </div>
+
+      {/* Controls — always visible to prevent layout wobbling */}
+      <div className="flex flex-col items-center gap-6 w-full max-w-[300px] animate-fade-in mt-8">
+        <form onSubmit={handleTextSubmit} className="flex w-full gap-3 items-center">
+          <input
+            type="text"
+            value={textInput}
+            onChange={(e) => setTextInput(e.target.value)}
+            placeholder="Or type in French..."
+            disabled={state !== "prompt"}
+            className="flex-1 rounded-full border border-input bg-card px-5 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
+          />
+          <button
+            type="submit"
+            disabled={state !== "prompt"}
+            className="w-12 h-12 rounded-full bg-amber-100 text-blue-900 hover:bg-amber-200 transition-colors flex items-center justify-center flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Send className="w-5 h-5" />
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

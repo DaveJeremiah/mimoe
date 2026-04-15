@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { Flashcard } from "./Flashcard";
 import { WordBank } from "./WordBank";
 import { LevelSelect } from "./LevelSelect";
@@ -9,8 +9,9 @@ import { PartyPopper, ArrowLeft } from "lucide-react";
 type Tab = "vocabulary" | "phrases";
 
 export function FlashcardApp() {
-  const [activeTab, setActiveTab] = useState<Tab>("vocabulary");
-  const [selectedLevelId, setSelectedLevelId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useLocalStorage<Tab>("mimoe-active-tab", "vocabulary");
+  const [selectedLevelId, setSelectedLevelId] = useLocalStorage<string | null>("mimoe-selected-level", null);
+  const [savedQueue, setSavedQueue] = useLocalStorage<string[]>("mimoe-saved-queue", []);
 
   const [completedVocab, setCompletedVocab] = useLocalStorage<string[]>("mimoe-completed-vocab", []);
   const [completedPhrases, setCompletedPhrases] = useLocalStorage<string[]>("mimoe-completed-phrases", []);
@@ -33,6 +34,30 @@ export function FlashcardApp() {
   }, [selectedLevel, customCards]);
 
   const [queue, setQueue] = useState<string[]>([]);
+
+  // Restore progress on component mount
+  useEffect(() => {
+    if (selectedLevelId && savedQueue.length > 0) {
+      // Validate that the saved queue still matches the current level
+      const level = levels.find((l) => l.id === selectedLevelId);
+      if (level) {
+        const custom = customCards[selectedLevelId] || [];
+        const allValidIds = [...level.cards, ...custom].map((c) => c.id);
+        const validQueue = savedQueue.filter(id => allValidIds.includes(id));
+        setQueue(validQueue);
+      }
+    }
+  }, [selectedLevelId, savedQueue, levels, customCards]);
+
+  // Save queue state whenever it changes
+  useEffect(() => {
+    if (queue.length > 0) {
+      setSavedQueue(queue);
+    } else if (queue.length === 0 && savedQueue.length > 0) {
+      // Clear saved queue when current queue is empty (level completed)
+      setSavedQueue([]);
+    }
+  }, [queue, savedQueue, setSavedQueue]);
 
   const startLevel = useCallback((levelId: string) => {
     const level = levels.find((l) => l.id === levelId);
