@@ -240,12 +240,35 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
                   <p className="mt-3 text-sm text-muted-foreground italic">"{spokenText}"</p>
                 )}
                 {/* Listening indicator */}
-                {isListening && (
-                  <div className="mt-4 flex items-center gap-2 text-primary/60 animate-fade-in">
-                    <Mic className="w-4 h-4 animate-pulse" />
-                    <span className="text-xs">Listening...</span>
-                  </div>
-                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isListening) {
+                      stopMic();
+                      resultHandledRef.current = true;
+                    } else {
+                      resultHandledRef.current = false;
+                      startMic();
+                    }
+                  }}
+                  className={`mt-4 flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-200 ${
+                    isListening
+                      ? "text-primary/80 bg-primary/10 animate-fade-in"
+                      : "text-muted-foreground bg-muted hover:bg-accent/50"
+                  }`}
+                >
+                  {isListening ? (
+                    <>
+                      <Mic className="w-4 h-4 animate-pulse" />
+                      <span className="text-xs">Listening — tap to pause</span>
+                    </>
+                  ) : (
+                    <>
+                      <Mic className="w-4 h-4" />
+                      <span className="text-xs">Tap to listen</span>
+                    </>
+                  )}
+                </button>
               </>
             )}
 
