@@ -118,7 +118,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
       if (e.error === "network" || e.error === "service-not-allowed") {
         // Handle focus loss errors by retrying after delay
         setTimeout(() => {
-          if (!resultHandledRef.current && micPermission !== "denied") {
+          if (!resultHandledRef.current && (micPermission as string) !== "denied") {
             startMicRef.current();
           }
         }, 1000);
@@ -130,14 +130,14 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
     recognition.onend = () => {
       recognitionRef.current = null;
       // Auto-restart if no result was handled yet (keeps listening)
-      if (!resultHandledRef.current && micPermission !== "denied") {
+      if (!resultHandledRef.current && (micPermission as string) !== "denied") {
         setTimeout(() => {
           try {
             startMicRef.current();
           } catch (error) {
             // Retry again if it fails
             setTimeout(() => {
-              if (!resultHandledRef.current && micPermission !== "denied") {
+              if (!resultHandledRef.current && (micPermission as string) !== "denied") {
                 startMicRef.current();
               }
             }, 500);
@@ -291,7 +291,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
                   {isListening ? (
                     <>
                       <Mic className="w-4 h-4 animate-pulse" />
-                      <span className="text-xs">Listening — tap to pause</span>
+                      <span className="text-xs text-gray-600">Listening — tap to pause</span>
                     </>
                   ) : (
                     <>
@@ -373,9 +373,9 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
         <button
           onClick={handleDontKnow}
           disabled={state !== "prompt"}
-          className="px-6 py-3 rounded-full bg-gray-900 text-white hover:bg-gray-800 transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-6 py-3 rounded-full text-white transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed bg-yellow-500"
         >
-          I don't know
+          Not sure
         </button>
       </div>
 
