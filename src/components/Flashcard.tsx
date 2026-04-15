@@ -175,6 +175,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
 
   const handleSelfAssess = (correct: boolean) => {
     if (correct) {
+      speakCorrect(card.french);
       setAnimatingOut(true);
       setTimeout(onCorrect, 500);
     } else {
@@ -192,9 +193,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
     : "ring-success/30 shadow-[0_0_24px_-4px_hsl(var(--success)/0.35)]";
   const cardSurface = isIncorrect
     ? "bg-destructive"
-    : isRetry
-    ? "bg-gradient-to-br from-warning/15 via-card to-card"
-    : "bg-gradient-to-br from-card via-card to-primary/10";
+    : "bg-amber-50";
 
   return (
     <div className="flex flex-col items-center gap-5 w-full animate-card-enter">
@@ -210,12 +209,12 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
       <div className="relative w-full max-w-[300px]">
         {remaining > 2 && (
           <div
-            className="pointer-events-none absolute inset-0 aspect-[3/4] rounded-[1.75rem] border border-muted/30 bg-gradient-to-br from-primary/20 via-card to-card -translate-x-5 translate-y-8 scale-[0.92] opacity-70"
+            className="pointer-events-none absolute inset-0 aspect-[3/4] rounded-[1.75rem] border border-muted/30 bg-green-400 -translate-x-5 translate-y-8 scale-[0.92] opacity-70"
           />
         )}
         {remaining > 1 && (
           <div
-            className="pointer-events-none absolute inset-0 aspect-[3/4] rounded-[1.75rem] border border-muted/40 bg-gradient-to-br from-accent/25 via-card to-card -translate-x-3 translate-y-4 scale-[0.96] opacity-85"
+            className="pointer-events-none absolute inset-0 aspect-[3/4] rounded-[1.75rem] border border-muted/40 bg-yellow-400 -translate-x-3 translate-y-4 scale-[0.96] opacity-85"
           />
         )}
 
@@ -230,10 +229,10 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
           }`}>
             {state === "prompt" && (
               <>
-                <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">
                   Translate to French
                 </span>
-                <h2 className="font-display text-2xl font-bold text-foreground text-center leading-snug">
+                <h2 className="font-display text-5xl font-black text-blue-900 text-center leading-snug">
                   {card.english}
                 </h2>
                 {spokenText && (
@@ -339,20 +338,20 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
 
       {/* Controls — only type input, no mic button */}
       {state === "prompt" && (
-        <div className="flex flex-col items-center gap-3 w-full max-w-[300px] animate-fade-in">
-          <form onSubmit={handleTextSubmit} className="flex w-full gap-2">
+        <div className="flex flex-col items-center gap-6 w-full max-w-[300px] animate-fade-in mt-8">
+          <form onSubmit={handleTextSubmit} className="flex w-full gap-3 items-center">
             <input
               type="text"
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
               placeholder="Or type in French..."
-              className="flex-1 rounded-xl border border-input bg-card px-4 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className="flex-1 rounded-full border border-input bg-card px-5 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
             <button
               type="submit"
-              className="rounded-xl bg-primary px-4 py-2.5 text-primary-foreground hover:opacity-90 transition-opacity"
+              className="w-12 h-12 rounded-full bg-amber-100 text-blue-900 hover:bg-amber-200 transition-colors flex items-center justify-center flex-shrink-0"
             >
-              <Send className="w-4 h-4" />
+              <Send className="w-5 h-5" />
             </button>
           </form>
         </div>
