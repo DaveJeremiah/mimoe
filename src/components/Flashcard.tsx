@@ -231,12 +231,12 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
   const isIncorrect = state === "incorrect";
   const isRetry = state === "retry";
   const ringColor = isIncorrect
-    ? "ring-destructive/40 shadow-[0_0_20px_-4px_hsl(var(--destructive)/0.3)]"
+    ? "ring-red-500/60 shadow-[0_0_30px_-4px_rgba(239,68,68,0.4)]"
     : isRetry
     ? "ring-warning/35 shadow-[0_0_20px_-4px_hsl(var(--warning)/0.25)]"
     : "ring-success/30 shadow-[0_0_24px_-4px_hsl(var(--success)/0.35)]";
   const cardSurface = isIncorrect
-    ? "bg-destructive"
+    ? "bg-red-500"
     : cardColors[cardColorIndex];
 
   return (

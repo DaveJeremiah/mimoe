@@ -18,6 +18,10 @@ export function FlashcardApp() {
   const [selectedLevelId, setSelectedLevelId] = useLocalStorage<string | null>("mimoe-selected-level", null);
   const [savedQueue, setSavedQueue] = useLocalStorage<string[]>("mimoe-saved-queue", []);
   
+  // Progress tracking state - temporarily disabled
+  // const [levelProgress, setLevelProgress] = useLocalStorage<Record<string, { correct: number; total: number; allCorrect: boolean }>>("mimoe-level-progress", {});
+  // const [currentSessionCorrect, setCurrentSessionCorrect] = useState<string[]>([]);
+  
   // Personal Space state
   const [appView, setAppView] = useState<AppView>("main");
   const [collections, setCollections] = useLocalStorage<Collection[]>("mimoe-collections", []);
@@ -89,6 +93,7 @@ export function FlashcardApp() {
     const allIds = [...level.cards, ...custom].map((c) => c.id);
     setQueue(allIds);
     setSelectedLevelId(levelId);
+    // setCurrentSessionCorrect([]);
   }, [levels, customCards]);
 
   const currentCard = useMemo(() => {
@@ -97,8 +102,12 @@ export function FlashcardApp() {
   }, [queue, allCards]);
 
   const handleCorrect = useCallback(() => {
+    // if (selectedLevelId && currentCard) {
+    //   // Track correct answer for this session
+    //   setCurrentSessionCorrect(prev => [...prev, currentCard.id]);
+    // }
     setQueue((q) => q.slice(1));
-  }, []);
+  }, [selectedLevelId, currentCard]);
 
   const handleIncorrect = useCallback(() => {
     setQueue((q) => [...q.slice(1), q[0]]);
@@ -106,15 +115,40 @@ export function FlashcardApp() {
 
   const isDeckComplete = queue.length === 0 && selectedLevelId !== null;
 
-  // Mark level complete when deck finishes
-  const markComplete = useCallback(() => {
-    if (selectedLevelId && !completedIds.includes(selectedLevelId)) {
-      setCompletedIds((prev) => [...prev, selectedLevelId]);
-    }
-  }, [selectedLevelId, completedIds, setCompletedIds]);
+  // Update progress when deck finishes - temporarily disabled
+  // const updateProgress = useCallback(() => {
+  //   if (selectedLevelId && selectedLevel) {
+  //     const totalCards = allCards.length;
+  //     const correctCards = currentSessionCorrect.length;
+  //     const allCorrect = correctCards === totalCards;
+  //     
+  //     // Update progress tracking
+  //     setLevelProgress(prev => ({
+  //       ...prev,
+  //       [selectedLevelId]: {
+  //         correct: correctCards,
+  //         total: totalCards,
+  //         allCorrect
+  //       }
+  //     }));
+  //     
+  //     // Only mark as completed if all answers were correct
+  //     if (allCorrect && !completedIds.includes(selectedLevelId)) {
+  //       setCompletedIds((prev) => [...prev, selectedLevelId]);
+  //     }
+  //     
+  //     // Reset session tracking
+  //     setCurrentSessionCorrect([]);
+  //   }
+  // }, [selectedLevelId, selectedLevel, allCards, currentSessionCorrect, completedIds, setCompletedIds, setLevelProgress]);
 
+  // if (isDeckComplete && selectedLevelId) {
+  //   updateProgress();
+  // }
+
+  // Temporary fallback - mark as completed when deck finishes
   if (isDeckComplete && selectedLevelId && !completedIds.includes(selectedLevelId)) {
-    markComplete();
+    setCompletedIds((prev) => [...prev, selectedLevelId]);
   }
 
   const resetDeck = useCallback(() => {
@@ -182,6 +216,7 @@ export function FlashcardApp() {
     setActiveTab(tab);
     setSelectedLevelId(null);
     setQueue([]);
+    // setCurrentSessionCorrect([]);
   };
 
   // Collection management functions
@@ -221,7 +256,8 @@ export function FlashcardApp() {
 
   const handleStudyCollection = useCallback((collection: Collection) => {
     setSelectedCollection(collection);
-    setCollectionQueue(collection.entries.map((_, index) => `collection-${collection.id}-${index}`));
+    const queueIds = collection.entries.map((_, index) => `collection-${collection.id}-${index}`);
+    setCollectionQueue(queueIds);
     setAppView("collection");
   }, []);
 
@@ -243,7 +279,8 @@ export function FlashcardApp() {
 
   const currentCollectionCard = useMemo(() => {
     if (collectionQueue.length === 0 || !selectedCollection) return null;
-    const index = parseInt(collectionQueue[0].split('-')[2]);
+    const firstQueueId = collectionQueue[0];
+    const index = parseInt(firstQueueId.split('-').pop() || '0');
     return collectionCards[index] || null;
   }, [collectionQueue, collectionCards, selectedCollection]);
 
@@ -296,7 +333,7 @@ export function FlashcardApp() {
             </div>
           ) : currentCollectionCard ? (
             <Flashcard
-              key={currentCollectionCard.id}
+              key={`collection-${selectedCollection.id}-${collectionQueue[0]}`}
               card={currentCollectionCard}
               onCorrect={handleCollectionCorrect}
               onIncorrect={handleCollectionIncorrect}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Plus } from "lucide-react";
 import type { Collection, CollectionEntry, CollectionFormData } from "@/lib/collectionTypes";
 
@@ -14,6 +14,18 @@ export function NewCollectionModal({ isOpen, onClose, onSave, editingCollection 
   const [importText, setImportText] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
+
+  // Pre-populate import text with existing entries when editing
+  useEffect(() => {
+    if (editingCollection && isOpen) {
+      const existingEntries = editingCollection.entries.map(entry => 
+        `${entry.english} | ${entry.french}`
+      ).join('\n');
+      setImportText(existingEntries);
+    } else if (!isOpen) {
+      setImportText("");
+    }
+  }, [editingCollection, isOpen]);
 
   const parseImportText = (text: string): CollectionEntry[] => {
     const entries: CollectionEntry[] = [];
@@ -131,7 +143,7 @@ export function NewCollectionModal({ isOpen, onClose, onSave, editingCollection 
           {/* Import Textarea */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              {editingCollection ? "Add More Entries" : "Import Entries"}
+              {editingCollection ? "Add More Entries (current entries shown below)" : "Import Entries"}
             </label>
             <textarea
               value={importText}
