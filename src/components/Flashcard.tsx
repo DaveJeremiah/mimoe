@@ -21,6 +21,8 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
   const [animatingOut, setAnimatingOut] = useState(false);
   const [animatingBack, setAnimatingBack] = useState(false);
   const [micPermission, setMicPermission] = useState<"granted" | "denied" | "pending">("pending");
+  const [cardColorIndex, setCardColorIndex] = useState(0);
+  const cardColors = ["bg-green-400", "bg-yellow-400", "bg-amber-50"];
   const recognitionRef = useRef<any>(null);
   const resultHandledRef = useRef(false);
   const attemptRef = useRef(0);
@@ -184,6 +186,10 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
     }
   };
 
+  const cycleCardColor = useCallback(() => {
+    setCardColorIndex((prev) => (prev + 1) % cardColors.length);
+  }, [cardColors.length]);
+
   const isIncorrect = state === "incorrect";
   const isRetry = state === "retry";
   const ringColor = isIncorrect
@@ -193,7 +199,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
     : "ring-success/30 shadow-[0_0_24px_-4px_hsl(var(--success)/0.35)]";
   const cardSurface = isIncorrect
     ? "bg-destructive"
-    : "bg-amber-50";
+    : cardColors[cardColorIndex];
 
   return (
     <div className="flex flex-col items-center gap-5 w-full animate-card-enter">
@@ -224,9 +230,11 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
             animatingOut ? "animate-card-drop-off" : ""
           } ${animatingBack ? "animate-card-to-back" : ""} card-shadow-lg`}
         >
-          <div className={`w-full h-full overflow-hidden flex flex-col items-center justify-center p-6 transition-colors duration-300 bg-success my-0 border-secondary rounded-md ${
-            cardSurface
-          }`}>
+          <div 
+            onClick={cycleCardColor}
+            className={`w-full h-full overflow-hidden flex flex-col items-center justify-center p-6 transition-colors duration-300 bg-success my-0 border-secondary rounded-md cursor-pointer ${
+              cardSurface
+            }`}>
             {state === "prompt" && (
               <>
                 <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">
