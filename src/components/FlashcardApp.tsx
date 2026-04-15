@@ -1,127 +1,227 @@
 import { useState, useCallback, useMemo } from "react";
 import { Flashcard } from "./Flashcard";
 import { WordBank } from "./WordBank";
+import { LevelSelect } from "./LevelSelect";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
-import { defaultVocabulary, defaultPhrases, type FlashcardItem } from "@/lib/flashcardData";
-import { PartyPopper } from "lucide-react";
+import { vocabularyLevels, phraseLevels, type FlashcardItem } from "@/lib/flashcardData";
+import { PartyPopper, ArrowLeft } from "lucide-react";
 
 type Tab = "vocabulary" | "phrases";
 
 export function FlashcardApp() {
   const [activeTab, setActiveTab] = useState<Tab>("vocabulary");
+  const [selectedLevelId, setSelectedLevelId] = useState<string | null>(null);
 
-  const [vocabBank, setVocabBank] = useLocalStorage<FlashcardItem[]>("mimoe-vocab", defaultVocabulary);
-  const [phraseBank, setPhraseBank] = useLocalStorage<FlashcardItem[]>("mimoe-phrases", defaultPhrases);
+  const [completedVocab, setCompletedVocab] = useLocalStorage<string[]>("mimoe-completed-vocab", []);
+  const [completedPhrases, setCompletedPhrases] = useLocalStorage<string[]>("mimoe-completed-phrases", []);
 
-  const [vocabQueue, setVocabQueue] = useState<string[]>(() => defaultVocabulary.map((i) => i.id));
-  const [phraseQueue, setPhraseQueue] = useState<string[]>(() => defaultPhrases.map((i) => i.id));
+  const [customVocab, setCustomVocab] = useLocalStorage<Record<string, FlashcardItem[]>>("mimoe-custom-vocab", {});
+  const [customPhrases, setCustomPhrases] = useLocalStorage<Record<string, FlashcardItem[]>>("mimoe-custom-phrases", {});
 
-  const bank = activeTab === "vocabulary" ? vocabBank : phraseBank;
-  const setBank = activeTab === "vocabulary" ? setVocabBank : setPhraseBank;
-  const queue = activeTab === "vocabulary" ? vocabQueue : phraseQueue;
-  const setQueue = activeTab === "vocabulary" ? setVocabQueue : setPhraseQueue;
+  const levels = activeTab === "vocabulary" ? vocabularyLevels : phraseLevels;
+  const completedIds = activeTab === "vocabulary" ? completedVocab : completedPhrases;
+  const setCompletedIds = activeTab === "vocabulary" ? setCompletedVocab : setCompletedPhrases;
+  const customCards = activeTab === "vocabulary" ? customVocab : customPhrases;
+  const setCustomCards = activeTab === "vocabulary" ? setCustomVocab : setCustomPhrases;
+
+  const selectedLevel = useMemo(() => levels.find((l) => l.id === selectedLevelId) || null, [levels, selectedLevelId]);
+
+  const allCards = useMemo(() => {
+    if (!selectedLevel) return [];
+    const custom = customCards[selectedLevel.id] || [];
+    return [...selectedLevel.cards, ...custom];
+  }, [selectedLevel, customCards]);
+
+  const [queue, setQueue] = useState<string[]>([]);
+
+  const startLevel = useCallback((levelId: string) => {
+    const level = levels.find((l) => l.id === levelId);
+    if (!level) return;
+    const custom = customCards[level.id] || [];
+    const allIds = [...level.cards, ...custom].map((c) => c.id);
+    setQueue(allIds);
+    setSelectedLevelId(levelId);
+  }, [levels, customCards]);
 
   const currentCard = useMemo(() => {
     if (queue.length === 0) return null;
-    return bank.find((i) => i.id === queue[0]) || null;
-  }, [queue, bank]);
+    return allCards.find((i) => i.id === queue[0]) || null;
+  }, [queue, allCards]);
 
   const handleCorrect = useCallback(() => {
     setQueue((q) => q.slice(1));
-  }, [setQueue]);
+  }, []);
 
   const handleIncorrect = useCallback(() => {
     setQueue((q) => [...q.slice(1), q[0]]);
-  }, [setQueue]);
+  }, []);
+
+  const isDeckComplete = queue.length === 0 && selectedLevelId !== null;
+
+  // Mark level complete when deck finishes
+  const markComplete = useCallback(() => {
+    if (selectedLevelId && !completedIds.includes(selectedLevelId)) {
+      setCompletedIds((prev) => [...prev, selectedLevelId]);
+    }
+  }, [selectedLevelId, completedIds, setCompletedIds]);
+
+  if (isDeckComplete && selectedLevelId && !completedIds.includes(selectedLevelId)) {
+    markComplete();
+  }
+
+  const resetDeck = useCallback(() => {
+    if (!selectedLevelId) return;
+    startLevel(selectedLevelId);
+  }, [selectedLevelId, startLevel]);
+
+  const currentLevelIndex = levels.findIndex((l) => l.id === selectedLevelId);
+  const nextLevel = currentLevelIndex >= 0 && currentLevelIndex < levels.length - 1
+    ? levels[currentLevelIndex + 1]
+    : null;
+
+  const handleNextLevel = useCallback(() => {
+    if (nextLevel) startLevel(nextLevel.id);
+  }, [nextLevel, startLevel]);
+
+  const handleBack = useCallback(() => {
+    setSelectedLevelId(null);
+    setQueue([]);
+  }, []);
 
   const handleAddItem = useCallback(
     (english: string, french: string) => {
+      if (!selectedLevelId) return;
       const id = `custom-${Date.now()}`;
       const newItem: FlashcardItem = { id, english, french };
-      setBank((prev) => [...prev, newItem]);
+      setCustomCards((prev) => ({
+        ...prev,
+        [selectedLevelId]: [...(prev[selectedLevelId] || []), newItem],
+      }));
       setQueue((prev) => [...prev, id]);
     },
-    [setBank, setQueue]
+    [selectedLevelId, setCustomCards]
   );
 
   const handleDeleteItem = useCallback(
     (id: string) => {
-      setBank((prev) => prev.filter((i) => i.id !== id));
+      if (!selectedLevelId) return;
+      setCustomCards((prev) => ({
+        ...prev,
+        [selectedLevelId]: (prev[selectedLevelId] || []).filter((i) => i.id !== id),
+      }));
       setQueue((prev) => prev.filter((i) => i !== id));
     },
-    [setBank, setQueue]
+    [selectedLevelId, setCustomCards]
   );
 
-  const resetDeck = useCallback(() => {
-    setQueue(bank.map((i) => i.id));
-  }, [bank, setQueue]);
+  const handleTabSwitch = (tab: Tab) => {
+    setActiveTab(tab);
+    setSelectedLevelId(null);
+    setQueue([]);
+  };
 
   return (
     <div className="min-h-screen flex flex-col items-center px-4 py-6 max-w-[480px] mx-auto">
       {/* Header */}
       <header className="text-center mb-6 w-full">
-        <h1 className="font-display text-3xl font-bold text-foreground tracking-tight">
-          Mimoe
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">French flashcard trainer</p>
+        {selectedLevelId ? (
+          <div className="flex items-center gap-3">
+            <button onClick={handleBack} className="p-2 -ml-2 rounded-xl hover:bg-accent/50 transition-colors">
+              <ArrowLeft className="w-5 h-5 text-foreground" />
+            </button>
+            <div className="text-left">
+              <h1 className="font-display text-xl font-bold text-foreground tracking-tight">
+                {selectedLevel?.title}
+              </h1>
+              <p className="text-xs text-muted-foreground capitalize">{activeTab}</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <h1 className="font-display text-3xl font-bold text-foreground tracking-tight">
+              Mimoe
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">French flashcard trainer</p>
+          </>
+        )}
       </header>
 
-      {/* Tabs */}
-      <div className="flex w-full bg-muted rounded-2xl p-1 mb-6">
-        {(["vocabulary", "phrases"] as Tab[]).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold capitalize transition-all duration-200 ${
-              activeTab === tab
-                ? "bg-card card-shadow text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
+      {/* Tabs — only show on level select */}
+      {!selectedLevelId && (
+        <div className="flex w-full bg-muted rounded-2xl p-1 mb-6">
+          {(["vocabulary", "phrases"] as Tab[]).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => handleTabSwitch(tab)}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold capitalize transition-all duration-200 ${
+                activeTab === tab
+                  ? "bg-card card-shadow text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      )}
 
-      {/* Card area */}
+      {/* Content */}
       <div className="flex-1 w-full flex flex-col items-center justify-center">
-        {currentCard ? (
-          <Flashcard
-            key={currentCard.id}
-            card={currentCard}
-            onCorrect={handleCorrect}
-            onIncorrect={handleIncorrect}
-            total={bank.length}
-            remaining={queue.length}
+        {!selectedLevelId ? (
+          <LevelSelect
+            levels={levels}
+            completedLevelIds={completedIds}
+            onSelectLevel={startLevel}
           />
-        ) : (
+        ) : isDeckComplete ? (
           <div className="flex flex-col items-center gap-4 text-center animate-fade-in">
             <PartyPopper className="w-16 h-16 text-secondary" />
             <h2 className="font-display text-2xl font-bold text-foreground">
               Bien joué! 🎉
             </h2>
             <p className="text-muted-foreground">
-              You've mastered this deck!
+              You've mastered this level!
             </p>
-            <button
-              onClick={resetDeck}
-              className="mt-4 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 transition-opacity"
-            >
-              Practice again
-            </button>
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={resetDeck}
+                className="px-5 py-3 rounded-xl bg-card border border-border text-foreground font-semibold hover:bg-accent/50 transition-colors"
+              >
+                Practice again
+              </button>
+              {nextLevel && (
+                <button
+                  onClick={handleNextLevel}
+                  className="px-5 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 transition-opacity"
+                >
+                  Next Level
+                </button>
+              )}
+            </div>
           </div>
-        )}
+        ) : currentCard ? (
+          <Flashcard
+            key={currentCard.id}
+            card={currentCard}
+            onCorrect={handleCorrect}
+            onIncorrect={handleIncorrect}
+            total={allCards.length}
+            remaining={queue.length}
+          />
+        ) : null}
       </div>
 
-      {/* Word bank trigger */}
-      <div className="mt-6 w-full flex justify-center">
-        <WordBank
-          items={bank}
-          onAdd={handleAddItem}
-          onDelete={handleDeleteItem}
-          label={activeTab === "vocabulary" ? "Vocabulary" : "Phrases"}
-        />
-      </div>
+      {/* Word bank — only in active session */}
+      {selectedLevelId && !isDeckComplete && (
+        <div className="mt-6 w-full flex justify-center">
+          <WordBank
+            items={allCards}
+            onAdd={handleAddItem}
+            onDelete={handleDeleteItem}
+            label={activeTab === "vocabulary" ? "Vocabulary" : "Phrases"}
+          />
+        </div>
+      )}
     </div>
   );
 }
