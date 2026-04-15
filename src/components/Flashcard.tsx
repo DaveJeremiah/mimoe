@@ -22,7 +22,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
   const [animatingBack, setAnimatingBack] = useState(false);
   const [micPermission, setMicPermission] = useState<"granted" | "denied" | "pending">("pending");
   const [cardColorIndex, setCardColorIndex] = useState(0);
-  const cardColors = ["bg-green-400", "bg-yellow-400", "bg-amber-50"];
+  const cardColors = ["bg-indigo-400", "bg-green-400", "bg-yellow-400"];
   const recognitionRef = useRef<any>(null);
   const resultHandledRef = useRef(false);
   const attemptRef = useRef(0);
@@ -150,6 +150,9 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
     recognitionRef.current = null;
     attemptRef.current = 0;
 
+    // Cycle to next color for new card
+    setCardColorIndex((prev) => (prev + 1) % cardColors.length);
+
     primeFrenchSpeech();
     const t = window.setTimeout(() => startMicRef.current(), 300);
     return () => {
@@ -157,7 +160,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
       recognitionRef.current?.stop();
       recognitionRef.current = null;
     };
-  }, [card.id]);
+  }, [card.id, cardColors.length]);
 
   useEffect(() => {
     return () => {
@@ -230,9 +233,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
             animatingOut ? "animate-card-drop-off" : ""
           } ${animatingBack ? "animate-card-to-back" : ""} card-shadow-lg`}
         >
-          <div 
-            onClick={cycleCardColor}
-            className={`w-full h-full overflow-hidden flex flex-col items-center justify-center p-6 transition-colors duration-300 bg-success my-0 border-secondary rounded-md cursor-pointer ${
+          <div className={`w-full h-full overflow-hidden flex flex-col items-center justify-center p-6 transition-colors duration-300 bg-success my-0 border-secondary rounded-md ${
               cardSurface
             }`}>
             {state === "prompt" && (
@@ -240,11 +241,11 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
                 <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">
                   Translate to French
                 </span>
-                <h2 className="font-display text-5xl font-black text-blue-900 text-center leading-snug">
+                <h2 className="font-display text-5xl font-black text-black text-center leading-snug">
                   {card.english}
                 </h2>
                 {spokenText && (
-                  <p className="mt-3 text-sm text-muted-foreground italic">"{spokenText}"</p>
+                  <p className="mt-3 text-sm text-gray-700 italic">"{spokenText}"</p>
                 )}
                 {/* Listening indicator */}
                 <button
@@ -301,10 +302,10 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
                 <span className="text-xs font-semibold uppercase tracking-widest text-success mb-3">
                   Correct!
                 </span>
-                <h2 className="font-display text-2xl font-bold text-foreground text-center leading-snug">
+                <h2 className="font-display text-2xl font-black text-black text-center leading-snug">
                   {card.french}
                 </h2>
-                <p className="mt-2 text-sm text-muted-foreground">{card.english}</p>
+                <p className="mt-2 text-sm text-gray-800">{card.english}</p>
                 <div className="mt-4 flex items-center gap-2 text-success animate-fade-in">
                   <Check className="w-6 h-6" />
                 </div>
@@ -316,11 +317,11 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
                 <span className="text-xs font-semibold uppercase tracking-widest text-destructive-foreground/60 mb-3">
                   Answer
                 </span>
-                <h2 className="font-display text-2xl font-bold text-destructive-foreground text-center leading-snug">
+                <h2 className="font-display text-2xl font-black text-black text-center leading-snug">
                   {card.french}
                 </h2>
                 {spokenText && (
-                  <p className="mt-3 text-sm text-destructive-foreground/60 italic">
+                  <p className="mt-3 text-sm text-gray-700 italic">
                     You said: "{spokenText}"
                   </p>
                 )}
