@@ -121,7 +121,7 @@ export function FlashcardApp() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center px-4 py-6 max-w-[480px] mx-auto">
+    <div className="min-h-screen flex flex-col items-center max-w-[480px] mx-auto px-[15px] py-[61px]">
       {/* Header */}
       <header className="text-center mb-6 w-full">
         {selectedLevelId ? (
