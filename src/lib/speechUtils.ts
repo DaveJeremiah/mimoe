@@ -1,5 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
-
 export function normalize(str: string): string {
   return str
     .toLowerCase()
@@ -146,19 +144,36 @@ async function fetchTTSAudio(text: string, rate: number): Promise<string | null>
   if (cached) return cached;
 
   try {
-    const { data, error } = await supabase.functions.invoke("elevenlabs-tts", {
-      body: { text, rate },
-    });
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-    if (error) {
-      console.warn("Cloud TTS failed, falling back to browser:", error);
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.warn("Supabase env vars missing, falling back to browser TTS");
       return null;
     }
 
-    const blob = data instanceof Blob ? data : new Blob([data], { type: "audio/mpeg" });
+    const response = await fetch(`${supabaseUrl}/functions/v1/elevenlabs-tts`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${supabaseAnonKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ text, rate }),
+    });
+
+    if (!response.ok) {
+      console.warn("Cloud TTS failed with status", response.status, ", falling back to browser");
+      return null;
+    }
+
+    const blob = await response.blob();
+    if (!blob || blob.size === 0) {
+      console.warn("Cloud TTS returned empty audio, falling back to browser");
+      return null;
+    }
+
     const dataUri = await blobToBase64(blob);
 
-    // Save to localStorage for persistence across sessions
     try { localStorage.setItem(LS_PREFIX + cacheKey, dataUri); } catch { /* quota */ }
     memCache.set(cacheKey, dataUri);
     return dataUri;
