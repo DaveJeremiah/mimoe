@@ -111,14 +111,39 @@ export function isMatch(spoken: string, expected: string): boolean {
   return false;
 }
 
-// ── Cloud TTS via ElevenLabs ──
+// ── Cloud TTS via ElevenLabs with localStorage caching ──
 
-/** Audio cache to avoid re-fetching the same phrase */
-const audioCache = new Map<string, string>();
+/** In-memory URL cache for current session */
+const memCache = new Map<string, string>();
+
+const LS_PREFIX = "tts_cache_";
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+function getCachedAudioUrl(key: string): string | null {
+  if (memCache.has(key)) return memCache.get(key)!;
+  try {
+    const stored = localStorage.getItem(LS_PREFIX + key);
+    if (stored) {
+      const url = stored; // data URI works directly with Audio
+      memCache.set(key, url);
+      return url;
+    }
+  } catch { /* quota or access error */ }
+  return null;
+}
 
 async function fetchTTSAudio(text: string, rate: number): Promise<string | null> {
   const cacheKey = `${text}__${rate}`;
-  if (audioCache.has(cacheKey)) return audioCache.get(cacheKey)!;
+  const cached = getCachedAudioUrl(cacheKey);
+  if (cached) return cached;
 
   try {
     const { data, error } = await supabase.functions.invoke("elevenlabs-tts", {
@@ -130,11 +155,13 @@ async function fetchTTSAudio(text: string, rate: number): Promise<string | null>
       return null;
     }
 
-    // data is a Blob when response is binary
     const blob = data instanceof Blob ? data : new Blob([data], { type: "audio/mpeg" });
-    const url = URL.createObjectURL(blob);
-    audioCache.set(cacheKey, url);
-    return url;
+    const dataUri = await blobToBase64(blob);
+
+    // Save to localStorage for persistence across sessions
+    try { localStorage.setItem(LS_PREFIX + cacheKey, dataUri); } catch { /* quota */ }
+    memCache.set(cacheKey, dataUri);
+    return dataUri;
   } catch (e) {
     console.warn("Cloud TTS error, falling back to browser:", e);
     return null;
