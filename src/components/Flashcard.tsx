@@ -114,16 +114,6 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
         setIsListening(false);
         return;
       }
-      if (e.error === "no-speech" || e.error === "aborted") return;
-      if (e.error === "network" || e.error === "service-not-allowed") {
-        // Handle focus loss errors by retrying after delay
-        setTimeout(() => {
-          if (!resultHandledRef.current && (micPermission as string) !== "denied") {
-            startMicRef.current();
-          }
-        }, 1000);
-        return;
-      }
       setIsListening(false);
     };
 
@@ -152,19 +142,17 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
     setAnimatingOut(false);
     setAnimatingBack(false);
     resultHandledRef.current = false;
+    recognitionRef.current?.stop();
     recognitionRef.current = null;
     attemptRef.current = 0;
 
-    // Cycle to next color for new card (but not for the very first card)
     if (!isFirstCard) {
       setCardColorIndex((prev) => (prev + 1) % cardColors.length);
     }
     setIsFirstCard(false);
 
     primeFrenchSpeech();
-    const t = window.setTimeout(() => startMicRef.current(), 300);
     return () => {
-      window.clearTimeout(t);
       recognitionRef.current?.stop();
       recognitionRef.current = null;
     };
