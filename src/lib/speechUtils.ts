@@ -1,3 +1,5 @@
+import { supabase } from "@/integrations/supabase/client";
+
 export function normalize(str: string): string {
   return str
     .toLowerCase()
@@ -11,17 +13,13 @@ export function normalize(str: string): string {
 
 /**
  * Known acceptable alternatives for French phrases/words.
- * Maps normalized expected → array of normalized acceptable alternatives.
  */
 const ACCEPTABLE_ALTERNATIVES: Record<string, string[]> = {
-  // Greetings
   "comment allez-vous": ["comment allez vous", "comment ca va", "comment sa va", "ca va", "sa va", "comment vas tu", "comment tu vas"],
   "bonjour": ["bon jour", "bonsoir"],
   "au revoir": ["a bientot", "aurevoir", "salut"],
-  // Politeness
   "s'il vous plait": ["sil vous plait", "s'il te plait", "sil te plait", "svp"],
   "merci": ["merci beaucoup", "merci bien"],
-  // Common phrases
   "je m'appelle": ["je mappelle", "je m appelle", "mon nom est", "je suis"],
   "je ne comprends pas": ["je comprends pas", "je ne comprend pas", "je comprend pas"],
   "ou sont les toilettes": ["ou est la toilette", "ou sont les toilette", "ou est les toilettes"],
@@ -41,9 +39,6 @@ const ACCEPTABLE_ALTERNATIVES: Record<string, string[]> = {
   "aide": ["de l'aide", "de laide", "aidez", "aider"],
 };
 
-/**
- * Levenshtein distance for fuzzy matching.
- */
 function levenshtein(a: string, b: string): number {
   const m = a.length, n = b.length;
   const dp: number[][] = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
@@ -59,33 +54,23 @@ function levenshtein(a: string, b: string): number {
   return dp[m][n];
 }
 
-/**
- * Check similarity ratio (0-1). 1 = identical.
- */
 function similarity(a: string, b: string): number {
   const maxLen = Math.max(a.length, b.length);
   if (maxLen === 0) return 1;
   return 1 - levenshtein(a, b) / maxLen;
 }
 
-/**
- * Common French phonetic confusions for speech recognition.
- * Normalize these before comparing.
- */
 function phoneticNormalize(str: string): string {
   return str
-    // Common speech recognition confusions
     .replace(/\bsa\b/g, "ca")
     .replace(/\bser\b/g, "ce")
     .replace(/\bse\b/g, "ce")
     .replace(/\bje\s+suis\b/g, "je suis")
     .replace(/\bvous\s+etes\b/g, "vous etes")
-    // Contractions
     .replace(/\bl\s+/g, "l")
     .replace(/\bd\s+/g, "d")
     .replace(/\bj\s+/g, "j")
     .replace(/\bn\s+/g, "n")
-    // Articles often dropped by speech rec
     .replace(/^(le |la |les |un |une |des |du |de la |de l)/, "")
     .trim();
 }
@@ -94,10 +79,8 @@ export function isMatch(spoken: string, expected: string): boolean {
   const normSpoken = normalize(spoken);
   const normExpected = normalize(expected);
 
-  // 1. Exact match
   if (normSpoken === normExpected) return true;
 
-  // 2. Check known alternatives
   for (const [key, alts] of Object.entries(ACCEPTABLE_ALTERNATIVES)) {
     const normKey = normalize(key);
     if (normKey === normExpected || normExpected.includes(normKey)) {
@@ -105,7 +88,6 @@ export function isMatch(spoken: string, expected: string): boolean {
         return true;
       }
     }
-    // Also check if spoken matches the key and expected is an alt
     if (alts.some(alt => normalize(alt) === normExpected)) {
       if (normSpoken === normKey || normSpoken.includes(normKey)) {
         return true;
@@ -113,19 +95,15 @@ export function isMatch(spoken: string, expected: string): boolean {
     }
   }
 
-  // 3. Phonetic normalization comparison
   const phoneticSpoken = phoneticNormalize(normSpoken);
   const phoneticExpected = phoneticNormalize(normExpected);
   if (phoneticSpoken === phoneticExpected) return true;
 
-  // 4. Fuzzy match — allow ~80% similarity for short words, ~75% for phrases
   const threshold = normExpected.length <= 6 ? 0.75 : 0.7;
   if (similarity(normSpoken, normExpected) >= threshold) return true;
   if (similarity(phoneticSpoken, phoneticExpected) >= threshold) return true;
 
-  // 5. Check if spoken contains the expected or vice versa (for articles/extras)
   if (normSpoken.includes(normExpected) || normExpected.includes(normSpoken)) {
-    // Only if the shorter is at least 60% of the longer
     const ratio = Math.min(normSpoken.length, normExpected.length) / Math.max(normSpoken.length, normExpected.length);
     if (ratio >= 0.5) return true;
   }
@@ -133,35 +111,62 @@ export function isMatch(spoken: string, expected: string): boolean {
   return false;
 }
 
+// ── Cloud TTS via ElevenLabs ──
+
+/** Audio cache to avoid re-fetching the same phrase */
+const audioCache = new Map<string, string>();
+
+async function fetchTTSAudio(text: string, rate: number): Promise<string | null> {
+  const cacheKey = `${text}__${rate}`;
+  if (audioCache.has(cacheKey)) return audioCache.get(cacheKey)!;
+
+  try {
+    const { data, error } = await supabase.functions.invoke("elevenlabs-tts", {
+      body: { text, rate },
+    });
+
+    if (error) {
+      console.warn("Cloud TTS failed, falling back to browser:", error);
+      return null;
+    }
+
+    // data is a Blob when response is binary
+    const blob = data instanceof Blob ? data : new Blob([data], { type: "audio/mpeg" });
+    const url = URL.createObjectURL(blob);
+    audioCache.set(cacheKey, url);
+    return url;
+  } catch (e) {
+    console.warn("Cloud TTS error, falling back to browser:", e);
+    return null;
+  }
+}
+
+function playAudioUrl(url: string): void {
+  const audio = new Audio(url);
+  audio.play().catch(() => {});
+}
+
+// ── Browser TTS fallback ──
+
 let voicesLoaded = false;
 let cachedFrenchVoice: SpeechSynthesisVoice | null = null;
-let primedUtterance: SpeechSynthesisUtterance | null = null;
-let activeSpeechRequest = 0;
 
 function loadVoices(): Promise<SpeechSynthesisVoice[]> {
   return new Promise((resolve) => {
     const voices = speechSynthesis.getVoices();
-    if (voices.length > 0) {
-      resolve(voices);
-      return;
-    }
-    speechSynthesis.onvoiceschanged = () => {
-      resolve(speechSynthesis.getVoices());
-    };
+    if (voices.length > 0) { resolve(voices); return; }
+    speechSynthesis.onvoiceschanged = () => resolve(speechSynthesis.getVoices());
   });
 }
 
 async function getBestFrenchVoice(): Promise<SpeechSynthesisVoice | null> {
   if (voicesLoaded && cachedFrenchVoice) return cachedFrenchVoice;
-
   const voices = await loadVoices();
   voicesLoaded = true;
 
   const priorities = [
     (v: SpeechSynthesisVoice) => v.lang.startsWith("fr") && v.name.toLowerCase().includes("amelie"),
     (v: SpeechSynthesisVoice) => v.lang.startsWith("fr") && v.name.toLowerCase().includes("thomas"),
-    (v: SpeechSynthesisVoice) => v.lang.startsWith("fr") && v.name.toLowerCase().includes("google") && v.name.toLowerCase().includes("français"),
-    (v: SpeechSynthesisVoice) => v.lang.startsWith("fr") && v.name.toLowerCase().includes("google"),
     (v: SpeechSynthesisVoice) => v.lang === "fr-FR" && !v.localService,
     (v: SpeechSynthesisVoice) => v.lang === "fr-FR",
     (v: SpeechSynthesisVoice) => v.lang.startsWith("fr"),
@@ -169,125 +174,45 @@ async function getBestFrenchVoice(): Promise<SpeechSynthesisVoice | null> {
 
   for (const check of priorities) {
     const match = voices.find(check);
-    if (match) {
-      cachedFrenchVoice = match;
-      return match;
-    }
+    if (match) { cachedFrenchVoice = match; return match; }
   }
   return null;
 }
 
-function applyFrenchVoice(utterance: SpeechSynthesisUtterance): void {
+function browserSpeak(text: string, rate: number): void {
+  if (!window.speechSynthesis) return;
+  const synth = window.speechSynthesis;
+  synth.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = "fr-FR";
-  utterance.rate = 0.88;
+  utterance.rate = rate;
   utterance.pitch = 1.0;
-
-  if (cachedFrenchVoice) {
-    utterance.voice = cachedFrenchVoice;
-    return;
-  }
-
-  const voices = speechSynthesis.getVoices();
-  const frVoice = voices.find((v) => v.lang === "fr-FR") || voices.find((v) => v.lang.startsWith("fr"));
-  if (frVoice) {
-    utterance.voice = frVoice;
-    cachedFrenchVoice = frVoice;
-  }
+  if (cachedFrenchVoice) utterance.voice = cachedFrenchVoice;
+  synth.speak(utterance);
 }
 
+// ── Public API ──
+
 export function primeFrenchSpeech(): void {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-
-  if (!primedUtterance) {
-    primedUtterance = new SpeechSynthesisUtterance("");
+  if (typeof window !== "undefined" && window.speechSynthesis && !voicesLoaded) {
+    getBestFrenchVoice();
   }
-
-  applyFrenchVoice(primedUtterance);
-  if (!voicesLoaded) getBestFrenchVoice();
 }
 
 if (typeof window !== "undefined" && window.speechSynthesis) {
   getBestFrenchVoice();
 }
 
-export function speakFrench(text: string): void {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-
-  speakWithRecovery(text, (utterance) => {
-    utterance.rate = 0.88;
-    utterance.pitch = 1.0;
-  });
+export async function speakFrench(text: string): Promise<void> {
+  if (!text.trim()) return;
+  const url = await fetchTTSAudio(text, 0.88);
+  if (url) { playAudioUrl(url); return; }
+  browserSpeak(text, 0.88);
 }
 
-export function speakCorrect(text: string): void {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-
-  speakWithRecovery(text, (utterance) => {
-    utterance.rate = 0.95;
-    utterance.pitch = 1.02;
-  });
-}
-
-function speakWithRecovery(
-  text: string,
-  configureUtterance?: (utterance: SpeechSynthesisUtterance) => void,
-): void {
-  const trimmedText = text.trim();
-  if (!trimmedText || typeof window === "undefined" || !window.speechSynthesis) return;
-
-  const synth = window.speechSynthesis;
-  const requestId = ++activeSpeechRequest;
-  const maxAttempts = 3;
-
-  const runSpeakAttempt = (attempt: number) => {
-    if (requestId !== activeSpeechRequest) return;
-
-    const utterance = new SpeechSynthesisUtterance(trimmedText);
-    applyFrenchVoice(utterance);
-    configureUtterance?.(utterance);
-
-    let started = false;
-
-    utterance.onstart = () => {
-      started = true;
-      synth.resume();
-    };
-
-    utterance.onerror = () => {
-      if (requestId !== activeSpeechRequest || attempt >= maxAttempts - 1) return;
-
-      window.setTimeout(() => {
-        if (requestId !== activeSpeechRequest) return;
-        synth.cancel();
-        runSpeakAttempt(attempt + 1);
-      }, 140);
-    };
-
-    synth.cancel();
-
-    window.setTimeout(() => {
-      if (requestId !== activeSpeechRequest) return;
-
-      synth.resume();
-      synth.speak(utterance);
-
-      window.setTimeout(() => {
-        if (started || requestId !== activeSpeechRequest || attempt >= maxAttempts - 1) return;
-
-        synth.cancel();
-        runSpeakAttempt(attempt + 1);
-      }, 320);
-    }, 80);
-  };
-
-  primeFrenchSpeech();
-
-  if (voicesLoaded) {
-    runSpeakAttempt(0);
-    return;
-  }
-
-  void getBestFrenchVoice().finally(() => {
-    runSpeakAttempt(0);
-  });
+export async function speakCorrect(text: string): Promise<void> {
+  if (!text.trim()) return;
+  const url = await fetchTTSAudio(text, 0.95);
+  if (url) { playAudioUrl(url); return; }
+  browserSpeak(text, 0.95);
 }
