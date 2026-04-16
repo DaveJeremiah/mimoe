@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Flashcard } from "./Flashcard";
 import { WordBank } from "./WordBank";
 import { LevelSelect } from "./LevelSelect";
@@ -6,22 +7,23 @@ import { PersonalSpaceDivider } from "./PersonalSpaceDivider";
 import { CollectionCard } from "./CollectionCard";
 import { NewCollectionModal } from "./NewCollectionModal";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { vocabularyLevels, phraseLevels, type FlashcardItem } from "@/lib/flashcardData";
 import { type Collection, CollectionFormData } from "@/lib/collectionTypes";
-import { PartyPopper, ArrowLeft, Plus } from "lucide-react";
+import { PartyPopper, ArrowLeft, Plus, LogOut } from "lucide-react";
 
 type Tab = "vocabulary" | "phrases";
 type AppView = "main" | "collection";
 
 export function FlashcardApp() {
+  const { user, loading, signOut } = useAuth();
+  const navigate = useNavigate();
+
   const [activeTab, setActiveTab] = useLocalStorage<Tab>("mimoe-active-tab", "vocabulary");
   const [selectedLevelId, setSelectedLevelId] = useLocalStorage<string | null>("mimoe-selected-level", null);
   const [savedQueue, setSavedQueue] = useLocalStorage<string[]>("mimoe-saved-queue", []);
-  
-  // Progress tracking state - temporarily disabled
-  // const [levelProgress, setLevelProgress] = useLocalStorage<Record<string, { correct: number; total: number; allCorrect: boolean }>>("mimoe-level-progress", {});
-  // const [currentSessionCorrect, setCurrentSessionCorrect] = useState<string[]>([]);
-  
+
   // Personal Space state
   const [appView, setAppView] = useState<AppView>("main");
   const [collections, setCollections] = useLocalStorage<Collection[]>("mimoe-collections", []);
@@ -35,6 +37,10 @@ export function FlashcardApp() {
 
   const [customVocab, setCustomVocab] = useLocalStorage<Record<string, FlashcardItem[]>>("mimoe-custom-vocab", {});
   const [customPhrases, setCustomPhrases] = useLocalStorage<Record<string, FlashcardItem[]>>("mimoe-custom-phrases", {});
+
+  // Track which cards were answered correctly on FIRST attempt in current session
+  const [firstAttemptCorrect, setFirstAttemptCorrect] = useState<Set<string>>(new Set());
+  const [failedCards, setFailedCards] = useState<Set<string>>(new Set());
 
   const levels = activeTab === "vocabulary" ? vocabularyLevels : phraseLevels;
   const completedIds = activeTab === "vocabulary" ? completedVocab : completedPhrases;
@@ -51,29 +57,51 @@ export function FlashcardApp() {
   }, [selectedLevel, customCards]);
 
   const [queue, setQueue] = useState<string[]>([]);
-  const [isRestoring, setIsRestoring] = useState(false);
+
+  // Redirect to auth if not logged in
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate("/auth");
+    }
+  }, [user, loading, navigate]);
+
+  // Load progress from DB on mount
+  useEffect(() => {
+    if (!user) return;
+    const loadProgress = async () => {
+      const { data } = await supabase
+        .from("user_progress")
+        .select("level_id, tab, all_correct")
+        .eq("user_id", user.id);
+      if (data) {
+        const vocab: string[] = [];
+        const phrases: string[] = [];
+        data.forEach((row) => {
+          if (row.all_correct) {
+            if (row.tab === "vocabulary") vocab.push(row.level_id);
+            else if (row.tab === "phrases") phrases.push(row.level_id);
+          }
+        });
+        setCompletedVocab(vocab);
+        setCompletedPhrases(phrases);
+      }
+    };
+    loadProgress();
+  }, [user]);
 
   // Restore progress on component mount
   useEffect(() => {
-    const restoreProgress = () => {
-      if (selectedLevelId && savedQueue.length > 0) {
-        // Validate that the saved queue still matches the current level
-        const level = levels.find((l) => l.id === selectedLevelId);
-        if (level) {
-          const custom = customCards[selectedLevelId] || [];
-          const allValidIds = [...level.cards, ...custom].map((c) => c.id);
-          const validQueue = savedQueue.filter(id => allValidIds.includes(id));
-          // Only restore if we have valid cards and queue is empty
-          if (validQueue.length > 0 && queue.length === 0) {
-            setQueue(validQueue);
-          }
+    if (selectedLevelId && savedQueue.length > 0) {
+      const level = levels.find((l) => l.id === selectedLevelId);
+      if (level) {
+        const custom = customCards[selectedLevelId] || [];
+        const allValidIds = [...level.cards, ...custom].map((c) => c.id);
+        const validQueue = savedQueue.filter(id => allValidIds.includes(id));
+        if (validQueue.length > 0 && queue.length === 0) {
+          setQueue(validQueue);
         }
       }
-    };
-
-    // Debounce restoration to prevent rapid changes
-    const timeoutId = setTimeout(restoreProgress, 200);
-    return () => clearTimeout(timeoutId);
+    }
   }, [selectedLevelId, savedQueue, levels, customCards, queue.length]);
 
   // Save queue state whenever it changes
@@ -81,7 +109,6 @@ export function FlashcardApp() {
     if (queue.length > 0) {
       setSavedQueue(queue);
     } else if (queue.length === 0 && savedQueue.length > 0) {
-      // Clear saved queue when current queue is empty (level completed)
       setSavedQueue([]);
     }
   }, [queue, savedQueue, setSavedQueue]);
@@ -93,7 +120,8 @@ export function FlashcardApp() {
     const allIds = [...level.cards, ...custom].map((c) => c.id);
     setQueue(allIds);
     setSelectedLevelId(levelId);
-    // setCurrentSessionCorrect([]);
+    setFirstAttemptCorrect(new Set());
+    setFailedCards(new Set());
   }, [levels, customCards]);
 
   const currentCard = useMemo(() => {
@@ -102,54 +130,51 @@ export function FlashcardApp() {
   }, [queue, allCards]);
 
   const handleCorrect = useCallback(() => {
-    // if (selectedLevelId && currentCard) {
-    //   // Track correct answer for this session
-    //   setCurrentSessionCorrect(prev => [...prev, currentCard.id]);
-    // }
+    const cardId = queue[0];
+    if (cardId && !failedCards.has(cardId)) {
+      // Card was answered correctly on first attempt
+      setFirstAttemptCorrect(prev => new Set(prev).add(cardId));
+    }
     setQueue((q) => q.slice(1));
-  }, [selectedLevelId, currentCard]);
+  }, [queue, failedCards]);
 
   const handleIncorrect = useCallback(() => {
+    const cardId = queue[0];
+    if (cardId) {
+      setFailedCards(prev => new Set(prev).add(cardId));
+    }
     setQueue((q) => [...q.slice(1), q[0]]);
-  }, []);
+  }, [queue]);
 
   const isDeckComplete = queue.length === 0 && selectedLevelId !== null;
 
-  // Update progress when deck finishes - temporarily disabled
-  // const updateProgress = useCallback(() => {
-  //   if (selectedLevelId && selectedLevel) {
-  //     const totalCards = allCards.length;
-  //     const correctCards = currentSessionCorrect.length;
-  //     const allCorrect = correctCards === totalCards;
-  //     
-  //     // Update progress tracking
-  //     setLevelProgress(prev => ({
-  //       ...prev,
-  //       [selectedLevelId]: {
-  //         correct: correctCards,
-  //         total: totalCards,
-  //         allCorrect
-  //       }
-  //     }));
-  //     
-  //     // Only mark as completed if all answers were correct
-  //     if (allCorrect && !completedIds.includes(selectedLevelId)) {
-  //       setCompletedIds((prev) => [...prev, selectedLevelId]);
-  //     }
-  //     
-  //     // Reset session tracking
-  //     setCurrentSessionCorrect([]);
-  //   }
-  // }, [selectedLevelId, selectedLevel, allCards, currentSessionCorrect, completedIds, setCompletedIds, setLevelProgress]);
+  // Save completion to DB when deck finishes
+  const saveCompletion = useCallback(async (levelId: string, tab: string, allCorrect: boolean) => {
+    if (!user) return;
+    await supabase
+      .from("user_progress")
+      .upsert({
+        user_id: user.id,
+        level_id: levelId,
+        tab,
+        all_correct: allCorrect,
+      }, { onConflict: "user_id,level_id,tab" });
+  }, [user]);
 
-  // if (isDeckComplete && selectedLevelId) {
-  //   updateProgress();
-  // }
+  // Check completion when deck finishes
+  useEffect(() => {
+    if (isDeckComplete && selectedLevelId) {
+      const allCorrectFirstTry = allCards.length > 0 && failedCards.size === 0;
+      
+      if (allCorrectFirstTry && !completedIds.includes(selectedLevelId)) {
+        setCompletedIds((prev) => [...prev, selectedLevelId]);
+      }
+      
+      saveCompletion(selectedLevelId, activeTab, allCorrectFirstTry);
+    }
+  }, [isDeckComplete, selectedLevelId]);
 
-  // Temporary fallback - mark as completed when deck finishes
-  if (isDeckComplete && selectedLevelId && !completedIds.includes(selectedLevelId)) {
-    setCompletedIds((prev) => [...prev, selectedLevelId]);
-  }
+  const allCorrectThisSession = allCards.length > 0 && failedCards.size === 0;
 
   const resetDeck = useCallback(() => {
     if (!selectedLevelId) return;
@@ -168,6 +193,8 @@ export function FlashcardApp() {
   const handleBack = useCallback(() => {
     setSelectedLevelId(null);
     setQueue([]);
+    setFirstAttemptCorrect(new Set());
+    setFailedCards(new Set());
   }, []);
 
   const handleAddItem = useCallback(
@@ -216,7 +243,8 @@ export function FlashcardApp() {
     setActiveTab(tab);
     setSelectedLevelId(null);
     setQueue([]);
-    // setCurrentSessionCorrect([]);
+    setFirstAttemptCorrect(new Set());
+    setFailedCards(new Set());
   };
 
   // Collection management functions
@@ -227,14 +255,12 @@ export function FlashcardApp() {
 
   const handleSaveCollection = useCallback((data: CollectionFormData) => {
     if (editingCollection) {
-      // Update existing collection
       setCollections(prev => prev.map(col => 
         col.id === editingCollection.id 
           ? { ...col, ...data, updatedAt: new Date().toISOString() }
           : col
       ));
     } else {
-      // Create new collection
       const newCollection: Collection = {
         id: `collection-${Date.now()}`,
         title: data.title,
@@ -267,7 +293,6 @@ export function FlashcardApp() {
     setCollectionQueue([]);
   }, []);
 
-  // Collection flashcard functions
   const collectionCards = useMemo(() => {
     if (!selectedCollection) return [];
     return selectedCollection.entries.map((entry, index) => ({
@@ -294,11 +319,19 @@ export function FlashcardApp() {
 
   const isCollectionDeckComplete = collectionQueue.length === 0 && selectedCollection !== null;
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user) return null;
+
   if (appView === "collection" && selectedCollection) {
-    // Collection Study Mode
     return (
       <div className="min-h-screen flex flex-col items-center max-w-[480px] mx-auto px-[15px] py-[61px]">
-        {/* Header */}
         <header className="text-center mb-6 w-full">
           <div className="flex items-center gap-3">
             <button onClick={handleBackToMain} className="p-2 -ml-2 rounded-xl hover:bg-accent/50 transition-colors">
@@ -313,17 +346,12 @@ export function FlashcardApp() {
           </div>
         </header>
 
-        {/* Content */}
         <div className="flex-1 w-full flex flex-col items-center justify-center">
           {isCollectionDeckComplete ? (
             <div className="flex flex-col items-center gap-4 text-center animate-fade-in">
               <PartyPopper className="w-16 h-16 text-secondary" />
-              <h2 className="font-display text-2xl font-bold text-foreground">
-                Bien joué! 🎉
-              </h2>
-              <p className="text-muted-foreground">
-                You've mastered this collection!
-              </p>
+              <h2 className="font-display text-2xl font-bold text-foreground">Bien joué! 🎉</h2>
+              <p className="text-muted-foreground">You've mastered this collection!</p>
               <button
                 onClick={handleBackToMain}
                 className="px-5 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 transition-opacity"
@@ -363,16 +391,23 @@ export function FlashcardApp() {
             </div>
           </div>
         ) : (
-          <>
-            <h1 className="font-display text-3xl font-bold text-foreground tracking-tight">
-              Mimoe
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">French flashcard trainer</p>
-          </>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="font-display text-3xl font-bold text-foreground tracking-tight">Mimoe</h1>
+              <p className="text-sm text-muted-foreground mt-1">French flashcard trainer</p>
+            </div>
+            <button
+              onClick={signOut}
+              className="p-2 rounded-xl hover:bg-accent/50 transition-colors text-muted-foreground hover:text-foreground"
+              title="Sign out"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
+          </div>
         )}
       </header>
 
-      {/* Tabs — only show on level select */}
+      {/* Tabs */}
       {!selectedLevelId && (
         <div className="flex w-full bg-muted rounded-2xl p-1 mb-6">
           {(["vocabulary", "phrases"] as Tab[]).map((tab) => (
@@ -403,10 +438,12 @@ export function FlashcardApp() {
           <div className="flex flex-col items-center gap-4 text-center animate-fade-in">
             <PartyPopper className="w-16 h-16 text-secondary" />
             <h2 className="font-display text-2xl font-bold text-foreground">
-              Bien joué! 🎉
+              {allCorrectThisSession ? "Perfect! 🎉" : "Level finished!"}
             </h2>
             <p className="text-muted-foreground">
-              You've mastered this level!
+              {allCorrectThisSession
+                ? "You got every card right on the first try!"
+                : `You missed ${failedCards.size} card${failedCards.size !== 1 ? "s" : ""}. Try again for a perfect score!`}
             </p>
             <div className="flex gap-3 mt-4">
               <button
@@ -437,7 +474,7 @@ export function FlashcardApp() {
         ) : null}
       </div>
 
-      {/* Word bank — only in active session */}
+      {/* Word bank */}
       {selectedLevelId && !isDeckComplete && (
         <div className="mt-6 w-full flex justify-center">
           <WordBank
@@ -454,7 +491,6 @@ export function FlashcardApp() {
       <PersonalSpaceDivider />
       
       <div className="w-full space-y-4">
-        {/* New Collection Button */}
         <button
           onClick={handleCreateCollection}
           className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-orange-500 text-white hover:bg-orange-600 transition-colors font-medium"
@@ -463,7 +499,6 @@ export function FlashcardApp() {
           New Collection
         </button>
 
-        {/* Collections Grid */}
         {collections.length > 0 ? (
           <div className="grid gap-4">
             {collections.map((collection) => (
@@ -485,7 +520,6 @@ export function FlashcardApp() {
         )}
       </div>
 
-      {/* New Collection Modal */}
       <NewCollectionModal
         isOpen={isCollectionModalOpen}
         onClose={() => setIsCollectionModalOpen(false)}
