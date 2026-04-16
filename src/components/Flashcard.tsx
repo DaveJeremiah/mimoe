@@ -47,9 +47,10 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
       }, 1500);
     } else {
       attemptRef.current += 1;
+      // Always speak the correct answer on failure
+      speakFrench(card.french);
       if (attemptRef.current >= 2) {
         setState("incorrect");
-        speakFrench(card.french);
       } else {
         setState("retry");
         setSpokenText(answer);
@@ -57,8 +58,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
           setState("prompt");
           setSpokenText("");
           resultHandledRef.current = false;
-          startMicRef.current();
-        }, 1500);
+        }, 2500);
       }
     }
   }, [card.french, onCorrect, stopMic]);
