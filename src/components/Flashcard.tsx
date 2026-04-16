@@ -129,23 +129,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
 
     recognition.onend = () => {
       recognitionRef.current = null;
-      // Auto-restart if no result was handled yet (keeps listening)
-      if (!resultHandledRef.current && (micPermission as string) !== "denied") {
-        setTimeout(() => {
-          try {
-            startMicRef.current();
-          } catch (error) {
-            // Retry again if it fails
-            setTimeout(() => {
-              if (!resultHandledRef.current && (micPermission as string) !== "denied") {
-                startMicRef.current();
-              }
-            }, 500);
-          }
-        }, 100);
-      } else {
-        setIsListening(false);
-      }
+      setIsListening(false);
     };
 
     try {
