@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { isMatch, primeFrenchSpeech, speakFrench, speakCorrect } from "@/lib/speechUtils";
+import { useContinuousMic } from "@/hooks/useContinuousMic";
 import type { FlashcardItem } from "@/lib/flashcardData";
-import { Check, X, Send, Mic } from "lucide-react";
+import { Check, X, Send, Mic, MicOff, ArrowRight } from "lucide-react";
 
 interface FlashcardProps {
   card: FlashcardItem;
@@ -15,28 +16,43 @@ type CardState = "prompt" | "correct" | "incorrect" | "retry";
 
 export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: FlashcardProps) {
   const [state, setState] = useState<CardState>("prompt");
-  const [isListening, setIsListening] = useState(false);
   const [textInput, setTextInput] = useState("");
   const [spokenText, setSpokenText] = useState("");
   const [animatingOut, setAnimatingOut] = useState(false);
   const [animatingBack, setAnimatingBack] = useState(false);
-  const [micPermission, setMicPermission] = useState<"granted" | "denied" | "pending">("pending");
   const [cardColorIndex, setCardColorIndex] = useState(0);
   const [isFirstCard, setIsFirstCard] = useState(true);
   const cardColors = ["bg-indigo-400", "bg-green-400", "bg-yellow-400"];
-  const recognitionRef = useRef<any>(null);
   const resultHandledRef = useRef(false);
   const attemptRef = useRef(0);
-  const startMicRef = useRef<() => void>(() => {});
+  const cardFrenchRef = useRef(card.french);
 
-  const stopMic = useCallback(() => {
-    recognitionRef.current?.stop();
-    recognitionRef.current = null;
-    setIsListening(false);
+  useEffect(() => {
+    cardFrenchRef.current = card.french;
+  }, [card.french]);
+
+  // Continuous mic — opens once, stays open across cards
+  const handleTranscript = useCallback((transcript: string, isFinal: boolean) => {
+    if (resultHandledRef.current) return;
+    setSpokenText(transcript);
+    if (isMatch(transcript, cardFrenchRef.current)) {
+      resultHandledRef.current = true;
+      handleResultRef.current?.(cardFrenchRef.current);
+    } else if (isFinal) {
+      resultHandledRef.current = true;
+      handleResultRef.current?.(transcript);
+    }
   }, []);
 
+  const { status: micStatus, start: startMic, stop: stopMic, pause: pauseMic, resume: resumeMic } = useContinuousMic({
+    lang: "fr-FR",
+    onTranscript: handleTranscript,
+  });
+
+  const handleResultRef = useRef<(answer: string) => void>();
+
   const handleResult = useCallback((answer: string) => {
-    stopMic();
+    pauseMic();
 
     if (isMatch(answer, card.french)) {
       setState("correct");
@@ -44,106 +60,32 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
       setTimeout(() => {
         setAnimatingOut(true);
         setTimeout(onCorrect, 400);
-      }, 1500);
+      }, 1200);
     } else {
       attemptRef.current += 1;
-      // Always speak the correct answer on failure
+      // Always speak the correct answer out loud on every failure
       speakFrench(card.french);
       if (attemptRef.current >= 2) {
         setState("incorrect");
       } else {
         setState("retry");
         setSpokenText(answer);
-        setTimeout(() => {
-          setState("prompt");
-          setSpokenText("");
-          resultHandledRef.current = false;
-        }, 2500);
       }
     }
-  }, [card.french, onCorrect, stopMic]);
+  }, [card.french, onCorrect, pauseMic]);
 
-  const startMic = useCallback(() => {
-    if (recognitionRef.current) return;
-    resultHandledRef.current = false;
+  useEffect(() => {
+    handleResultRef.current = handleResult;
+  }, [handleResult]);
 
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-
-    const recognition = new SpeechRecognition();
-    recognition.lang = "fr-FR";
-    recognition.interimResults = true;
-    recognition.continuous = false;
-    recognition.maxAlternatives = 5;
-    recognitionRef.current = recognition;
-
-    const submitAnswer = (answer: string) => {
-      if (resultHandledRef.current) return;
-      resultHandledRef.current = true;
-      handleResult(answer);
-    };
-
-    recognition.onresult = (event: any) => {
-      const latestResult = event.results[event.results.length - 1];
-      const latestTranscript = latestResult?.[0]?.transcript?.trim() ?? "";
-
-      if (latestTranscript) {
-        setSpokenText(latestTranscript);
-      }
-
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i];
-        for (let j = 0; j < result.length; j++) {
-          const transcript = result[j].transcript.trim();
-          if (isMatch(transcript, card.french)) {
-            setSpokenText(transcript);
-            submitAnswer(card.french);
-            return;
-          }
-        }
-      }
-
-      if (latestResult?.isFinal && latestTranscript) {
-        submitAnswer(latestTranscript);
-      }
-    };
-
-    recognition.onerror = (e: any) => {
-      if (e.error === "not-allowed") {
-        setMicPermission("denied");
-        setIsListening(false);
-        return;
-      }
-      setIsListening(false);
-    };
-
-    recognition.onend = () => {
-      recognitionRef.current = null;
-      setIsListening(false);
-    };
-
-    try {
-      recognition.start();
-      setIsListening(true);
-      setMicPermission("granted");
-    } catch {
-      setIsListening(false);
-    }
-  }, [card.french, handleResult, micPermission]);
-
-  startMicRef.current = startMic;
-
-  // Auto-start mic on every new card
+  // Reset per-card state on new card; mic stays alive
   useEffect(() => {
     setState("prompt");
     setTextInput("");
     setSpokenText("");
-    setIsListening(false);
     setAnimatingOut(false);
     setAnimatingBack(false);
     resultHandledRef.current = false;
-    recognitionRef.current?.stop();
-    recognitionRef.current = null;
     attemptRef.current = 0;
 
     if (!isFirstCard) {
@@ -152,24 +94,21 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
     setIsFirstCard(false);
 
     primeFrenchSpeech();
-    return () => {
-      recognitionRef.current?.stop();
-      recognitionRef.current = null;
-    };
-  }, [card.id, cardColors.length]);
+    // Resume listening for the new card if mic was previously enabled
+    resumeMic();
+  }, [card.id]);
 
+  // Stop mic when component fully unmounts
   useEffect(() => {
-    return () => {
-      recognitionRef.current?.stop();
-    };
-  }, []);
+    return () => { stopMic(); };
+  }, [stopMic]);
 
   const handleTextSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!textInput.trim()) return;
 
     primeFrenchSpeech();
-    stopMic();
+    resultHandledRef.current = true;
     setSpokenText(textInput.trim());
     handleResult(textInput.trim());
   };
@@ -186,19 +125,20 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
   };
 
   const handleDontKnow = () => {
-    stopMic();
+    pauseMic();
+    resultHandledRef.current = true;
     setState("incorrect");
+    // Speak the answer out loud
     speakFrench(card.french);
-    // Move card to back of queue after showing answer
-    setTimeout(() => {
-      setAnimatingBack(true);
-      setTimeout(onIncorrect, 2000);
-    }, 2000);
   };
 
-  const cycleCardColor = useCallback(() => {
-    setCardColorIndex((prev) => (prev + 1) % cardColors.length);
-  }, [cardColors.length]);
+  // Tap-to-continue from retry state — user controls when to try again
+  const handleContinueRetry = () => {
+    setState("prompt");
+    setSpokenText("");
+    resultHandledRef.current = false;
+    resumeMic();
+  };
 
   const isIncorrect = state === "incorrect";
   const isRetry = state === "retry";
@@ -210,6 +150,10 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
   const cardSurface = isIncorrect
     ? "bg-red-500"
     : cardColors[cardColorIndex];
+
+  const isListening = micStatus === "listening";
+  const micDenied = micStatus === "denied";
+  const micUnsupported = micStatus === "unsupported";
 
   return (
     <div className="flex flex-col items-center gap-5 w-full animate-card-enter">
@@ -242,33 +186,44 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
                 {spokenText && (
                   <p className="mt-3 text-sm text-gray-700 italic">"{spokenText}"</p>
                 )}
-                {/* Listening indicator */}
+                {/* Mic toggle — once enabled, stays open across cards */}
                 <button
                   type="button"
                   onClick={() => {
                     if (isListening) {
                       stopMic();
-                      resultHandledRef.current = true;
                     } else {
-                      resultHandledRef.current = false;
                       startMic();
                     }
                   }}
+                  disabled={micUnsupported}
                   className={`mt-4 flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-200 ${
                     isListening
                       ? "text-primary/80 bg-primary/10 animate-fade-in"
+                      : micDenied
+                      ? "text-destructive bg-destructive/10"
                       : "text-muted-foreground bg-muted hover:bg-accent/50"
-                  }`}
+                  } disabled:opacity-50`}
                 >
                   {isListening ? (
                     <>
                       <Mic className="w-4 h-4 animate-pulse" />
-                      <span className="text-xs text-gray-600">Listening — tap to pause</span>
+                      <span className="text-xs text-gray-600">Listening — tap to stop</span>
+                    </>
+                  ) : micDenied ? (
+                    <>
+                      <MicOff className="w-4 h-4" />
+                      <span className="text-xs">Mic blocked — check permissions</span>
+                    </>
+                  ) : micUnsupported ? (
+                    <>
+                      <MicOff className="w-4 h-4" />
+                      <span className="text-xs">Mic not supported</span>
                     </>
                   ) : (
                     <>
                       <Mic className="w-4 h-4" />
-                      <span className="text-xs">Tap to listen</span>
+                      <span className="text-xs">Tap once to enable mic</span>
                     </>
                   )}
                 </button>
@@ -288,8 +243,14 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
                 )}
                 <div className="mt-4 flex items-center gap-2 text-warning animate-fade-in">
                   <X className="w-5 h-5" />
-                  <span className="font-semibold text-sm">Not quite — one more try!</span>
+                  <span className="font-semibold text-sm">Not quite</span>
                 </div>
+                <button
+                  onClick={handleContinueRetry}
+                  className="mt-5 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-card text-foreground font-semibold text-sm hover:opacity-90 transition-opacity"
+                >
+                  <ArrowRight className="w-4 h-4" /> Try again
+                </button>
               </>
             )}
             {state === "correct" && (
@@ -320,7 +281,13 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
                     You said: "{spokenText}"
                   </p>
                 )}
-                <div className="mt-6 flex gap-3">
+                <button
+                  onClick={() => speakFrench(card.french)}
+                  className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/30 text-black text-xs font-medium hover:bg-white/50 transition-colors"
+                >
+                  <Mic className="w-3.5 h-3.5" /> Hear it again
+                </button>
+                <div className="mt-5 flex gap-3">
                   <button
                     onClick={() => handleSelfAssess(true)}
                     className="flex items-center gap-2 px-4 py-2 rounded-xl bg-success text-success-foreground font-semibold text-sm hover:opacity-90 transition-opacity"
@@ -331,7 +298,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
                     onClick={() => handleSelfAssess(false)}
                     className="flex items-center gap-2 px-4 py-2 rounded-xl bg-card text-foreground font-semibold text-sm hover:opacity-90 transition-opacity"
                   >
-                    <X className="w-4 h-4" /> Try again
+                    <ArrowRight className="w-4 h-4" /> Continue
                   </button>
                 </div>
               </>
@@ -340,7 +307,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
         </div>
       </div>
 
-      {/* I don't know button - always visible to maintain structure */}
+      {/* Not sure button */}
       <div className="flex justify-center mt-8">
         <button
           onClick={handleDontKnow}
@@ -351,7 +318,7 @@ export function Flashcard({ card, onCorrect, onIncorrect, total, remaining }: Fl
         </button>
       </div>
 
-      {/* Controls — always visible to prevent layout wobbling */}
+      {/* Text input — always visible */}
       <div className="flex flex-col items-center gap-6 w-full max-w-[300px] animate-fade-in mt-8">
         <form onSubmit={handleTextSubmit} className="flex w-full gap-3 items-center">
           <input
