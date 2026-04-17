@@ -463,8 +463,7 @@ export function FlashcardApp() {
           <Flashcard
             key={currentCard.id}
             card={currentCard}
-            onCorrect={handleCorrect}
-            onIncorrect={handleIncorrect}
+            onAdvance={handleAdvance}
             total={allCards.length}
             remaining={queue.length}
           />
