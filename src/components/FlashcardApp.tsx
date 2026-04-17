@@ -361,8 +361,7 @@ export function FlashcardApp() {
             <Flashcard
               key={`collection-${selectedCollection.id}-${collectionQueue[0]}`}
               card={currentCollectionCard}
-              onCorrect={handleCollectionCorrect}
-              onIncorrect={handleCollectionIncorrect}
+              onAdvance={handleCollectionAdvance}
               total={selectedCollection.entries.length}
               remaining={collectionQueue.length}
             />
