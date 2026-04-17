@@ -176,9 +176,19 @@ async function fetchTTSAudio(text: string, rate: number): Promise<string | null>
   }
 }
 
-function playAudioUrl(url: string): void {
-  const audio = new Audio(url);
-  audio.play().catch(() => {});
+function playAudioUrl(url: string): Promise<void> {
+  return new Promise((resolve) => {
+    const audio = new Audio(url);
+    audio.onended = () => resolve();
+    audio.onerror = (e) => {
+      console.warn("Audio playback error:", e);
+      resolve();
+    };
+    audio.play().catch((err) => {
+      console.warn("Audio.play() rejected:", err);
+      resolve();
+    });
+  });
 }
 
 // ── Browser TTS fallback ──
@@ -241,13 +251,13 @@ if (typeof window !== "undefined" && window.speechSynthesis) {
 export async function speakFrench(text: string): Promise<void> {
   if (!text.trim()) return;
   const url = await fetchTTSAudio(text, 0.88);
-  if (url) { playAudioUrl(url); return; }
+  if (url) { await playAudioUrl(url); return; }
   browserSpeak(text, 0.88);
 }
 
 export async function speakCorrect(text: string): Promise<void> {
   if (!text.trim()) return;
   const url = await fetchTTSAudio(text, 0.95);
-  if (url) { playAudioUrl(url); return; }
+  if (url) { await playAudioUrl(url); return; }
   browserSpeak(text, 0.95);
 }
