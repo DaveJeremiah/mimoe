@@ -307,12 +307,12 @@ export function FlashcardApp() {
     return collectionCards[index] || null;
   }, [collectionQueue, collectionCards, selectedCollection]);
 
-  const handleCollectionCorrect = useCallback(() => {
-    setCollectionQueue(q => q.slice(1));
-  }, []);
-
-  const handleCollectionIncorrect = useCallback(() => {
-    setCollectionQueue(q => [...q.slice(1), q[0]]);
+  const handleCollectionAdvance = useCallback(({ requeue }: { failed: boolean; requeue: boolean }) => {
+    if (requeue) {
+      setCollectionQueue(q => [...q.slice(1), q[0]]);
+    } else {
+      setCollectionQueue(q => q.slice(1));
+    }
   }, []);
 
   const isCollectionDeckComplete = collectionQueue.length === 0 && selectedCollection !== null;
