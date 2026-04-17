@@ -129,21 +129,19 @@ export function FlashcardApp() {
     return allCards.find((i) => i.id === queue[0]) || null;
   }, [queue, allCards]);
 
-  const handleCorrect = useCallback(() => {
+  const handleAdvance = useCallback(({ failed, requeue }: { failed: boolean; requeue: boolean }) => {
     const cardId = queue[0];
-    if (cardId && !failedCards.has(cardId)) {
-      // Card was answered correctly on first attempt
+    if (!cardId) return;
+    if (failed) {
+      setFailedCards(prev => new Set(prev).add(cardId));
+    } else {
       setFirstAttemptCorrect(prev => new Set(prev).add(cardId));
     }
-    setQueue((q) => q.slice(1));
-  }, [queue, failedCards]);
-
-  const handleIncorrect = useCallback(() => {
-    const cardId = queue[0];
-    if (cardId) {
-      setFailedCards(prev => new Set(prev).add(cardId));
+    if (requeue) {
+      setQueue((q) => [...q.slice(1), q[0]]);
+    } else {
+      setQueue((q) => q.slice(1));
     }
-    setQueue((q) => [...q.slice(1), q[0]]);
   }, [queue]);
 
   const isDeckComplete = queue.length === 0 && selectedLevelId !== null;
@@ -309,12 +307,12 @@ export function FlashcardApp() {
     return collectionCards[index] || null;
   }, [collectionQueue, collectionCards, selectedCollection]);
 
-  const handleCollectionCorrect = useCallback(() => {
-    setCollectionQueue(q => q.slice(1));
-  }, []);
-
-  const handleCollectionIncorrect = useCallback(() => {
-    setCollectionQueue(q => [...q.slice(1), q[0]]);
+  const handleCollectionAdvance = useCallback(({ requeue }: { failed: boolean; requeue: boolean }) => {
+    if (requeue) {
+      setCollectionQueue(q => [...q.slice(1), q[0]]);
+    } else {
+      setCollectionQueue(q => q.slice(1));
+    }
   }, []);
 
   const isCollectionDeckComplete = collectionQueue.length === 0 && selectedCollection !== null;
@@ -363,8 +361,7 @@ export function FlashcardApp() {
             <Flashcard
               key={`collection-${selectedCollection.id}-${collectionQueue[0]}`}
               card={currentCollectionCard}
-              onCorrect={handleCollectionCorrect}
-              onIncorrect={handleCollectionIncorrect}
+              onAdvance={handleCollectionAdvance}
               total={selectedCollection.entries.length}
               remaining={collectionQueue.length}
             />
@@ -466,8 +463,7 @@ export function FlashcardApp() {
           <Flashcard
             key={currentCard.id}
             card={currentCard}
-            onCorrect={handleCorrect}
-            onIncorrect={handleIncorrect}
+            onAdvance={handleAdvance}
             total={allCards.length}
             remaining={queue.length}
           />
