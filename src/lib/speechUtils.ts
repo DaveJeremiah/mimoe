@@ -146,16 +146,24 @@ async function fetchTTSAudio(text: string, rate: number): Promise<string | null>
   if (cached) return cached;
 
   try {
-    const { data, error } = await supabase.functions.invoke("elevenlabs-tts", {
-      body: { text, rate },
+    // Use raw fetch — supabase.functions.invoke decodes audio/mpeg as text and corrupts it
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      },
+      body: JSON.stringify({ text, rate }),
     });
 
-    if (error) {
-      console.warn("Cloud TTS failed, falling back to browser:", error);
+    if (!res.ok) {
+      console.warn("Cloud TTS failed:", res.status, await res.text().catch(() => ""));
       return null;
     }
 
-    const blob = data instanceof Blob ? data : new Blob([data], { type: "audio/mpeg" });
+    const blob = await res.blob();
     const dataUri = await blobToBase64(blob);
 
     // Save to localStorage for persistence across sessions
