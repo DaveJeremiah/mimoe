@@ -31,12 +31,17 @@ export default function Auth() {
         if (error) throw error;
         toast.success("Welcome back!");
       } else {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: `${window.location.origin}/` },
+        });
         if (error) throw error;
-        toast.success("Check your email to confirm your account!");
+        toast.success("Account created! You're signed in.");
       }
     } catch (err: any) {
-      toast.error(err.message || "Authentication failed");
+      console.error("Auth error:", err);
+      toast.error(err?.message || "Authentication failed");
     } finally {
       setSubmitting(false);
     }
