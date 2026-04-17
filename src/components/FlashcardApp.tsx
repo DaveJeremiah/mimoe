@@ -129,21 +129,19 @@ export function FlashcardApp() {
     return allCards.find((i) => i.id === queue[0]) || null;
   }, [queue, allCards]);
 
-  const handleCorrect = useCallback(() => {
+  const handleAdvance = useCallback(({ failed, requeue }: { failed: boolean; requeue: boolean }) => {
     const cardId = queue[0];
-    if (cardId && !failedCards.has(cardId)) {
-      // Card was answered correctly on first attempt
+    if (!cardId) return;
+    if (failed) {
+      setFailedCards(prev => new Set(prev).add(cardId));
+    } else {
       setFirstAttemptCorrect(prev => new Set(prev).add(cardId));
     }
-    setQueue((q) => q.slice(1));
-  }, [queue, failedCards]);
-
-  const handleIncorrect = useCallback(() => {
-    const cardId = queue[0];
-    if (cardId) {
-      setFailedCards(prev => new Set(prev).add(cardId));
+    if (requeue) {
+      setQueue((q) => [...q.slice(1), q[0]]);
+    } else {
+      setQueue((q) => q.slice(1));
     }
-    setQueue((q) => [...q.slice(1), q[0]]);
   }, [queue]);
 
   const isDeckComplete = queue.length === 0 && selectedLevelId !== null;
