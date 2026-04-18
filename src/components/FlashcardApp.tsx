@@ -4,14 +4,19 @@ import { Flashcard } from "./Flashcard";
 import { WordBank } from "./WordBank";
 import { LevelSelect } from "./LevelSelect";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
+import { PersonalSpaceDivider } from "./PersonalSpaceDivider";
+import { CollectionCard } from "./CollectionCard";
+import { NewCollectionModal } from "./NewCollectionModal";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { vocabularyLevels, phraseLevels, type FlashcardItem } from "@/lib/flashcardData";
+import { type Collection, CollectionFormData } from "@/lib/collectionTypes";
 import { prefetchAudio, unlockAudio } from "@/lib/speechUtils";
 import { useContinuousMic } from "@/hooks/useContinuousMic";
 import { PartyPopper, ArrowLeft, Plus, LogOut } from "lucide-react";
 
 type Tab = "vocabulary" | "phrases";
+type AppView = "main" | "collection";
 
 export function FlashcardApp() {
   const { user, loading, signOut } = useAuth();
@@ -23,6 +28,14 @@ export function FlashcardApp() {
 
   const [completedVocab, setCompletedVocab] = useLocalStorage<string[]>("mimoe-completed-vocab", []);
   const [completedPhrases, setCompletedPhrases] = useLocalStorage<string[]>("mimoe-completed-phrases", []);
+
+  // Personal Space state
+  const [appView, setAppView] = useState<AppView>("main");
+  const [collections, setCollections] = useLocalStorage<Collection[]>("mimoe-collections", []);
+  const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
+  const [isCollectionModalOpen, setIsCollectionModalOpen] = useState(false);
+  const [editingCollection, setEditingCollection] = useState<Collection | undefined>();
+  const [collectionQueue, setCollectionQueue] = useState<string[]>([]);
 
   const [customVocab, setCustomVocab] = useLocalStorage<Record<string, FlashcardItem[]>>("mimoe-custom-vocab", {});
   const [customPhrases, setCustomPhrases] = useLocalStorage<Record<string, FlashcardItem[]>>("mimoe-custom-phrases", {});
@@ -268,6 +281,80 @@ export function FlashcardApp() {
     setFailedCards(new Set());
   };
 
+  // Collection management functions
+  const handleCreateCollection = useCallback(() => {
+    setEditingCollection(undefined);
+    setIsCollectionModalOpen(true);
+  }, []);
+
+  const handleSaveCollection = useCallback((data: CollectionFormData) => {
+    if (editingCollection) {
+      setCollections(prev => prev.map(col => 
+        col.id === editingCollection.id 
+          ? { ...col, ...data, updatedAt: new Date().toISOString() }
+          : col
+      ));
+    } else {
+      const newCollection: Collection = {
+        id: `collection-${Date.now()}`,
+        title: data.title,
+        entries: data.entries,
+        createdAt: new Date().toISOString()
+      };
+      setCollections(prev => [...prev, newCollection]);
+    }
+  }, [editingCollection, setCollections]);
+
+  const handleEditCollection = useCallback((collection: Collection) => {
+    setEditingCollection(collection);
+    setIsCollectionModalOpen(true);
+  }, []);
+
+  const handleDeleteCollection = useCallback((collectionId: string) => {
+    setCollections(prev => prev.filter(col => col.id !== collectionId));
+  }, [setCollections]);
+
+  const handleStudyCollection = useCallback((collection: Collection) => {
+    unlockAudio();
+    setSelectedCollection(collection);
+    const queueIds = collection.entries.map((_, index) => `collection-${collection.id}-${index}`);
+    setCollectionQueue(queueIds);
+    prefetchAudio(collection.entries.slice(0, 3).map((e) => e.french));
+    setAppView("collection");
+  }, []);
+
+  const handleBackToMain = useCallback(() => {
+    setAppView("main");
+    setSelectedCollection(null);
+    setCollectionQueue([]);
+  }, []);
+
+  const collectionCards = useMemo(() => {
+    if (!selectedCollection) return [];
+    return selectedCollection.entries.map((entry, index) => ({
+      id: `collection-${selectedCollection.id}-${index}`,
+      english: entry.english,
+      french: entry.french
+    }));
+  }, [selectedCollection]);
+
+  const currentCollectionCard = useMemo(() => {
+    if (collectionQueue.length === 0 || !selectedCollection) return null;
+    const firstQueueId = collectionQueue[0];
+    const index = parseInt(firstQueueId.split('-').pop() || '0');
+    return collectionCards[index] || null;
+  }, [collectionQueue, collectionCards, selectedCollection]);
+
+  const handleCollectionAdvance = useCallback(({ requeue }: { failed: boolean; requeue: boolean }) => {
+    if (requeue) {
+      setCollectionQueue(q => [...q.slice(1), q[0]]);
+    } else {
+      setCollectionQueue(q => q.slice(1));
+    }
+  }, []);
+
+  const isCollectionDeckComplete = collectionQueue.length === 0 && selectedCollection !== null;
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -277,6 +364,51 @@ export function FlashcardApp() {
   }
 
   if (!user) return null;
+
+  if (appView === "collection" && selectedCollection) {
+    return (
+      <div className="min-h-screen flex flex-col items-center max-w-[480px] mx-auto px-[15px] py-[61px]">
+        <header className="text-center mb-6 w-full">
+          <div className="flex items-center gap-3">
+            <button onClick={handleBackToMain} className="p-2 -ml-2 rounded-xl hover:bg-accent/50 transition-colors">
+              <ArrowLeft className="w-5 h-5 text-foreground" />
+            </button>
+            <div className="text-left">
+              <h1 className="font-display text-xl font-bold text-foreground tracking-tight">
+                {selectedCollection.title}
+              </h1>
+              <p className="text-xs text-muted-foreground">Personal Collection</p>
+            </div>
+          </div>
+        </header>
+
+        <div className="flex-1 w-full flex flex-col items-center justify-center">
+          {isCollectionDeckComplete ? (
+            <div className="flex flex-col items-center gap-4 text-center animate-fade-in">
+              <PartyPopper className="w-16 h-16 text-secondary" />
+              <h2 className="font-display text-2xl font-bold text-foreground">Bien joué! 🎉</h2>
+              <p className="text-muted-foreground">You've mastered this collection!</p>
+              <button
+                onClick={handleBackToMain}
+                className="px-5 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 transition-opacity"
+              >
+                Back to Collections
+              </button>
+            </div>
+          ) : currentCollectionCard ? (
+            <Flashcard
+              key={`collection-${selectedCollection.id}-${collectionQueue[0]}`}
+              card={currentCollectionCard}
+              onAdvance={handleCollectionAdvance}
+              total={selectedCollection.entries.length}
+              remaining={collectionQueue.length}
+              onTranscriptRef={onTranscriptRef}
+            />
+          ) : null}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center max-w-[480px] mx-auto px-[15px] py-[61px]">
@@ -390,6 +522,50 @@ export function FlashcardApp() {
             label={activeTab === "vocabulary" ? "Vocabulary" : "Phrases"}
           />
         </div>
+      )}
+
+      {/* Personal Space Section (Only on levels page) */}
+      {!selectedLevelId && (
+        <>
+          <PersonalSpaceDivider />
+          
+          <div className="w-full space-y-4">
+            <button
+              onClick={handleCreateCollection}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-orange-500 text-white hover:bg-orange-600 transition-colors font-medium"
+            >
+              <Plus className="w-5 h-5" />
+              New Collection
+            </button>
+
+            {collections.length > 0 ? (
+              <div className="grid gap-4">
+                {collections.map((collection) => (
+                  <CollectionCard
+                    key={collection.id}
+                    collection={collection}
+                    onStudy={handleStudyCollection}
+                    onEdit={handleEditCollection}
+                    onDelete={handleDeleteCollection}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <p className="text-sm">
+                  Add your first collection — song lyrics, dialogues, anything.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <NewCollectionModal
+            isOpen={isCollectionModalOpen}
+            onClose={() => setIsCollectionModalOpen(false)}
+            onSave={handleSaveCollection}
+            editingCollection={editingCollection}
+          />
+        </>
       )}
     </div>
   );
