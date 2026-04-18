@@ -60,6 +60,14 @@ export function FlashcardApp() {
 
   const [queue, setQueue] = useState<string[]>([]);
 
+  // Persistent mic across cards/sessions
+  const onTranscriptRef = useRef<(text: string, isFinal: boolean) => void>(() => {});
+  const { status: micStatus, start: startMic, stop: stopMic, pause: pauseMic, resume: resumeMic } = useContinuousMic({
+    onTranscript: useCallback((text: string, isFinal: boolean) => {
+      onTranscriptRef.current(text, isFinal);
+    }, []),
+  });
+
   // Redirect to auth if not logged in
   useEffect(() => {
     if (!loading && !user) {
