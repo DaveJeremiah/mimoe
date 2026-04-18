@@ -1,14 +1,13 @@
 import type { Level } from "@/lib/flashcardData";
-import { Check, BookOpen, Plus } from "lucide-react";
+import { Check, BookOpen } from "lucide-react";
 
 interface LevelSelectProps {
   levels: Level[];
   completedLevelIds: string[];
   onSelectLevel: (levelId: string) => void;
-  onAddLevel?: () => void;
 }
 
-export function LevelSelect({ levels, completedLevelIds, onSelectLevel, onAddLevel }: LevelSelectProps) {
+export function LevelSelect({ levels, completedLevelIds, onSelectLevel }: LevelSelectProps) {
   return (
     <div className="grid gap-3 w-full">
       {levels.map((level, index) => {
@@ -43,16 +42,6 @@ export function LevelSelect({ levels, completedLevelIds, onSelectLevel, onAddLev
           </button>
         );
       })}
-      
-      {onAddLevel && (
-        <button
-          onClick={onAddLevel}
-          className="relative w-full flex items-center justify-center gap-2 p-4 rounded-2xl border border-dashed border-border text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-all duration-200"
-        >
-          <Plus className="w-5 h-5" />
-          <span className="font-semibold text-sm">Add custom level</span>
-        </button>
-      )}
     </div>
   );
 }

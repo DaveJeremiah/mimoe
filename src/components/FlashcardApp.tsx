@@ -6,7 +6,7 @@ import { LevelSelect } from "./LevelSelect";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { vocabularyLevels, phraseLevels, type FlashcardItem, type Level } from "@/lib/flashcardData";
+import { vocabularyLevels, phraseLevels, type FlashcardItem } from "@/lib/flashcardData";
 import { prefetchAudio, unlockAudio } from "@/lib/speechUtils";
 import { useContinuousMic } from "@/hooks/useContinuousMic";
 import { PartyPopper, ArrowLeft, Plus, LogOut } from "lucide-react";
@@ -21,9 +21,6 @@ export function FlashcardApp() {
   const [selectedLevelId, setSelectedLevelId] = useLocalStorage<string | null>("mimoe-selected-level", null);
   const [savedQueue, setSavedQueue] = useLocalStorage<string[]>("mimoe-saved-queue", []);
 
-  const [customVocabLevels, setCustomVocabLevels] = useLocalStorage<Level[]>("mimoe-custom-vocab-levels", []);
-  const [customPhraseLevels, setCustomPhraseLevels] = useLocalStorage<Level[]>("mimoe-custom-phrase-levels", []);
-
   const [completedVocab, setCompletedVocab] = useLocalStorage<string[]>("mimoe-completed-vocab", []);
   const [completedPhrases, setCompletedPhrases] = useLocalStorage<string[]>("mimoe-completed-phrases", []);
 
@@ -34,12 +31,7 @@ export function FlashcardApp() {
   const [firstAttemptCorrect, setFirstAttemptCorrect] = useState<Set<string>>(new Set());
   const [failedCards, setFailedCards] = useState<Set<string>>(new Set());
 
-  const levels = useMemo(() => {
-    const defaultLevels = activeTab === "vocabulary" ? vocabularyLevels : phraseLevels;
-    const customLevels = activeTab === "vocabulary" ? customVocabLevels : customPhraseLevels;
-    return [...defaultLevels, ...customLevels];
-  }, [activeTab, customVocabLevels, customPhraseLevels]);
-
+  const levels = activeTab === "vocabulary" ? vocabularyLevels : phraseLevels;
   const completedIds = activeTab === "vocabulary" ? completedVocab : completedPhrases;
   const setCompletedIds = activeTab === "vocabulary" ? setCompletedVocab : setCompletedPhrases;
   const customCards = activeTab === "vocabulary" ? customVocab : customPhrases;
@@ -138,15 +130,15 @@ export function FlashcardApp() {
     return allCards.find((i) => i.id === queue[0]) || null;
   }, [queue, allCards]);
 
-  // Manage Mic state according to card visibility
+  // Start mic once when first card appears, stop it if not on a card
   useEffect(() => {
     if (currentCard && micStatus === "idle") {
       unlockAudio();
       startMic();
-    } else if (!currentCard && micStatus !== "idle" && micStatus !== "unsupported" && micStatus !== "denied") {
+    } else if (!currentCard && micStatus !== "idle") {
       stopMic();
     }
-  }, [currentCard?.id, micStatus, startMic, stopMic]);
+  }, [currentCard?.id, micStatus]);
 
   const handleAdvance = useCallback(({ failed, requeue }: { failed: boolean; requeue: boolean }) => {
     const cardId = queue[0];
@@ -231,11 +223,10 @@ export function FlashcardApp() {
   const handleUpdateItem = useCallback(
     (id: string, english: string, french: string, alternatives?: string[]) => {
       if (!selectedLevelId) return;
+      const updatedItem: FlashcardItem = { id, english, french, ...(alternatives && alternatives.length > 0 ? { alternatives } : {}) };
       setCustomCards((prev) => ({
         ...prev,
-        [selectedLevelId]: (prev[selectedLevelId] || []).map((i) =>
-          i.id === id ? { ...i, english, french, alternatives: alternatives || [] } : i
-        ),
+        [selectedLevelId]: (prev[selectedLevelId] || []).map((i) => i.id === id ? updatedItem : i),
       }));
     },
     [selectedLevelId, setCustomCards]
@@ -268,18 +259,6 @@ export function FlashcardApp() {
     },
     [selectedLevelId, setCustomCards]
   );
-
-  const handleAddLevel = useCallback(() => {
-    const title = window.prompt("Enter new level name:");
-    if (title && title.trim()) {
-      const newLevel: Level = { id: `custom-level-${Date.now()}`, title: title.trim(), cards: [] };
-      if (activeTab === "vocabulary") {
-        setCustomVocabLevels(prev => [...prev, newLevel]);
-      } else {
-        setCustomPhraseLevels(prev => [...prev, newLevel]);
-      }
-    }
-  }, [activeTab, setCustomVocabLevels, setCustomPhraseLevels]);
 
   const handleTabSwitch = (tab: Tab) => {
     setActiveTab(tab);
@@ -358,7 +337,6 @@ export function FlashcardApp() {
             levels={levels}
             completedLevelIds={completedIds}
             onSelectLevel={startLevel}
-            onAddLevel={handleAddLevel}
           />
         ) : isDeckComplete ? (
           <div className="flex flex-col items-center gap-4 text-center animate-fade-in">
@@ -413,7 +391,6 @@ export function FlashcardApp() {
           />
         </div>
       )}
-
     </div>
   );
 }
