@@ -285,7 +285,7 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
 
         <div className={`relative w-full h-full card-perspective ${exitAnim} ${cardAnim}`}>
           <div
-            className={`relative aspect-[3/4] rounded-[2rem] ring-2 ${ringColor} ${enterAnim} transition-all duration-300 card-shadow-lg`}
+            className={`relative aspect-square rounded-[2rem] ring-2 ${ringColor} ${enterAnim} transition-all duration-300 card-shadow-lg`}
             onTouchStart={onTouchStart}
             onTouchMove={onTouchMove}
             onTouchEnd={onTouchEnd}
@@ -302,26 +302,7 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
                   }`}
                 />
               </button>
-              <div className="absolute top-3 right-3 z-10">
-                <button
-                  onClick={() => setShowCardMenu(!showCardMenu)}
-                  className="p-1.5 rounded-full bg-black/20 backdrop-blur-sm"
-                >
-                  <MoreVertical className="w-4 h-4 text-white/70" />
-                </button>
-                {showCardMenu && (
-                  <div className="absolute right-0 mt-1 w-36 bg-card rounded-xl border border-border shadow-xl z-20 overflow-hidden">
-                    <button onClick={() => { handleDontKnow(); setShowCardMenu(false); }}
-                      className="w-full px-4 py-2.5 text-left text-sm text-foreground hover:bg-muted transition-colors">
-                      Not sure
-                    </button>
-                    <button onClick={() => { handleKnewItAfterFinal(); setShowCardMenu(false); }}
-                      className="w-full px-4 py-2.5 text-left text-sm text-success hover:bg-muted transition-colors">
-                      I knew it
-                    </button>
-                  </div>
-                )}
-              </div>
+
 
               {(isQuestion || isWrongFirst) && (
               <>
@@ -406,17 +387,12 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
             Write
           </button>
           <button
-            onClick={onToggleMic}
-            className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full font-semibold text-sm transition-all ${
-              isMicOn
-                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
-                : "bg-secondary/80 text-white"
-            }`}
+            onClick={handleDontKnow}
+            disabled={!(isQuestion || isWrongFirst)}
+            className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full bg-secondary/80 text-white font-semibold text-sm transition-all hover:bg-secondary disabled:opacity-50"
           >
-            {isMicOn
-              ? <><Activity className="w-4 h-4" /> Listening</>
-              : <><Mic className="w-4 h-4" /> Let's talk</>
-            }
+            <VolumeX className="w-4 h-4" />
+            Not sure
           </button>
         </div>
       </div>
@@ -438,16 +414,7 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
         </form>
       )}
 
-      {/* Skip for now button */}
-      <div className="flex justify-center mt-4">
-        <button
-          onClick={handleDontKnow}
-          disabled={!(isQuestion || isWrongFirst)}
-          className="text-sm text-muted-foreground underline-offset-2 hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-        >
-          Skip for now
-        </button>
-      </div>
+
     </div>
   );
 }

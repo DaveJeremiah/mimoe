@@ -1,5 +1,5 @@
 import type { Level } from "@/lib/flashcardData";
-import { Check } from "lucide-react";
+import { Check, Plus } from "lucide-react";
 
 interface LevelSelectProps {
   levels: Level[];
@@ -36,6 +36,15 @@ export function LevelSelect({ levels, completedLevelIds, onSelectLevel }: LevelS
           </button>
         );
       })}
+      
+      <button
+        className="relative flex flex-col items-center justify-center p-4 rounded-2xl border border-dashed border-border bg-card/50 hover:bg-muted transition-all duration-200 aspect-square text-center active:scale-[0.97]"
+      >
+        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-2">
+          <Plus className="w-6 h-6 text-muted-foreground" />
+        </div>
+        <h3 className="font-semibold text-muted-foreground text-sm leading-tight">Add Level</h3>
+      </button>
     </div>
   );
 }

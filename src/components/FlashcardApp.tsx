@@ -761,35 +761,37 @@ export function FlashcardApp() {
       )}
 
       {selectedLevelId && !isDeckComplete && (
-        <div className="fixed bottom-0 left-0 right-0 flex justify-center z-50">
-          <div className="w-full max-w-[480px] bg-card/90 backdrop-blur-xl border-t border-border px-6 py-4">
-            <div className="flex items-center justify-between mb-3">
-              <Heart className="w-5 h-5 text-muted-foreground" />
-              <div />
-            </div>
-            <div className="flex items-center justify-between">
+        <div className="fixed bottom-0 left-0 right-0 z-50">
+          <div className="w-full bg-card/40 backdrop-blur-xl border-t border-white/10 px-6 py-3 rounded-t-[2.5rem] shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.3)]">
+            <div className="flex items-center justify-between w-full">
               <button
                 onClick={() => {
                   animateAdvanceRef.current?.("animate-swipe-left", { failed: true, requeue: true });
                 }}
-                className="p-3 rounded-full hover:bg-muted transition-colors"
+                className="p-4 rounded-2xl hover:bg-white/5 transition-colors"
               >
-                <ChevronLeft className="w-5 h-5 text-foreground" />
+                <ChevronLeft className="w-6 h-6 text-foreground" />
               </button>
-              <button className="p-3 rounded-full bg-muted" disabled>
-                <Play className="w-4 h-4 text-muted-foreground fill-muted-foreground" />
+              
+              <button 
+                onClick={() => setIsMicEnabled(!isMicEnabled)}
+                className={`p-4 rounded-full transition-all duration-300 ${
+                  isMicEnabled 
+                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30" 
+                    : "bg-white/10 text-muted-foreground"
+                }`}
+              >
+                {isMicEnabled ? <Activity className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
               </button>
+
               <button
                 onClick={() => {
                   animateAdvanceRef.current?.("animate-swipe-right", { failed: false, requeue: false });
                 }}
-                className="p-3 rounded-full hover:bg-muted transition-colors"
+                className="p-4 rounded-2xl hover:bg-white/5 transition-colors"
               >
-                <ChevronRight className="w-5 h-5 text-foreground" />
+                <ChevronRight className="w-6 h-6 text-foreground" />
               </button>
-            </div>
-            <div className="flex justify-center mt-3">
-              <div className="w-24 h-1 rounded-full bg-muted" />
             </div>
           </div>
         </div>
