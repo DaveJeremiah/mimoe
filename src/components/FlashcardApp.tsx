@@ -48,6 +48,17 @@ export function FlashcardApp() {
   const [customOrder, setCustomOrder] = useLocalStorage<Record<string, string[]>>("mimoe-custom-order", {});
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  const [isMicEnabled, setIsMicEnabled] = useState(true);
+  const [isVisible, setIsVisible] = useState(!document.hidden);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsVisible(!document.hidden);
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
+
   const levels = activeTab === "vocabulary" ? vocabularyLevels : phraseLevels;
   const completedIds = activeTab === "vocabulary" ? completedVocab : completedPhrases;
   const setCompletedIds = activeTab === "vocabulary" ? setCompletedVocab : setCompletedPhrases;
@@ -188,13 +199,15 @@ export function FlashcardApp() {
   // Start mic once when first card appears, stop it if not on a card
   useEffect(() => {
     const activeCard = currentCard || currentCollectionCard;
-    if (activeCard && micStatus === "idle") {
+    const shouldListen = activeCard && isMicEnabled && isVisible;
+
+    if (shouldListen && micStatus === "idle") {
       unlockAudio();
       startMic();
-    } else if (!activeCard && micStatus !== "idle") {
+    } else if (!shouldListen && micStatus !== "idle") {
       stopMic();
     }
-  }, [currentCard?.id, currentCollectionCard?.id, micStatus]);
+  }, [currentCard?.id, currentCollectionCard?.id, isVisible, isMicEnabled, micStatus, startMic, stopMic]);
 
   const handleAdvance = useCallback(({ failed, requeue }: { failed: boolean; requeue: boolean }) => {
     const cardId = queue[0];
@@ -498,6 +511,8 @@ export function FlashcardApp() {
               onTranscriptRef={onTranscriptRef}
               onSwipeForward={handleCollectionSwipeForward}
               onSwipeBackward={handleCollectionSwipeBackward}
+              isMicOn={isMicEnabled}
+              onToggleMic={() => setIsMicEnabled(prev => !prev)}
             />
           ) : null}
         </div>
@@ -653,6 +668,8 @@ export function FlashcardApp() {
             }}
             onSwipeForward={handleSwipeForward}
             onSwipeBackward={handleSwipeBackward}
+            isMicOn={isMicEnabled}
+            onToggleMic={() => setIsMicEnabled(prev => !prev)}
           />
         ) : null}
       </div>

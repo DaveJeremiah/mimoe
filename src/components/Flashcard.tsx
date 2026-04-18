@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { speakFrench, unlockAudio, prefetchAudio, isMatch } from "@/lib/speechUtils";
 import type { FlashcardItem } from "@/lib/flashcardData";
-import { Check, Send, Mic, ArrowRight, Bookmark, Volume2 } from "lucide-react";
+import { Check, Send, Mic, ArrowRight, Bookmark, Volume2, VolumeX } from "lucide-react";
 
 type MicStatus = "idle" | "listening" | "denied" | "unsupported" | "paused";
 
@@ -18,6 +18,8 @@ interface FlashcardProps {
   onSwipeForward?: () => void;
   /** Called when user swipes backward (undo) */
   onSwipeBackward?: () => void;
+  isMicOn?: boolean;
+  onToggleMic?: () => void;
 }
 
 // Strict state machine — do not add states.
@@ -39,7 +41,7 @@ function matchesCard(answer: string, french: string, alternatives?: string[]): b
   return false;
 }
 
-export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, isBookmarked, onToggleBookmark, onSwipeForward, onSwipeBackward }: FlashcardProps) {
+export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, isBookmarked, onToggleBookmark, onSwipeForward, onSwipeBackward, isMicOn = true, onToggleMic }: FlashcardProps) {
   const [state, setState] = useState<CardState>("QUESTION");
   const [textInput, setTextInput] = useState("");
   const [spokenText, setSpokenText] = useState("");
@@ -204,7 +206,7 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
   };
 
   const handleContinueAfterFinal = () => {
-    animateAndAdvance("animate-swipe-left", { failed: true, requeue: true });
+    animateAndAdvance("animate-swipe-left", { failed: true, requeue: false });
   };
 
   const handleKnewItAfterFinal = () => {
@@ -279,8 +281,13 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
               </button>
             </div>
             <div className="absolute top-4 right-4 z-10">
-              <button type="button" className="text-black/30 hover:text-black/50 transition-colors p-1" title="Listening is active">
-                <Volume2 className="w-5 h-5" />
+              <button 
+                onClick={onToggleMic} 
+                type="button" 
+                className={`transition-colors p-1 ${isMicOn ? 'text-black/30 hover:text-black/50' : 'text-red-500/50 hover:text-red-500/70'}`} 
+                title={isMicOn ? "Microphone is on" : "Microphone is off"}
+              >
+                {isMicOn ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
               </button>
             </div>
 
