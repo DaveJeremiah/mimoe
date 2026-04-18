@@ -9,50 +9,49 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const ELEVENLABS_API_KEY = Deno.env.get("ELEVENLABS_API_KEY")
-    if (!ELEVENLABS_API_KEY) {
-      return new Response(JSON.stringify({ error: "ELEVENLABS_API_KEY not configured" }), {
+    const AZURE_TTS_KEY = Deno.env.get('AZURE_TTS_KEY')
+    const AZURE_TTS_REGION = Deno.env.get('AZURE_TTS_REGION')
+
+    if (!AZURE_TTS_KEY || !AZURE_TTS_REGION) {
+      return new Response(JSON.stringify({ error: 'Azure TTS not configured' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    const { text, rate } = await req.json()
+    const { text } = await req.json()
     if (!text || typeof text !== 'string' || text.length > 500) {
-      return new Response(JSON.stringify({ error: "Invalid text" }), {
+      return new Response(JSON.stringify({ error: 'Invalid text' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    // "Antoni" — stable multilingual premade voice
-    const voiceId = "ErXwobaYiN019PkySvjV"
+    const ssml = `
+      <speak version='1.0' xml:lang='fr-FR'>
+        <voice xml:lang='fr-FR' name='fr-FR-DeniseNeural'>
+          <prosody rate='-10%'>${text}</prosody>
+        </voice>
+      </speak>
+    `
 
     const response = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_22050_32`,
+      `https://${AZURE_TTS_REGION}.tts.speech.microsoft.com/cognitiveservices/v1`,
       {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "xi-api-key": ELEVENLABS_API_KEY,
-          "Content-Type": "application/json",
+          'Ocp-Apim-Subscription-Key': AZURE_TTS_KEY,
+          'Content-Type': 'application/ssml+xml',
+          'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3',
         },
-        body: JSON.stringify({
-          text,
-          model_id: "eleven_turbo_v2_5",
-          voice_settings: {
-            stability: 0.6,
-            similarity_boost: 0.8,
-            style: 0.3,
-            use_speaker_boost: true,
-          },
-        }),
+        body: ssml,
       }
     )
 
     if (!response.ok) {
       const err = await response.text()
-      console.error("ElevenLabs error:", response.status, err)
-      return new Response(JSON.stringify({ error: "TTS failed", status: response.status, detail: err }), {
+      console.error('Azure TTS error:', response.status, err)
+      return new Response(JSON.stringify({ error: 'TTS failed', detail: err }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
@@ -68,8 +67,8 @@ Deno.serve(async (req) => {
       },
     })
   } catch (error) {
-    console.error("Error:", error)
-    return new Response(JSON.stringify({ error: "Internal error" }), {
+    console.error('Error:', error)
+    return new Response(JSON.stringify({ error: 'Internal error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })

@@ -111,177 +111,121 @@ export function isMatch(spoken: string, expected: string): boolean {
   return false;
 }
 
-// ── Cloud TTS via ElevenLabs with localStorage caching ──
+// ── Azure TTS with localStorage caching ──
 
-/** In-memory URL cache for current session */
-const memCache = new Map<string, string>();
+const memCache = new Map<string, string>()
+const LS_PREFIX = 'tts_az_'
 
-const LS_PREFIX = "tts_cache_";
-
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-
-function getCachedAudioUrl(key: string): string | null {
-  if (memCache.has(key)) return memCache.get(key)!;
-  try {
-    const stored = localStorage.getItem(LS_PREFIX + key);
-    if (stored) {
-      const url = stored; // data URI works directly with Audio
-      memCache.set(key, url);
-      return url;
-    }
-  } catch { /* quota or access error */ }
-  return null;
-}
-
-async function fetchTTSAudio(text: string, rate: number): Promise<string | null> {
-  const cacheKey = `${text}__${rate}`;
-  const cached = getCachedAudioUrl(cacheKey);
-  if (cached) return cached;
-
-  try {
-    // Use raw fetch — supabase.functions.invoke decodes audio/mpeg as text and corrupts it
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-      },
-      body: JSON.stringify({ text, rate }),
-    });
-
-    if (!res.ok) {
-      console.warn("Cloud TTS failed:", res.status, await res.text().catch(() => ""));
-      return null;
-    }
-
-    const blob = await res.blob();
-    const dataUri = await blobToBase64(blob);
-
-    // Save to localStorage for persistence across sessions
-    try { localStorage.setItem(LS_PREFIX + cacheKey, dataUri); } catch { /* quota */ }
-    memCache.set(cacheKey, dataUri);
-    return dataUri;
-  } catch (e) {
-    console.warn("Cloud TTS error, falling back to browser:", e);
-    return null;
-  }
-}
-
-// Single reusable audio element — unlocked on first user gesture
-let sharedAudio: HTMLAudioElement | null = null;
-
+// Single shared Audio element — avoids autoplay blocks on repeated calls
+let sharedAudio: HTMLAudioElement | null = null
 function getAudio(): HTMLAudioElement {
-  if (!sharedAudio) {
-    sharedAudio = new Audio();
-    sharedAudio.preload = "auto";
-  }
-  return sharedAudio;
+  if (!sharedAudio) sharedAudio = new Audio()
+  return sharedAudio
 }
 
 export function unlockAudio(): void {
-  // Call this from a direct user gesture (button tap etc)
-  const audio = getAudio();
-  audio.src =
-    "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAEAAQARAAIAIgACABAAEABkYXRhAgAAAAEA";
-  audio.play().catch(() => {});
+  // Call once from any direct user gesture to unblock autoplay
+  const audio = getAudio()
+  // Play a silent 1-frame wav to unlock the element
+  audio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAA' +
+    'EAAQARAAIAIgACABAAEABkYXRhAgAAAAEA'
+  audio.play().catch(() => {})
 }
 
-function playAudioUrl(url: string): Promise<void> {
-  return new Promise((resolve) => {
-    const audio = getAudio();
-    audio.onended = () => resolve();
-    audio.onerror = () => resolve();
-    audio.src = url;
-    audio.play().catch((err) => {
-      console.warn("Audio play blocked, falling back to browser TTS:", err);
-      resolve();
-    });
-  });
+function getCached(key: string): string | null {
+  if (memCache.has(key)) return memCache.get(key)!
+  try {
+    const stored = localStorage.getItem(LS_PREFIX + key)
+    if (stored) { memCache.set(key, stored); return stored }
+  } catch { /* quota */ }
+  return null
 }
 
-export async function prefetchAudio(texts: string[]): Promise<void> {
-  // Fire all fetches in parallel, silently — just warming the cache
-  await Promise.allSettled(texts.map((text) => fetchTTSAudio(text, 0.88)));
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onloadend = () => resolve(reader.result as string)
+    reader.onerror = reject
+    reader.readAsDataURL(blob)
+  })
 }
 
-// ── Browser TTS fallback ──
+async function fetchAzureTTS(text: string): Promise<string | null> {
+  const key = text.trim().toLowerCase()
+  const cached = getCached(key)
+  if (cached) return cached
 
-let voicesLoaded = false;
-let cachedFrenchVoice: SpeechSynthesisVoice | null = null;
+  try {
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/azure-tts`
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      },
+      body: JSON.stringify({ text }),
+    })
 
-function loadVoices(): Promise<SpeechSynthesisVoice[]> {
-  return new Promise((resolve) => {
-    const voices = speechSynthesis.getVoices();
-    if (voices.length > 0) { resolve(voices); return; }
-    speechSynthesis.onvoiceschanged = () => resolve(speechSynthesis.getVoices());
-  });
-}
+    if (!res.ok) {
+      console.warn('Azure TTS failed:', res.status)
+      return null
+    }
 
-async function getBestFrenchVoice(): Promise<SpeechSynthesisVoice | null> {
-  if (voicesLoaded && cachedFrenchVoice) return cachedFrenchVoice;
-  const voices = await loadVoices();
-  voicesLoaded = true;
-
-  const priorities = [
-    (v: SpeechSynthesisVoice) => v.lang.startsWith("fr") && v.name.toLowerCase().includes("amelie"),
-    (v: SpeechSynthesisVoice) => v.lang.startsWith("fr") && v.name.toLowerCase().includes("thomas"),
-    (v: SpeechSynthesisVoice) => v.lang === "fr-FR" && !v.localService,
-    (v: SpeechSynthesisVoice) => v.lang === "fr-FR",
-    (v: SpeechSynthesisVoice) => v.lang.startsWith("fr"),
-  ];
-
-  for (const check of priorities) {
-    const match = voices.find(check);
-    if (match) { cachedFrenchVoice = match; return match; }
+    const blob = await res.blob()
+    const dataUri = await blobToBase64(blob)
+    try { localStorage.setItem(LS_PREFIX + key, dataUri) } catch { /* quota */ }
+    memCache.set(key, dataUri)
+    return dataUri
+  } catch (e) {
+    console.warn('Azure TTS error:', e)
+    return null
   }
-  return null;
 }
 
-function browserSpeak(text: string, rate: number): void {
-  if (!window.speechSynthesis) return;
-  const synth = window.speechSynthesis;
-  synth.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = "fr-FR";
-  utterance.rate = rate;
-  utterance.pitch = 1.0;
-  if (cachedFrenchVoice) utterance.voice = cachedFrenchVoice;
-  synth.speak(utterance);
+function browserSpeak(text: string, onEnd?: () => void): void {
+  if (!window.speechSynthesis) { onEnd?.(); return }
+  window.speechSynthesis.cancel()
+  const utter = new SpeechSynthesisUtterance(text)
+  utter.lang = 'fr-FR'
+  utter.rate = 0.85
+  if (onEnd) utter.onend = onEnd
+  const voices = window.speechSynthesis.getVoices()
+  const frVoice = voices.find(v => v.lang === 'fr-FR') || voices.find(v => v.lang.startsWith('fr'))
+  if (frVoice) utter.voice = frVoice
+  window.speechSynthesis.speak(utter)
+}
+
+function playDataUri(uri: string, onEnd?: () => void): void {
+  const audio = getAudio()
+  audio.onended = () => onEnd?.()
+  audio.onerror = () => onEnd?.()
+  audio.src = uri
+  audio.play().catch(() => { onEnd?.() })
 }
 
 // ── Public API ──
 
 export function primeFrenchSpeech(): void {
-  if (typeof window !== "undefined" && window.speechSynthesis && !voicesLoaded) {
-    getBestFrenchVoice();
-  }
+  // no-op — kept for compatibility, Azure has no warm-up needed
 }
 
-if (typeof window !== "undefined" && window.speechSynthesis) {
-  getBestFrenchVoice();
+export async function prefetchAudio(texts: string[]): Promise<void> {
+  await Promise.allSettled(texts.map(t => fetchAzureTTS(t)))
 }
 
-export async function speakFrench(text: string, onEnd?: () => void): Promise<void> {
-  if (!text.trim()) { onEnd?.(); return; }
-  const url = await fetchTTSAudio(text, 0.88);
-  if (url) { await playAudioUrl(url); onEnd?.(); return; }
-  browserSpeak(text, 0.88);
-  onEnd?.();
+export function speakFrench(text: string, onEnd?: () => void): void {
+  if (!text.trim()) { onEnd?.(); return }
+  fetchAzureTTS(text).then(uri => {
+    if (uri) {
+      playDataUri(uri, onEnd)
+    } else {
+      browserSpeak(text, onEnd)
+    }
+  })
 }
 
-export async function speakCorrect(text: string, onEnd?: () => void): Promise<void> {
-  if (!text.trim()) { onEnd?.(); return; }
-  const url = await fetchTTSAudio(text, 0.95);
-  if (url) { await playAudioUrl(url); onEnd?.(); return; }
-  browserSpeak(text, 0.95);
-  onEnd?.();
+export function speakCorrect(text: string, onEnd?: () => void): void {
+  speakFrench(text, onEnd)
 }
+
