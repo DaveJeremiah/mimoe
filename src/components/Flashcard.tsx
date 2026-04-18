@@ -388,6 +388,7 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
             )}
           </div>
         </div>
+        </div>
       </div>
 
       <div className="flex justify-center mt-6 w-full max-w-[300px]">
