@@ -145,6 +145,11 @@ export function Flashcard({ card, onAdvance, total, remaining }: FlashcardProps)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card.id]);
 
+  // Pre-fetch audio for the current card so reveal is instant
+  useEffect(() => {
+    prefetchAudio([card.french]);
+  }, [card.french]);
+
   // Stop mic when component unmounts (leaving session)
   useEffect(() => {
     return () => {
