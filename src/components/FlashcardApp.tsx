@@ -393,6 +393,14 @@ export function FlashcardApp() {
               onAdvance={handleCollectionAdvance}
               total={selectedCollection.entries.length}
               remaining={collectionQueue.length}
+              micStatus={micStatus}
+              pauseMic={pauseMic}
+              resumeMic={resumeMic}
+              onMicToggle={() => {
+                unlockAudio();
+                micStatus === "listening" ? stopMic() : startMic();
+              }}
+              onTranscriptRef={onTranscriptRef}
             />
           ) : null}
         </div>
