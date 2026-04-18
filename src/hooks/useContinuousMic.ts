@@ -33,7 +33,6 @@ export function useContinuousMic({ onTranscript }: UseContinuousMicOptions) {
   const [status, setStatus] = useState<MicStatus>("idle");
   const recognizerRef = useRef<SpeechSDK.SpeechRecognizer | null>(null);
   const onTranscriptRef = useRef(onTranscript);
-  const pausedRef = useRef(false);
   const enabledRef = useRef(false);
 
   useEffect(() => {
@@ -49,13 +48,11 @@ export function useContinuousMic({ onTranscript }: UseContinuousMicOptions) {
     const recognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
 
     recognizer.recognizing = (_sender, event) => {
-      if (pausedRef.current) return;
       const text = event.result.text?.trim();
       if (text) onTranscriptRef.current(text, false);
     };
 
     recognizer.recognized = (_sender, event) => {
-      if (pausedRef.current) return;
       if (event.result.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
         const text = event.result.text?.trim();
         if (text) onTranscriptRef.current(text, true);
@@ -73,9 +70,9 @@ export function useContinuousMic({ onTranscript }: UseContinuousMicOptions) {
     };
 
     recognizer.sessionStopped = () => {
-      if (enabledRef.current && !pausedRef.current) {
+      if (enabledRef.current) {
         setTimeout(() => {
-          if (enabledRef.current && !pausedRef.current) {
+          if (enabledRef.current) {
             try {
               recognizerRef.current?.startContinuousRecognitionAsync();
               setStatus("listening");
@@ -101,7 +98,6 @@ export function useContinuousMic({ onTranscript }: UseContinuousMicOptions) {
       const recognizer = createRecognizer(auth.token, auth.region);
       recognizerRef.current = recognizer;
       enabledRef.current = true;
-      pausedRef.current = false;
 
       recognizer.startContinuousRecognitionAsync(
         () => setStatus("listening"),
@@ -121,7 +117,6 @@ export function useContinuousMic({ onTranscript }: UseContinuousMicOptions) {
 
   const stop = useCallback(() => {
     enabledRef.current = false;
-    pausedRef.current = false;
     const rec = recognizerRef.current;
     recognizerRef.current = null;
     if (rec) {
@@ -132,25 +127,6 @@ export function useContinuousMic({ onTranscript }: UseContinuousMicOptions) {
     } else {
       setStatus("idle");
     }
-  }, []);
-
-  const pause = useCallback(() => {
-    pausedRef.current = true;
-    setStatus("paused");
-    recognizerRef.current?.stopContinuousRecognitionAsync();
-  }, []);
-
-  const resume = useCallback(() => {
-    if (!enabledRef.current) return;
-    pausedRef.current = false;
-    setTimeout(() => {
-      if (enabledRef.current && !pausedRef.current) {
-        recognizerRef.current?.startContinuousRecognitionAsync(
-          () => setStatus("listening"),
-          (err) => console.warn("Resume error:", err)
-        );
-      }
-    }, 200);
   }, []);
 
   useEffect(() => {
@@ -167,5 +143,5 @@ export function useContinuousMic({ onTranscript }: UseContinuousMicOptions) {
     };
   }, []);
 
-  return { status, start, stop, pause, resume };
+  return { status, start, stop };
 }

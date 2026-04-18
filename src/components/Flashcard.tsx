@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { speakFrench, prefetchAudio } from "@/lib/speechUtils";
 import type { FlashcardItem } from "@/lib/flashcardData";
-import { Check, Send, Mic, MicOff, ArrowRight } from "lucide-react";
+import { Check, Send, Mic, ArrowRight } from "lucide-react";
 
 type MicStatus = "idle" | "listening" | "denied" | "unsupported" | "paused";
 
@@ -11,10 +11,6 @@ interface FlashcardProps {
   onAdvance: (opts: { failed: boolean; requeue: boolean }) => void;
   total: number;
   remaining: number;
-  micStatus: MicStatus;
-  pauseMic: () => void;
-  resumeMic: () => void;
-  onMicToggle: () => void;
   onTranscriptRef: React.MutableRefObject<(text: string, isFinal: boolean) => void>;
 }
 
@@ -43,7 +39,7 @@ function isCorrect(userAnswer: string, correctFrench: string): boolean {
 
 const AUTO_ADVANCE_MS = 1500;
 
-export function Flashcard({ card, onAdvance, total, remaining, micStatus, pauseMic, resumeMic, onMicToggle, onTranscriptRef }: FlashcardProps) {
+export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef }: FlashcardProps) {
   const [state, setState] = useState<CardState>("QUESTION");
   const [textInput, setTextInput] = useState("");
   const [spokenText, setSpokenText] = useState("");
@@ -96,15 +92,12 @@ export function Flashcard({ card, onAdvance, total, remaining, micStatus, pauseM
       if (correct) {
         // QUESTION → CORRECT_REVEAL
         setState("CORRECT_REVEAL");
-        pauseMic();
         speakFrench(cardFrenchRef.current);
         scheduleAutoAdvance(false);
       } else {
         // QUESTION → WRONG_FIRST
         setState("WRONG_FIRST");
-        pauseMic();
         speakFrench(cardFrenchRef.current, () => {
-          resumeMic();
           setTimeout(() => inputRef.current?.focus(), 50);
         });
         setTextInput("");
@@ -114,18 +107,16 @@ export function Flashcard({ card, onAdvance, total, remaining, micStatus, pauseM
       if (correct) {
         // WRONG_FIRST → WRONG_RETRY_CORRECT
         setState("WRONG_RETRY_CORRECT");
-        pauseMic();
         speakFrench(cardFrenchRef.current);
         scheduleAutoAdvance(true);
       } else {
         // WRONG_FIRST → WRONG_FINAL
         setState("WRONG_FINAL");
-        pauseMic();
         speakFrench(cardFrenchRef.current);
         // No auto-advance — wait for button
       }
     }
-  }, [pauseMic, resumeMic, scheduleAutoAdvance]);
+  }, [scheduleAutoAdvance]);
 
   useEffect(() => { processAnswerRef.current = processAnswer; }, [processAnswer]);
 
@@ -171,7 +162,6 @@ export function Flashcard({ card, onAdvance, total, remaining, micStatus, pauseM
     // Treat as final wrong: jump straight to WRONG_FINAL flow
     if (stateRef.current !== "QUESTION" && stateRef.current !== "WRONG_FIRST") return;
     setState("WRONG_FINAL");
-    pauseMic();
     speakFrench(cardFrenchRef.current);
   };
 
@@ -196,10 +186,6 @@ export function Flashcard({ card, onAdvance, total, remaining, micStatus, pauseM
     : "ring-success/30 shadow-[0_0_24px_-4px_hsl(var(--success)/0.35)]";
 
   const cardSurface = isWrongFinal ? "bg-red-500" : cardColors[cardColorIndex];
-
-  const isListening = micStatus === "listening";
-  const micDenied = micStatus === "denied";
-  const micUnsupported = micStatus === "unsupported";
 
   const inputDisabled = !(isQuestion || isWrongFirst);
 
@@ -287,7 +273,7 @@ export function Flashcard({ card, onAdvance, total, remaining, micStatus, pauseM
       </div>
 
       {/* Not sure — only during attempt phases */}
-      <div className="flex items-center justify-center gap-3 mt-8">
+      <div className="flex justify-center mt-8">
         <button
           onClick={handleDontKnow}
           disabled={!(isQuestion || isWrongFirst)}
@@ -295,29 +281,6 @@ export function Flashcard({ card, onAdvance, total, remaining, micStatus, pauseM
         >
           Not sure
         </button>
-        {!micUnsupported && (
-          <button
-            type="button"
-            onClick={onMicToggle}
-            aria-label={isListening ? "Mute mic" : micDenied ? "Mic blocked" : "Enable mic"}
-            title={isListening ? "Listening" : micDenied ? "Mic blocked" : micStatus === "paused" ? "Paused" : "Tap to enable mic"}
-            className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
-              isListening
-                ? "bg-primary/15 text-primary"
-                : micDenied
-                ? "bg-destructive/10 text-destructive"
-                : "bg-muted text-muted-foreground hover:bg-accent/50"
-            }`}
-          >
-            {isListening ? (
-              <Mic className="w-4 h-4 animate-pulse" />
-            ) : micDenied ? (
-              <MicOff className="w-4 h-4" />
-            ) : (
-              <Mic className="w-4 h-4" />
-            )}
-          </button>
-        )}
       </div>
 
       {/* Text input — active in QUESTION and WRONG_FIRST */}

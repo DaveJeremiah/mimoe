@@ -62,7 +62,7 @@ export function FlashcardApp() {
 
   // Persistent mic across cards/sessions
   const onTranscriptRef = useRef<(text: string, isFinal: boolean) => void>(() => {});
-  const { status: micStatus, start: startMic, stop: stopMic, pause: pauseMic, resume: resumeMic } = useContinuousMic({
+  const { status: micStatus, start: startMic, stop: stopMic } = useContinuousMic({
     onTranscript: useCallback((text: string, isFinal: boolean) => {
       onTranscriptRef.current(text, isFinal);
     }, []),
@@ -143,18 +143,13 @@ export function FlashcardApp() {
     return allCards.find((i) => i.id === queue[0]) || null;
   }, [queue, allCards]);
 
-  // Auto-start mic when a study session begins; stop when it ends
-  const inSession = !!currentCard || !!selectedCollection;
+  // Start mic once when first card appears, never stop it during session
   useEffect(() => {
-    if (inSession && micStatus === "idle") {
+    if (currentCard && micStatus === "idle") {
       unlockAudio();
       startMic();
     }
-    if (!inSession && micStatus !== "idle") {
-      stopMic();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inSession]);
+  }, [currentCard?.id, micStatus]);
 
   const handleAdvance = useCallback(({ failed, requeue }: { failed: boolean; requeue: boolean }) => {
     const cardId = queue[0];
@@ -393,13 +388,6 @@ export function FlashcardApp() {
               onAdvance={handleCollectionAdvance}
               total={selectedCollection.entries.length}
               remaining={collectionQueue.length}
-              micStatus={micStatus}
-              pauseMic={pauseMic}
-              resumeMic={resumeMic}
-              onMicToggle={() => {
-                unlockAudio();
-                micStatus === "listening" ? stopMic() : startMic();
-              }}
               onTranscriptRef={onTranscriptRef}
             />
           ) : null}
@@ -503,13 +491,6 @@ export function FlashcardApp() {
             onAdvance={handleAdvance}
             total={allCards.length}
             remaining={queue.length}
-            micStatus={micStatus}
-            pauseMic={pauseMic}
-            resumeMic={resumeMic}
-            onMicToggle={() => {
-              unlockAudio();
-              micStatus === "listening" ? stopMic() : startMic();
-            }}
             onTranscriptRef={onTranscriptRef}
           />
         ) : null}
