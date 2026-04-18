@@ -56,7 +56,6 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
   const [isExiting, setIsExiting] = useState(false);
 
   const [showInput, setShowInput] = useState(false);
-  const [showCardMenu, setShowCardMenu] = useState(false);
   const [bookmarkedCards, setBookmarkedCards] = useState<Set<string>>(new Set());
   const bookmarked = bookmarkedCards.has(card.id);
   const toggleBookmark = (id: string) => {
