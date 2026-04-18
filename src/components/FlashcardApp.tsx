@@ -143,6 +143,19 @@ export function FlashcardApp() {
     return allCards.find((i) => i.id === queue[0]) || null;
   }, [queue, allCards]);
 
+  // Auto-start mic when a study session begins; stop when it ends
+  const inSession = !!currentCard;
+  useEffect(() => {
+    if (inSession && micStatus === "idle") {
+      unlockAudio();
+      startMic();
+    }
+    if (!inSession && micStatus !== "idle") {
+      stopMic();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inSession]);
+
   const handleAdvance = useCallback(({ failed, requeue }: { failed: boolean; requeue: boolean }) => {
     const cardId = queue[0];
     if (!cardId) return;
