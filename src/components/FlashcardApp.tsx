@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Flashcard } from "./Flashcard";
 import { WordBank } from "./WordBank";
@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { vocabularyLevels, phraseLevels, type FlashcardItem } from "@/lib/flashcardData";
 import { type Collection, CollectionFormData } from "@/lib/collectionTypes";
 import { prefetchAudio, unlockAudio } from "@/lib/speechUtils";
+import { useContinuousMic } from "@/hooks/useContinuousMic";
 import { PartyPopper, ArrowLeft, Plus, LogOut } from "lucide-react";
 
 type Tab = "vocabulary" | "phrases";
