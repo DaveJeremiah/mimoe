@@ -287,7 +287,7 @@ export function Flashcard({ card, onAdvance, total, remaining, micStatus, pauseM
       </div>
 
       {/* Not sure — only during attempt phases */}
-      <div className="flex justify-center mt-8">
+      <div className="flex items-center justify-center gap-3 mt-8">
         <button
           onClick={handleDontKnow}
           disabled={!(isQuestion || isWrongFirst)}
@@ -295,6 +295,29 @@ export function Flashcard({ card, onAdvance, total, remaining, micStatus, pauseM
         >
           Not sure
         </button>
+        {!micUnsupported && (
+          <button
+            type="button"
+            onClick={onMicToggle}
+            aria-label={isListening ? "Mute mic" : micDenied ? "Mic blocked" : "Enable mic"}
+            title={isListening ? "Listening" : micDenied ? "Mic blocked" : micStatus === "paused" ? "Paused" : "Tap to enable mic"}
+            className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
+              isListening
+                ? "bg-primary/15 text-primary"
+                : micDenied
+                ? "bg-destructive/10 text-destructive"
+                : "bg-muted text-muted-foreground hover:bg-accent/50"
+            }`}
+          >
+            {isListening ? (
+              <Mic className="w-4 h-4 animate-pulse" />
+            ) : micDenied ? (
+              <MicOff className="w-4 h-4" />
+            ) : (
+              <Mic className="w-4 h-4" />
+            )}
+          </button>
+        )}
       </div>
 
       {/* Text input — active in QUESTION and WRONG_FIRST */}
