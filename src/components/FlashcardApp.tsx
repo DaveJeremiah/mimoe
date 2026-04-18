@@ -6,10 +6,11 @@ import { LevelSelect } from "./LevelSelect";
 import { PersonalSpaceDivider } from "./PersonalSpaceDivider";
 import { CollectionCard } from "./CollectionCard";
 import { NewCollectionModal } from "./NewCollectionModal";
+import { NewLevelModal } from "./NewLevelModal";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { vocabularyLevels, phraseLevels, type FlashcardItem } from "@/lib/flashcardData";
+import { vocabularyLevels, phraseLevels, type FlashcardItem, type Level } from "@/lib/flashcardData";
 import { type Collection, CollectionFormData } from "@/lib/collectionTypes";
 import { prefetchAudio, unlockAudio } from "@/lib/speechUtils";
 import { useContinuousMic } from "@/hooks/useContinuousMic";
@@ -40,11 +41,20 @@ export function FlashcardApp() {
   const [customVocab, setCustomVocab] = useLocalStorage<Record<string, FlashcardItem[]>>("mimoe-custom-vocab", {});
   const [customPhrases, setCustomPhrases] = useLocalStorage<Record<string, FlashcardItem[]>>("mimoe-custom-phrases", {});
 
+  // Custom levels created by the user
+  const [customVocabLevels, setCustomVocabLevels] = useLocalStorage<Level[]>("mimoe-custom-vocab-levels", []);
+  const [customPhraseLevels, setCustomPhraseLevels] = useLocalStorage<Level[]>("mimoe-custom-phrase-levels", []);
+  const [isNewLevelModalOpen, setIsNewLevelModalOpen] = useState(false);
+
   // Track which cards were answered correctly on FIRST attempt in current session
   const [firstAttemptCorrect, setFirstAttemptCorrect] = useState<Set<string>>(new Set());
   const [failedCards, setFailedCards] = useState<Set<string>>(new Set());
 
-  const levels = activeTab === "vocabulary" ? vocabularyLevels : phraseLevels;
+  const builtinLevels = activeTab === "vocabulary" ? vocabularyLevels : phraseLevels;
+  const customLevels = activeTab === "vocabulary" ? customVocabLevels : customPhraseLevels;
+  const setCustomLevels = activeTab === "vocabulary" ? setCustomVocabLevels : setCustomPhraseLevels;
+  const levels = useMemo(() => [...builtinLevels, ...customLevels], [builtinLevels, customLevels]);
+  const customLevelIds = useMemo(() => customLevels.map(l => l.id), [customLevels]);
   const completedIds = activeTab === "vocabulary" ? completedVocab : completedPhrases;
   const setCompletedIds = activeTab === "vocabulary" ? setCompletedVocab : setCompletedPhrases;
   const customCards = activeTab === "vocabulary" ? customVocab : customPhrases;
@@ -143,13 +153,18 @@ export function FlashcardApp() {
     return allCards.find((i) => i.id === queue[0]) || null;
   }, [queue, allCards]);
 
-  // Start mic once when first card appears, never stop it during session
+  // Mic: start when a card is active, stop when leaving card interface
+  const inCardInterface = !!currentCard || !!currentCollectionCard;
   useEffect(() => {
-    if (currentCard && micStatus === "idle") {
+    if (inCardInterface && micStatus === "idle") {
       unlockAudio();
       startMic();
     }
-  }, [currentCard?.id, micStatus]);
+    if (!inCardInterface && micStatus !== "idle") {
+      stopMic();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inCardInterface, micStatus]);
 
   const handleAdvance = useCallback(({ failed, requeue }: { failed: boolean; requeue: boolean }) => {
     const cardId = queue[0];
@@ -243,6 +258,21 @@ export function FlashcardApp() {
     [selectedLevelId, setCustomCards]
   );
 
+  const handleEditItem = useCallback(
+    (id: string, english: string, french: string, alternatives?: string[]) => {
+      if (!selectedLevelId) return;
+      setCustomCards((prev) => ({
+        ...prev,
+        [selectedLevelId]: (prev[selectedLevelId] || []).map((item) =>
+          item.id === id
+            ? { ...item, english, french, ...(alternatives && alternatives.length > 0 ? { alternatives } : { alternatives: undefined }) }
+            : item
+        ),
+      }));
+    },
+    [selectedLevelId, setCustomCards]
+  );
+
   const handleBulkAdd = useCallback(
     (entries: { english: string; french: string; alternatives?: string[] }[]) => {
       if (!selectedLevelId) return;
@@ -266,6 +296,26 @@ export function FlashcardApp() {
     setFirstAttemptCorrect(new Set());
     setFailedCards(new Set());
   };
+
+  // Custom level management
+  const handleCreateLevel = useCallback((title: string) => {
+    const id = `custom-level-${Date.now()}`;
+    const newLevel: Level = { id, title, cards: [] };
+    setCustomLevels(prev => [...prev, newLevel]);
+  }, [setCustomLevels]);
+
+  const handleDeleteLevel = useCallback((levelId: string) => {
+    setCustomLevels(prev => prev.filter(l => l.id !== levelId));
+    setCustomCards(prev => {
+      const next = { ...prev };
+      delete next[levelId];
+      return next;
+    });
+    if (selectedLevelId === levelId) {
+      setSelectedLevelId(null);
+      setQueue([]);
+    }
+  }, [setCustomLevels, setCustomCards, selectedLevelId]);
 
   // Collection management functions
   const handleCreateCollection = useCallback(() => {
@@ -454,7 +504,10 @@ export function FlashcardApp() {
           <LevelSelect
             levels={levels}
             completedLevelIds={completedIds}
+            customLevelIds={customLevelIds}
             onSelectLevel={startLevel}
+            onDeleteLevel={handleDeleteLevel}
+            onCreateLevel={() => setIsNewLevelModalOpen(true)}
           />
         ) : isDeckComplete ? (
           <div className="flex flex-col items-center gap-4 text-center animate-fade-in">
@@ -496,57 +549,67 @@ export function FlashcardApp() {
         ) : null}
       </div>
 
-      {/* Word bank */}
+      {/* Word bank — shown during study only */}
       {selectedLevelId && !isDeckComplete && (
         <div className="mt-6 w-full flex justify-center">
           <WordBank
             items={allCards}
             onAdd={handleAddItem}
             onDelete={handleDeleteItem}
+            onEdit={handleEditItem}
             onBulkAdd={handleBulkAdd}
             label={activeTab === "vocabulary" ? "Vocabulary" : "Phrases"}
           />
         </div>
       )}
 
-      {/* Personal Space Section */}
-      <PersonalSpaceDivider />
+      {/* Personal Space — hidden during study */}
+      {!selectedLevelId && <PersonalSpaceDivider />}
       
-      <div className="w-full space-y-4">
-        <button
-          onClick={handleCreateCollection}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-orange-500 text-white hover:bg-orange-600 transition-colors font-medium"
-        >
-          <Plus className="w-5 h-5" />
-          New Collection
-        </button>
+      {/* Collections — only shown on home screen */}
+      {!selectedLevelId && (
+        <div className="w-full space-y-4">
+          <button
+            onClick={handleCreateCollection}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-orange-500 text-white hover:bg-orange-600 transition-colors font-medium"
+          >
+            <Plus className="w-5 h-5" />
+            New Collection
+          </button>
 
-        {collections.length > 0 ? (
-          <div className="grid gap-4">
-            {collections.map((collection) => (
-              <CollectionCard
-                key={collection.id}
-                collection={collection}
-                onStudy={handleStudyCollection}
-                onEdit={handleEditCollection}
-                onDelete={handleDeleteCollection}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 text-muted-foreground">
-            <p className="text-sm">
-              Add your first collection — song lyrics, dialogues, anything.
-            </p>
-          </div>
-        )}
-      </div>
+          {collections.length > 0 ? (
+            <div className="grid gap-4">
+              {collections.map((collection) => (
+                <CollectionCard
+                  key={collection.id}
+                  collection={collection}
+                  onStudy={handleStudyCollection}
+                  onEdit={handleEditCollection}
+                  onDelete={handleDeleteCollection}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              <p className="text-sm">
+                Add your first collection — song lyrics, dialogues, anything.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       <NewCollectionModal
         isOpen={isCollectionModalOpen}
         onClose={() => setIsCollectionModalOpen(false)}
         onSave={handleSaveCollection}
         editingCollection={editingCollection}
+      />
+
+      <NewLevelModal
+        isOpen={isNewLevelModalOpen}
+        onClose={() => setIsNewLevelModalOpen(false)}
+        onSave={handleCreateLevel}
       />
     </div>
   );
