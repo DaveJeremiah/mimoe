@@ -13,7 +13,7 @@ import { vocabularyLevels, phraseLevels, type FlashcardItem } from "@/lib/flashc
 import { type Collection, CollectionFormData } from "@/lib/collectionTypes";
 import { prefetchAudio, unlockAudio } from "@/lib/speechUtils";
 import { useContinuousMic } from "@/hooks/useContinuousMic";
-import { PartyPopper, ArrowLeft, Plus, LogOut } from "lucide-react";
+import { PartyPopper, ArrowLeft, Plus, LogOut, MoreVertical, Shuffle, Bookmark } from "lucide-react";
 
 type Tab = "vocabulary" | "phrases";
 type AppView = "main" | "collection";
@@ -43,6 +43,10 @@ export function FlashcardApp() {
   // Track which cards were answered correctly on FIRST attempt in current session
   const [firstAttemptCorrect, setFirstAttemptCorrect] = useState<Set<string>>(new Set());
   const [failedCards, setFailedCards] = useState<Set<string>>(new Set());
+  const [bookmarkedCards, setBookmarkedCards] = useLocalStorage<string[]>("mimoe-bookmarked-cards", []);
+  
+  const [customOrder, setCustomOrder] = useLocalStorage<Record<string, string[]>>("mimoe-custom-order", {});
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const levels = activeTab === "vocabulary" ? vocabularyLevels : phraseLevels;
   const completedIds = activeTab === "vocabulary" ? completedVocab : completedPhrases;
@@ -55,8 +59,28 @@ export function FlashcardApp() {
   const allCards = useMemo(() => {
     if (!selectedLevel) return [];
     const custom = customCards[selectedLevel.id] || [];
-    return [...selectedLevel.cards, ...custom];
-  }, [selectedLevel, customCards]);
+    
+    // Merge base cards with custom overrides
+    const customDict = Object.fromEntries(custom.map(c => [c.id, c]));
+    const baseCards = selectedLevel.cards.map(c => customDict[c.id] || c);
+    const addedCustom = custom.filter(c => !selectedLevel.cards.some(sc => sc.id === c.id));
+    const merged = [...baseCards, ...addedCustom];
+
+    // Apply custom order if present
+    const order = customOrder[selectedLevel.id];
+    if (order && order.length > 0) {
+      const sorted = [];
+      const mergedDict = Object.fromEntries(merged.map(c => [c.id, c]));
+      for (const id of order) {
+        if (mergedDict[id]) {
+          sorted.push(mergedDict[id]);
+          delete mergedDict[id];
+        }
+      }
+      return [...sorted, ...Object.values(mergedDict)];
+    }
+    return merged;
+  }, [selectedLevel, customCards, customOrder]);
 
   const [queue, setQueue] = useState<string[]>([]);
 
@@ -237,10 +261,17 @@ export function FlashcardApp() {
     (id: string, english: string, french: string, alternatives?: string[]) => {
       if (!selectedLevelId) return;
       const updatedItem: FlashcardItem = { id, english, french, ...(alternatives && alternatives.length > 0 ? { alternatives } : {}) };
-      setCustomCards((prev) => ({
-        ...prev,
-        [selectedLevelId]: (prev[selectedLevelId] || []).map((i) => i.id === id ? updatedItem : i),
-      }));
+      setCustomCards((prev) => {
+        const levelCards = prev[selectedLevelId] || [];
+        const index = levelCards.findIndex((i) => i.id === id);
+        if (index >= 0) {
+          const newLevelCards = [...levelCards];
+          newLevelCards[index] = updatedItem;
+          return { ...prev, [selectedLevelId]: newLevelCards };
+        } else {
+          return { ...prev, [selectedLevelId]: [...levelCards, updatedItem] };
+        }
+      });
     },
     [selectedLevelId, setCustomCards]
   );
@@ -272,6 +303,25 @@ export function FlashcardApp() {
     },
     [selectedLevelId, setCustomCards]
   );
+
+  const handleReorder = useCallback((newOrderIds: string[]) => {
+    if (!selectedLevelId) return;
+    setCustomOrder(prev => ({
+      ...prev,
+      [selectedLevelId]: newOrderIds
+    }));
+  }, [selectedLevelId, setCustomOrder]);
+
+  const handleShuffleDeck = () => {
+    if (!selectedLevelId) return;
+    const shuffledIds = [...allCards].map(c => c.id).sort(() => Math.random() - 0.5);
+    setQueue(shuffledIds);
+    setSavedQueue(shuffledIds);
+    setFirstAttemptCorrect(new Set());
+    setFailedCards(new Set());
+    setCustomOrder(prev => ({ ...prev, [selectedLevelId]: shuffledIds }));
+    setIsMenuOpen(false);
+  };
 
   const handleTabSwitch = (tab: Tab) => {
     setActiveTab(tab);
@@ -415,15 +465,57 @@ export function FlashcardApp() {
       {/* Header */}
       <header className="text-center mb-6 w-full">
         {selectedLevelId ? (
-          <div className="flex items-center gap-3">
-            <button onClick={handleBack} className="p-2 -ml-2 rounded-xl hover:bg-accent/50 transition-colors">
-              <ArrowLeft className="w-5 h-5 text-foreground" />
-            </button>
-            <div className="text-left">
-              <h1 className="font-display text-xl font-bold text-foreground tracking-tight">
-                {selectedLevel?.title}
-              </h1>
-              <p className="text-xs text-muted-foreground capitalize">{activeTab}</p>
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-3">
+              <button onClick={handleBack} className="p-2 -ml-2 rounded-xl hover:bg-accent/50 transition-colors">
+                <ArrowLeft className="w-5 h-5 text-foreground" />
+              </button>
+              <div className="text-left">
+                <h1 className="font-display text-xl font-bold text-foreground tracking-tight">
+                  {selectedLevel?.title}
+                </h1>
+                <p className="text-xs text-muted-foreground capitalize">{activeTab}</p>
+              </div>
+            </div>
+            <div className="relative">
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="p-2 mr-[-8px] rounded-xl hover:bg-accent/50 transition-colors"
+                title="Options"
+              >
+                <MoreVertical className="w-5 h-5 text-foreground" />
+              </button>
+              {isMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)} />
+                  <div className="absolute right-0 top-full mt-2 w-48 rounded-xl bg-card border border-border shadow-lg z-50 overflow-hidden animate-fade-in">
+                    <button
+                      onClick={handleShuffleDeck}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-foreground hover:bg-accent/50 transition-colors"
+                    >
+                      <Shuffle className="w-4 h-4" />
+                      Shuffle Cards
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        // Filter view to only show bookmarked cards in the queue
+                        if (bookmarkedCards.length > 0) {
+                          const validBookmarked = allCards.filter(c => bookmarkedCards.includes(c.id)).map(c => c.id);
+                          if (validBookmarked.length > 0) {
+                            setQueue(validBookmarked);
+                            setSavedQueue(validBookmarked);
+                          }
+                        }
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-foreground hover:bg-accent/50 transition-colors border-t border-border"
+                    >
+                      <Bookmark className="w-4 h-4" />
+                      Study Bookmarked
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         ) : (
@@ -506,6 +598,14 @@ export function FlashcardApp() {
             total={allCards.length}
             remaining={queue.length}
             onTranscriptRef={onTranscriptRef}
+            isBookmarked={bookmarkedCards.includes(currentCard.id)}
+            onToggleBookmark={() => {
+              setBookmarkedCards(prev => 
+                prev.includes(currentCard.id) 
+                  ? prev.filter(id => id !== currentCard.id)
+                  : [...prev, currentCard.id]
+              );
+            }}
           />
         ) : null}
       </div>
@@ -519,6 +619,7 @@ export function FlashcardApp() {
             onUpdate={handleUpdateItem}
             onDelete={handleDeleteItem}
             onBulkAdd={handleBulkAdd}
+            onReorder={handleReorder}
             label={activeTab === "vocabulary" ? "Vocabulary" : "Phrases"}
           />
         </div>

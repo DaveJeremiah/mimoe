@@ -12,6 +12,8 @@ interface FlashcardProps {
   total: number;
   remaining: number;
   onTranscriptRef: React.MutableRefObject<(text: string, isFinal: boolean) => void>;
+  isBookmarked?: boolean;
+  onToggleBookmark?: () => void;
 }
 
 // Strict state machine — do not add states.
@@ -33,7 +35,7 @@ function matchesCard(answer: string, french: string, alternatives?: string[]): b
   return false;
 }
 
-export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef }: FlashcardProps) {
+export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, isBookmarked, onToggleBookmark }: FlashcardProps) {
   const [state, setState] = useState<CardState>("QUESTION");
   const [textInput, setTextInput] = useState("");
   const [spokenText, setSpokenText] = useState("");
@@ -201,8 +203,8 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef }
           <div className={`relative w-full h-full flex flex-col items-center justify-center p-6 transition-colors duration-300 border-secondary rounded-[1.85rem] ${cardSurface}`}>
             {/* Corner Icons */}
             <div className="absolute top-4 left-4 z-10">
-              <button type="button" className="text-black/30 hover:text-black/50 transition-colors p-1" title="Bookmark">
-                <Bookmark className="w-5 h-5" />
+              <button onClick={onToggleBookmark} type="button" className={`transition-colors p-1 ${isBookmarked ? 'text-blue-600 drop-shadow-md pb-2' : 'text-black/30 hover:text-black/50'}`} title="Bookmark">
+                <Bookmark className="w-5 h-5" fill={isBookmarked ? "currentColor" : "none"} />
               </button>
             </div>
             <div className="absolute top-4 right-4 z-10">

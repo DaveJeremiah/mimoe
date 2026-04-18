@@ -1,7 +1,57 @@
 import { useState } from "react";
 import { Trash2, Plus, X, BookOpen, Upload, Check } from "lucide-react";
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import type { FlashcardItem } from "@/lib/flashcardData";
 import { BulkImportModal } from "./BulkImportModal";
+
+function SortableItem({ item, editingId, handleEdit, onDelete }: any) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
+  
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 2 : 1,
+    position: isDragging ? "relative" as const : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center justify-between p-3 rounded-xl border ${editingId === item.id ? 'bg-indigo-50/50 border-indigo-200' : 'bg-background border-border'} ${isDragging ? 'shadow-lg ring-2 ring-primary/20 bg-card z-10' : ''}`}
+    >
+      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 mr-1 text-muted-foreground hover:text-foreground touch-none">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+      </div>
+      <div className="flex-1 min-w-0 pr-4">
+        <span className="text-sm font-medium">{item.english}</span>
+        <span className="text-muted-foreground mx-2">→</span>
+        <span className="text-sm text-primary font-semibold">{item.french}</span>
+        {item.alternatives && item.alternatives.length > 0 && (
+          <span className="ml-2 text-xs text-muted-foreground italic">/ {item.alternatives.join(' / ')}</span>
+        )}
+      </div>
+      <div className="flex items-center gap-1 shrink-0">
+        <button
+          onClick={() => handleEdit(item)}
+          className="p-2 text-muted-foreground hover:text-foreground transition-colors"
+          title="Edit entry"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+        </button>
+        <button
+          onClick={() => onDelete(item.id)}
+          className="p-2 text-destructive/60 hover:text-destructive transition-colors shrink-0"
+          title="Delete entry"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 interface WordBankProps {
   items: FlashcardItem[];
@@ -9,15 +59,35 @@ interface WordBankProps {
   onUpdate?: (id: string, english: string, french: string, alternatives?: string[]) => void;
   onDelete: (id: string) => void;
   onBulkAdd: (entries: { english: string; french: string; alternatives?: string[] }[]) => void;
+  onReorder?: (newOrderIds: string[]) => void;
   label: string;
 }
 
-export function WordBank({ items, onAdd, onUpdate, onDelete, onBulkAdd, label }: WordBankProps) {
+export function WordBank({ items, onAdd, onUpdate, onDelete, onBulkAdd, onReorder, label }: WordBankProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [english, setEnglish] = useState("");
   const [french, setFrench] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = items.findIndex(i => i.id === active.id);
+      const newIndex = items.findIndex(i => i.id === over.id);
+      const newArray = arrayMove(items, oldIndex, newIndex);
+      if (onReorder) {
+        onReorder(newArray.map(i => i.id));
+      }
+    }
+  };
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,37 +151,20 @@ export function WordBank({ items, onAdd, onUpdate, onDelete, onBulkAdd, label }:
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
-              {items.map((item) => (
-                  <div
-                    key={item.id}
-                    className={`flex items-center justify-between p-3 rounded-xl border ${editingId === item.id ? 'bg-indigo-50/50 border-indigo-200' : 'bg-background border-border'}`}
-                  >
-                    <div className="flex-1 min-w-0 pr-4">
-                      <span className="text-sm font-medium">{item.english}</span>
-                      <span className="text-muted-foreground mx-2">→</span>
-                      <span className="text-sm text-primary font-semibold">{item.french}</span>
-                      {item.alternatives && item.alternatives.length > 0 && (
-                        <span className="ml-2 text-xs text-muted-foreground italic">/ {item.alternatives.join(' / ')}</span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={() => handleEdit(item)}
-                        className="p-2 text-muted-foreground hover:text-foreground transition-colors"
-                        title="Edit entry"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-                      </button>
-                      <button
-                        onClick={() => onDelete(item.id)}
-                        className="p-2 text-destructive/60 hover:text-destructive transition-colors shrink-0"
-                        title="Delete entry"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-              ))}
+              <DndContext 
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext 
+                  items={items.map(i => i.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {items.map((item) => (
+                    <SortableItem key={item.id} item={item} editingId={editingId} handleEdit={handleEdit} onDelete={onDelete} />
+                  ))}
+                </SortableContext>
+              </DndContext>
             </div>
 
             <div className="p-4 border-t border-border space-y-3 bg-muted/30">
