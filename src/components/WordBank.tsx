@@ -16,37 +16,41 @@ export function WordBank({ items, onAdd, onUpdate, onDelete, onBulkAdd, label }:
   const [isOpen, setIsOpen] = useState(false);
   const [english, setEnglish] = useState("");
   const [french, setFrench] = useState("");
-  const [altInput, setAltInput] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!english.trim() || !french.trim()) return;
-    const alternatives = altInput.split('|').map(a => a.trim()).filter(Boolean);
+
+    // Splitting by slash (and also pipe just in case)
+    const frenchParts = french.split(/[\/|]/).map(p => p.trim()).filter(Boolean);
+    const mainFrench = frenchParts[0] || french.trim();
+    const alternatives = frenchParts.slice(1);
+
     if (editingId && onUpdate) {
-      onUpdate(editingId, english.trim(), french.trim(), alternatives.length > 0 ? alternatives : undefined);
+      onUpdate(editingId, english.trim(), mainFrench, alternatives.length > 0 ? alternatives : undefined);
       setEditingId(null);
     } else {
-      onAdd(english.trim(), french.trim(), alternatives.length > 0 ? alternatives : undefined);
+      onAdd(english.trim(), mainFrench, alternatives.length > 0 ? alternatives : undefined);
     }
     setEnglish("");
     setFrench("");
-    setAltInput("");
   };
 
   const handleEdit = (item: FlashcardItem) => {
     setEditingId(item.id);
     setEnglish(item.english);
-    setFrench(item.french);
-    setAltInput(item.alternatives ? item.alternatives.join(" | ") : "");
+    const frenchVal = item.alternatives && item.alternatives.length > 0 
+      ? `${item.french} / ${item.alternatives.join(" / ")}` 
+      : item.french;
+    setFrench(frenchVal);
   };
 
   const handleCancelEdit = () => {
     setEditingId(null);
     setEnglish("");
     setFrench("");
-    setAltInput("");
   };
 
   return (
@@ -125,13 +129,17 @@ export function WordBank({ items, onAdd, onUpdate, onDelete, onBulkAdd, label }:
                     value={english}
                     onChange={(e) => setEnglish(e.target.value)}
                     placeholder="English"
+                    spellCheck={true}
+                    autoCorrect="on"
                     className="flex-1 rounded-xl border border-input bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                   <input
                     type="text"
                     value={french}
                     onChange={(e) => setFrench(e.target.value)}
-                    placeholder="French"
+                    placeholder="French (e.g. Bonjour / Salut)"
+                    spellCheck={true}
+                    autoCorrect="on"
                     className="flex-1 rounded-xl border border-input bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                   <button
@@ -142,13 +150,6 @@ export function WordBank({ items, onAdd, onUpdate, onDelete, onBulkAdd, label }:
                     {editingId ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                   </button>
                 </div>
-                <input
-                  type="text"
-                  value={altInput}
-                  onChange={(e) => setAltInput(e.target.value)}
-                  placeholder="Alternatives (optional, pipe separated): Salut | Bonsoir"
-                  className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs text-muted-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring"
-                />
               </form>
 
               {/* Bulk Import Button */}

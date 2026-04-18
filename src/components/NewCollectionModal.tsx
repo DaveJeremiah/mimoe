@@ -59,8 +59,13 @@ export function NewCollectionModal({ isOpen, onClose, onSave, editingCollection 
       }
 
       if (english && french) {
-        const entry: CollectionEntry = { english, french };
-        if (alternatives.length > 0) entry.alternatives = alternatives;
+        const frenchParts = french.split(/[\/]/).map(p => p.trim()).filter(Boolean);
+        const mainFrench = frenchParts[0] || french;
+        const moreAlts = frenchParts.slice(1);
+
+        const entry: CollectionEntry = { english, french: mainFrench };
+        const combinedAlts = [...alternatives, ...moreAlts];
+        if (combinedAlts.length > 0) entry.alternatives = combinedAlts;
         entries.push(entry);
       }
     }
@@ -155,7 +160,9 @@ export function NewCollectionModal({ isOpen, onClose, onSave, editingCollection 
             <textarea
               value={importText}
               onChange={(e) => setImportText(e.target.value)}
-              placeholder={`One pair per line — tab or pipe separates alternatives:\nHello | Bonjour | Salut\nGoodbye | Au revoir\nThank you | Merci | Merci beaucoup`}
+              placeholder={`One pair per line — tab, pipe, or slash separates alternatives:\nHello | Bonjour / Salut\nGoodbye | Au revoir\nThank you | Merci / Merci beaucoup`}
+              spellCheck={true}
+              autoCorrect="on"
               className="w-full h-48 p-3 border border-gray-600 rounded-lg font-mono text-sm bg-gray-900 text-green-300 placeholder:text-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               disabled={isSaving}
             />

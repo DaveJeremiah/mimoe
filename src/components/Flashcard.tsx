@@ -299,6 +299,8 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef }
             onChange={(e) => setTextInput(e.target.value)}
             placeholder={isWrongFirst ? "Try again in French..." : "Or type in French..."}
             disabled={inputDisabled}
+            spellCheck={true}
+            autoCorrect="on"
             className="flex-1 rounded-full border border-input bg-card px-5 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <button

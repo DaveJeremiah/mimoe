@@ -43,8 +43,13 @@ export function BulkImportModal({ isOpen, onClose, onImport, existingItems }: Bu
       }
 
       if (english && french) {
-        const entry: { english: string; french: string; alternatives?: string[] } = { english, french };
-        if (alternatives.length > 0) entry.alternatives = alternatives;
+        const frenchParts = french.split(/[\/]/).map(p => p.trim()).filter(Boolean);
+        const mainFrench = frenchParts[0] || french;
+        const moreAlts = frenchParts.slice(1);
+
+        const entry: { english: string; french: string; alternatives?: string[] } = { english, french: mainFrench };
+        const combinedAlts = [...alternatives, ...moreAlts];
+        if (combinedAlts.length > 0) entry.alternatives = combinedAlts;
         entries.push(entry);
       }
     }
@@ -117,7 +122,9 @@ export function BulkImportModal({ isOpen, onClose, onImport, existingItems }: Bu
             <textarea
               value={importText}
               onChange={(e) => setImportText(e.target.value)}
-              placeholder={`One pair per line — tab separates alternatives:&#10;Hello&#9;Bonjour&#10;Goodbye&#9;Au revoir&#9;Salut&#10;Thank you&#9;Merci&#9;Merci beaucoup&#10;&#10;Or use pipe separators:&#10;Hello | Bonjour | Salut&#10;Goodbye | Au revoir`}
+              placeholder={`One pair per line — tab separates alternatives:\nHello\tBonjour\nGoodbye\tAu revoir\tSalut\nThank you\tMerci\tMerci beaucoup\n\nOr use pipe separators:\nHello | Bonjour | Salut\nGoodbye | Au revoir`}
+              spellCheck={true}
+              autoCorrect="on"
               className="w-full h-48 p-3 border border-gray-600 rounded-lg font-mono text-sm bg-gray-900 text-green-300 placeholder:text-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               disabled={isImporting}
             />
