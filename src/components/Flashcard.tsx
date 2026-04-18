@@ -59,24 +59,22 @@ export function Flashcard({ card, onAdvance, total, remaining, micStatus, pauseM
   useEffect(() => { stateRef.current = state; }, [state]);
   useEffect(() => { cardFrenchRef.current = card.french; }, [card.french]);
 
-  // ── Mic transcript handler — only acts in QUESTION or WRONG_FIRST ──
-  const handleTranscript = useCallback((transcript: string, isFinal: boolean) => {
-    const s = stateRef.current;
-    if (s !== "QUESTION" && s !== "WRONG_FIRST") return;
+  // ── Wire transcript handler into parent's mic via ref ──
+  useEffect(() => {
+    onTranscriptRef.current = (transcript: string, isFinal: boolean) => {
+      const s = stateRef.current;
+      if (s !== "QUESTION" && s !== "WRONG_FIRST") return;
 
-    setSpokenText(transcript);
+      setSpokenText(transcript);
 
-    if (isCorrect(transcript, cardFrenchRef.current)) {
-      processAnswerRef.current?.(transcript);
-    } else if (isFinal) {
-      processAnswerRef.current?.(transcript);
-    }
-  }, []);
+      if (isCorrect(transcript, cardFrenchRef.current)) {
+        processAnswerRef.current?.(transcript);
+      } else if (isFinal) {
+        processAnswerRef.current?.(transcript);
+      }
+    };
+  }, [onTranscriptRef]);
 
-  const { status: micStatus, start: startMic, stop: stopMic, pause: pauseMic, resume: resumeMic } = useContinuousMic({
-    lang: "fr-FR",
-    onTranscript: handleTranscript,
-  });
 
   // ── Core state transitions ──
   const processAnswerRef = useRef<(answer: string) => void>();
