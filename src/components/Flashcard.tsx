@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { speakFrench, unlockAudio, prefetchAudio, isMatch } from "@/lib/speechUtils";
 import type { FlashcardItem } from "@/lib/flashcardData";
-import { Check, Send, Mic, ArrowRight, Bookmark, Volume2, VolumeX } from "lucide-react";
+import { Check, Send, Mic, ArrowRight, Bookmark, Volume2, VolumeX, Heart, MoreVertical, MessageSquare, Activity } from "lucide-react";
 
 type MicStatus = "idle" | "listening" | "denied" | "unsupported" | "paused";
 
@@ -20,6 +20,7 @@ interface FlashcardProps {
   onSwipeBackward?: () => void;
   isMicOn?: boolean;
   onToggleMic?: () => void;
+  onAnimateAdvance?: (fn: (exitClass: string, opts: { failed: boolean; requeue: boolean }) => void) => void;
 }
 
 // Strict state machine — do not add states.
@@ -41,7 +42,7 @@ function matchesCard(answer: string, french: string, alternatives?: string[]): b
   return false;
 }
 
-export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, isBookmarked, onToggleBookmark, onSwipeForward, onSwipeBackward, isMicOn = true, onToggleMic }: FlashcardProps) {
+export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, isBookmarked, onToggleBookmark, onSwipeForward, onSwipeBackward, isMicOn = true, onToggleMic, onAnimateAdvance }: FlashcardProps) {
   const [state, setState] = useState<CardState>("QUESTION");
   const [textInput, setTextInput] = useState("");
   const [spokenText, setSpokenText] = useState("");
@@ -53,6 +54,18 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
   const [enterAnim, setEnterAnim] = useState<string>("animate-enter-right");
   const [cardAnim, setCardAnim] = useState<string>("");
   const [isExiting, setIsExiting] = useState(false);
+
+  const [showInput, setShowInput] = useState(false);
+  const [showCardMenu, setShowCardMenu] = useState(false);
+  const [bookmarkedCards, setBookmarkedCards] = useState<Set<string>>(new Set());
+  const bookmarked = bookmarkedCards.has(card.id);
+  const toggleBookmark = (id: string) => {
+    setBookmarkedCards(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
 
   const stateRef = useRef<CardState>("QUESTION");
   const cardFrenchRef = useRef(card.french);
@@ -102,6 +115,12 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
       onAdvance(opts);
     }, 420);
   }, [isExiting, onAdvance]);
+
+  useEffect(() => {
+    if (onAnimateAdvance) {
+      onAnimateAdvance(animateAndAdvance);
+    }
+  }, [onAnimateAdvance, animateAndAdvance]);
 
   const scheduleAutoAdvance = useCallback((failed: boolean) => {
     if (advanceTimerRef.current) window.clearTimeout(advanceTimerRef.current);
@@ -257,41 +276,54 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
 
   return (
     <div className="flex flex-col items-center gap-5 w-full animate-card-enter">
-      {/* Progress */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <span className="font-medium">{remaining}</span>
-        <span>/</span>
-        <span>{total}</span>
-        <span>cards remaining</span>
-      </div>
-
       {/* Main card */}
-      <div className={`relative w-full max-w-[300px] card-perspective ${exitAnim} ${cardAnim}`}>
-        <div
-          className={`relative aspect-[3/4] rounded-[2rem] ring-2 ${ringColor} ${enterAnim} transition-all duration-300 card-shadow-lg`}
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-        >
-          <div className={`relative w-full h-full flex flex-col items-center justify-center p-6 transition-colors duration-300 border-secondary rounded-[1.85rem] ${cardSurface}`}>
-            {/* Corner Icons */}
-            <div className="absolute top-4 left-4 z-10">
-              <button onClick={onToggleBookmark} type="button" className={`transition-colors p-1 ${isBookmarked ? 'text-blue-600 drop-shadow-md pb-2' : 'text-black/30 hover:text-black/50'}`} title="Bookmark">
-                <Bookmark className="w-5 h-5" fill={isBookmarked ? "currentColor" : "none"} />
-              </button>
-            </div>
-            <div className="absolute top-4 right-4 z-10">
-              <button 
-                onClick={onToggleMic} 
-                type="button" 
-                className={`transition-colors p-1 ${isMicOn ? 'text-black/30 hover:text-black/50' : 'text-red-500/50 hover:text-red-500/70'}`} 
-                title={isMicOn ? "Microphone is on" : "Microphone is off"}
-              >
-                {isMicOn ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-              </button>
-            </div>
+      <div className="relative w-full max-w-[300px]">
+        {/* Card 3 — furthest back */}
+        <div className="absolute inset-x-4 top-3 h-full rounded-[2rem] bg-muted/40 border border-border/30" />
+        {/* Card 2 — middle */}
+        <div className="absolute inset-x-2 top-1.5 h-full rounded-[2rem] bg-muted/70 border border-border/50" />
 
-            {(isQuestion || isWrongFirst) && (
+        <div className={`relative w-full h-full card-perspective ${exitAnim} ${cardAnim}`}>
+          <div
+            className={`relative aspect-[3/4] rounded-[2rem] ring-2 ${ringColor} ${enterAnim} transition-all duration-300 card-shadow-lg`}
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+          >
+            <div className={`relative w-full h-full flex flex-col items-center justify-center p-6 transition-colors duration-300 border-secondary rounded-[1.85rem] ${cardSurface}`}>
+              {/* Corner Icons */}
+              <button
+                onClick={() => toggleBookmark(card.id)}
+                className="absolute top-3 left-3 z-10 p-1.5 rounded-full bg-black/20 backdrop-blur-sm transition-colors"
+              >
+                <Heart
+                  className={`w-4 h-4 transition-colors ${
+                    bookmarked ? "fill-red-400 text-red-400" : "text-white/70"
+                  }`}
+                />
+              </button>
+              <div className="absolute top-3 right-3 z-10">
+                <button
+                  onClick={() => setShowCardMenu(!showCardMenu)}
+                  className="p-1.5 rounded-full bg-black/20 backdrop-blur-sm"
+                >
+                  <MoreVertical className="w-4 h-4 text-white/70" />
+                </button>
+                {showCardMenu && (
+                  <div className="absolute right-0 mt-1 w-36 bg-card rounded-xl border border-border shadow-xl z-20 overflow-hidden">
+                    <button onClick={() => { handleDontKnow(); setShowCardMenu(false); }}
+                      className="w-full px-4 py-2.5 text-left text-sm text-foreground hover:bg-muted transition-colors">
+                      Not sure
+                    </button>
+                    <button onClick={() => { handleKnewItAfterFinal(); setShowCardMenu(false); }}
+                      className="w-full px-4 py-2.5 text-left text-sm text-success hover:bg-muted transition-colors">
+                      I knew it
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {(isQuestion || isWrongFirst) && (
               <>
                 <span className={`text-[10px] font-semibold uppercase tracking-widest mb-3 ${isWrongFirst ? "text-warning" : "text-sidebar"}`}>
                   {isWrongFirst ? "Try again" : "Translate to French"}
@@ -358,39 +390,62 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
         </div>
       </div>
 
-      {/* Not sure — only during attempt phases */}
-      <div className="flex justify-center mt-8">
-        <button
-          onClick={handleDontKnow}
-          disabled={!(isQuestion || isWrongFirst)}
-          className="px-6 py-3 rounded-full text-white transition-colors font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed bg-yellow-500"
-        >
-          Not sure
-        </button>
+      <div className="flex justify-center mt-6 w-full max-w-[300px]">
+        {/* Mode toggle */}
+        <div className="flex items-center gap-3 w-full">
+          <button
+            onClick={() => setShowInput(!showInput)}
+            className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full border font-semibold text-sm transition-all ${
+              showInput
+                ? "bg-muted border-border text-foreground"
+                : "bg-card border-border text-foreground"
+            }`}
+          >
+            <MessageSquare className="w-4 h-4" />
+            Write
+          </button>
+          <button
+            onClick={onToggleMic}
+            className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full font-semibold text-sm transition-all ${
+              isMicOn
+                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
+                : "bg-secondary/80 text-white"
+            }`}
+          >
+            {isMicOn
+              ? <><Activity className="w-4 h-4" /> Listening</>
+              : <><Mic className="w-4 h-4" /> Let's talk</>
+            }
+          </button>
+        </div>
       </div>
 
-      {/* Text input — active in QUESTION and WRONG_FIRST */}
-      <div className="flex flex-col items-center gap-6 w-full max-w-[300px] animate-fade-in mt-8">
-        <form onSubmit={handleTextSubmit} className="flex w-full gap-3 items-center">
+      {showInput && (isQuestion || isWrongFirst) && (
+        <form onSubmit={handleTextSubmit} className="flex w-full max-w-[300px] gap-2 animate-fade-in mt-4">
           <input
             ref={inputRef}
             type="text"
             value={textInput}
             onChange={(e) => setTextInput(e.target.value)}
-            placeholder={isWrongFirst ? "Try again in French..." : "Or type in French..."}
-            disabled={inputDisabled}
-            spellCheck={true}
-            autoCorrect="on"
-            className="flex-1 rounded-full border border-input bg-card px-5 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
+            placeholder={isWrongFirst ? "Try again in French..." : "Type in French..."}
+            className="flex-1 rounded-full border border-border bg-muted px-5 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            autoFocus
           />
-          <button
-            type="submit"
-            disabled={inputDisabled}
-            className="w-12 h-12 rounded-full bg-amber-100 text-blue-900 hover:bg-amber-200 transition-colors flex items-center justify-center flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Send className="w-5 h-5" />
+          <button type="submit" className="w-11 h-11 rounded-full bg-primary text-white flex items-center justify-center flex-shrink-0">
+            <Send className="w-4 h-4" />
           </button>
         </form>
+      )}
+
+      {/* Skip for now button */}
+      <div className="flex justify-center mt-4">
+        <button
+          onClick={handleDontKnow}
+          disabled={!(isQuestion || isWrongFirst)}
+          className="text-sm text-muted-foreground underline-offset-2 hover:text-foreground transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          Skip for now
+        </button>
       </div>
     </div>
   );

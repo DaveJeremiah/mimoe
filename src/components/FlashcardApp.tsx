@@ -13,7 +13,7 @@ import { vocabularyLevels, phraseLevels, type FlashcardItem } from "@/lib/flashc
 import { type Collection, CollectionFormData } from "@/lib/collectionTypes";
 import { prefetchAudio, unlockAudio } from "@/lib/speechUtils";
 import { useContinuousMic } from "@/hooks/useContinuousMic";
-import { PartyPopper, ArrowLeft, Plus, LogOut, MoreVertical, Shuffle, Bookmark } from "lucide-react";
+import { PartyPopper, ArrowLeft, Plus, LogOut, MoreVertical, Shuffle, Bookmark, Home, User, ChevronLeft, ChevronRight, Play, Heart } from "lucide-react";
 
 type Tab = "vocabulary" | "phrases";
 type AppView = "main" | "collection";
@@ -104,6 +104,8 @@ export function FlashcardApp() {
       onTranscriptRef.current(text, isFinal);
     }, []),
   });
+
+  const animateAdvanceRef = useRef<((exitClass: string, opts: { failed: boolean; requeue: boolean }) => void) | null>(null);
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -521,26 +523,27 @@ export function FlashcardApp() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center max-w-[480px] mx-auto px-[15px] py-[61px]">
+    <div className={`min-h-screen flex flex-col items-center max-w-[480px] mx-auto px-[15px] pt-[61px] ${selectedLevelId ? 'pb-36' : 'pb-24'}`}>
       {/* Header */}
       <header className="text-center mb-6 w-full">
         {selectedLevelId ? (
-          <div className="flex items-center justify-between w-full">
-            <div className="flex items-center gap-3">
-              <button onClick={handleBack} className="p-2 -ml-2 rounded-xl hover:bg-accent/50 transition-colors">
-                <ArrowLeft className="w-5 h-5 text-foreground" />
-              </button>
-              <div className="text-left">
-                <h1 className="font-display text-xl font-bold text-foreground tracking-tight">
-                  {selectedLevel?.title}
-                </h1>
-                <p className="text-xs text-muted-foreground capitalize">{activeTab}</p>
-              </div>
+          <div className="w-full flex items-center gap-3">
+            <button onClick={handleBack} className="p-2 -ml-2 rounded-xl hover:bg-muted transition-colors">
+              <ArrowLeft className="w-5 h-5 text-foreground" />
+            </button>
+            <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-500"
+                style={{ width: `${allCards.length > 0 ? ((allCards.length - queue.length) / allCards.length) * 100 : 0}%` }}
+              />
             </div>
+            <span className="text-sm text-muted-foreground font-medium min-w-[40px] text-right">
+              {allCards.length - queue.length}/{allCards.length}
+            </span>
             <div className="relative">
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="p-2 mr-[-8px] rounded-xl hover:bg-accent/50 transition-colors"
+                className="p-2 mr-[-8px] rounded-xl hover:bg-muted transition-colors"
                 title="Options"
               >
                 <MoreVertical className="w-5 h-5 text-foreground" />
@@ -551,7 +554,7 @@ export function FlashcardApp() {
                   <div className="absolute right-0 top-full mt-2 w-48 rounded-xl bg-card border border-border shadow-lg z-50 overflow-hidden animate-fade-in">
                     <button
                       onClick={handleShuffleDeck}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-foreground hover:bg-accent/50 transition-colors"
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors"
                     >
                       <Shuffle className="w-4 h-4" />
                       Shuffle Cards
@@ -568,7 +571,7 @@ export function FlashcardApp() {
                           }
                         }
                       }}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-foreground hover:bg-accent/50 transition-colors border-t border-border"
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors border-t border-border"
                     >
                       <Bookmark className="w-4 h-4" />
                       Study Bookmarked
@@ -579,39 +582,40 @@ export function FlashcardApp() {
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="font-display text-3xl font-bold text-foreground tracking-tight">Mimoe</h1>
-              <p className="text-sm text-muted-foreground mt-1">French flashcard trainer</p>
+          <div className="w-full flex items-center justify-between">
+            <div className="text-left">
+              <p className="text-sm text-muted-foreground">Welcome back 👋</p>
+              <h1 className="font-display text-2xl font-bold text-foreground">Mimoe</h1>
             </div>
-            <button
-              onClick={signOut}
-              className="p-2 rounded-xl hover:bg-accent/50 transition-colors text-muted-foreground hover:text-foreground"
-              title="Sign out"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
+            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+              <span className="text-primary font-bold text-sm">FR</span>
+            </div>
           </div>
         )}
       </header>
 
       {/* Tabs */}
       {!selectedLevelId && (
-        <div className="flex w-full bg-muted rounded-2xl p-1 mb-6">
-          {(["vocabulary", "phrases"] as Tab[]).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => handleTabSwitch(tab)}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-semibold capitalize transition-all duration-200 ${
-                activeTab === tab
-                  ? "bg-card card-shadow text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
+        <>
+          <div className="flex w-full bg-muted rounded-2xl p-1 mb-6">
+            {(["vocabulary", "phrases"] as Tab[]).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => handleTabSwitch(tab)}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold capitalize transition-all duration-200 ${
+                  activeTab === tab
+                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center justify-between w-full mb-4">
+            <h2 className="font-display text-xl font-bold text-foreground">Levels</h2>
+          </div>
+        </>
       )}
 
       {/* Content */}
@@ -670,6 +674,7 @@ export function FlashcardApp() {
             onSwipeBackward={handleSwipeBackward}
             isMicOn={isMicEnabled}
             onToggleMic={() => setIsMicEnabled(prev => !prev)}
+            onAnimateAdvance={(fn) => { animateAdvanceRef.current = fn; }}
           />
         ) : null}
       </div>
@@ -731,6 +736,63 @@ export function FlashcardApp() {
             editingCollection={editingCollection}
           />
         </>
+      )}
+
+      {/* Navigation Bars */}
+      {!selectedLevelId && appView === "main" && (
+        <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-end justify-center pb-safe">
+          <div className="w-full max-w-[480px] flex items-center justify-around px-8 py-3 bg-card/90 backdrop-blur-xl border-t border-border">
+            <button className="flex flex-col items-center gap-1 text-primary">
+              <Home className="w-5 h-5" />
+              <span className="text-[10px] font-medium">Home</span>
+            </button>
+            <button
+              onClick={handleCreateCollection}
+              className="w-14 h-14 -mt-6 rounded-full bg-secondary flex items-center justify-center shadow-lg shadow-secondary/30 active:scale-95 transition-transform"
+            >
+              <Plus className="w-6 h-6 text-white" />
+            </button>
+            <button className="flex flex-col items-center gap-1 text-muted-foreground">
+              <User className="w-5 h-5" />
+              <span className="text-[10px] font-medium">Profile</span>
+            </button>
+          </div>
+        </nav>
+      )}
+
+      {selectedLevelId && !isDeckComplete && (
+        <div className="fixed bottom-0 left-0 right-0 flex justify-center z-50">
+          <div className="w-full max-w-[480px] bg-card/90 backdrop-blur-xl border-t border-border px-6 py-4">
+            <div className="flex items-center justify-between mb-3">
+              <Heart className="w-5 h-5 text-muted-foreground" />
+              <div />
+            </div>
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => {
+                  animateAdvanceRef.current?.("animate-swipe-left", { failed: true, requeue: true });
+                }}
+                className="p-3 rounded-full hover:bg-muted transition-colors"
+              >
+                <ChevronLeft className="w-5 h-5 text-foreground" />
+              </button>
+              <button className="p-3 rounded-full bg-muted" disabled>
+                <Play className="w-4 h-4 text-muted-foreground fill-muted-foreground" />
+              </button>
+              <button
+                onClick={() => {
+                  animateAdvanceRef.current?.("animate-swipe-right", { failed: false, requeue: false });
+                }}
+                className="p-3 rounded-full hover:bg-muted transition-colors"
+              >
+                <ChevronRight className="w-5 h-5 text-foreground" />
+              </button>
+            </div>
+            <div className="flex justify-center mt-3">
+              <div className="w-24 h-1 rounded-full bg-muted" />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
