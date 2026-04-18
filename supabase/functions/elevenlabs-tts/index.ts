@@ -25,9 +25,8 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Use a French voice - "Laura" is great for French
-    const voiceId = "FGY2WhTYpPnrIDTdsKH5"
-    const speed = rate ?? 0.88
+    // "Antoni" — stable multilingual premade voice
+    const voiceId = "ErXwobaYiN019PkySvjV"
 
     const response = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_22050_32`,
@@ -45,7 +44,6 @@ Deno.serve(async (req) => {
             similarity_boost: 0.8,
             style: 0.3,
             use_speaker_boost: true,
-            speed,
           },
         }),
       }
@@ -53,8 +51,8 @@ Deno.serve(async (req) => {
 
     if (!response.ok) {
       const err = await response.text()
-      console.error("ElevenLabs error:", err)
-      return new Response(JSON.stringify({ error: "TTS failed" }), {
+      console.error("ElevenLabs error:", response.status, err)
+      return new Response(JSON.stringify({ error: "TTS failed", status: response.status, detail: err }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
