@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { primeFrenchSpeech, speakFrench, unlockAudio, prefetchAudio } from "@/lib/speechUtils";
-import { useContinuousMic } from "@/hooks/useContinuousMic";
+import { speakFrench, prefetchAudio } from "@/lib/speechUtils";
 import type { FlashcardItem } from "@/lib/flashcardData";
-import { Check, X, Send, Mic, MicOff, ArrowRight } from "lucide-react";
+import { Check, Send, Mic, MicOff, ArrowRight } from "lucide-react";
+
+type MicStatus = "idle" | "listening" | "denied" | "unsupported" | "paused";
 
 interface FlashcardProps {
   card: FlashcardItem;
@@ -10,6 +11,11 @@ interface FlashcardProps {
   onAdvance: (opts: { failed: boolean; requeue: boolean }) => void;
   total: number;
   remaining: number;
+  micStatus: MicStatus;
+  pauseMic: () => void;
+  resumeMic: () => void;
+  onMicToggle: () => void;
+  onTranscriptRef: React.MutableRefObject<(text: string, isFinal: boolean) => void>;
 }
 
 // Strict state machine — do not add states.
