@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Flashcard } from "./Flashcard";
 import { WordBank } from "./WordBank";
@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { vocabularyLevels, phraseLevels, type FlashcardItem } from "@/lib/flashcardData";
 import { type Collection, CollectionFormData } from "@/lib/collectionTypes";
 import { prefetchAudio, unlockAudio } from "@/lib/speechUtils";
+import { useContinuousMic } from "@/hooks/useContinuousMic";
 import { PartyPopper, ArrowLeft, Plus, LogOut } from "lucide-react";
 
 type Tab = "vocabulary" | "phrases";
@@ -58,6 +59,14 @@ export function FlashcardApp() {
   }, [selectedLevel, customCards]);
 
   const [queue, setQueue] = useState<string[]>([]);
+
+  // Persistent mic across cards/sessions
+  const onTranscriptRef = useRef<(text: string, isFinal: boolean) => void>(() => {});
+  const { status: micStatus, start: startMic, stop: stopMic, pause: pauseMic, resume: resumeMic } = useContinuousMic({
+    onTranscript: useCallback((text: string, isFinal: boolean) => {
+      onTranscriptRef.current(text, isFinal);
+    }, []),
+  });
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -133,6 +142,19 @@ export function FlashcardApp() {
     if (queue.length === 0) return null;
     return allCards.find((i) => i.id === queue[0]) || null;
   }, [queue, allCards]);
+
+  // Auto-start mic when a study session begins; stop when it ends
+  const inSession = !!currentCard || !!selectedCollection;
+  useEffect(() => {
+    if (inSession && micStatus === "idle") {
+      unlockAudio();
+      startMic();
+    }
+    if (!inSession && micStatus !== "idle") {
+      stopMic();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inSession]);
 
   const handleAdvance = useCallback(({ failed, requeue }: { failed: boolean; requeue: boolean }) => {
     const cardId = queue[0];
@@ -371,6 +393,14 @@ export function FlashcardApp() {
               onAdvance={handleCollectionAdvance}
               total={selectedCollection.entries.length}
               remaining={collectionQueue.length}
+              micStatus={micStatus}
+              pauseMic={pauseMic}
+              resumeMic={resumeMic}
+              onMicToggle={() => {
+                unlockAudio();
+                micStatus === "listening" ? stopMic() : startMic();
+              }}
+              onTranscriptRef={onTranscriptRef}
             />
           ) : null}
         </div>
@@ -473,6 +503,14 @@ export function FlashcardApp() {
             onAdvance={handleAdvance}
             total={allCards.length}
             remaining={queue.length}
+            micStatus={micStatus}
+            pauseMic={pauseMic}
+            resumeMic={resumeMic}
+            onMicToggle={() => {
+              unlockAudio();
+              micStatus === "listening" ? stopMic() : startMic();
+            }}
+            onTranscriptRef={onTranscriptRef}
           />
         ) : null}
       </div>

@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { primeFrenchSpeech, speakFrench, unlockAudio, prefetchAudio } from "@/lib/speechUtils";
-import { useContinuousMic } from "@/hooks/useContinuousMic";
+import { speakFrench, prefetchAudio } from "@/lib/speechUtils";
 import type { FlashcardItem } from "@/lib/flashcardData";
-import { Check, X, Send, Mic, MicOff, ArrowRight } from "lucide-react";
+import { Check, Send, Mic, MicOff, ArrowRight } from "lucide-react";
+
+type MicStatus = "idle" | "listening" | "denied" | "unsupported" | "paused";
 
 interface FlashcardProps {
   card: FlashcardItem;
@@ -10,6 +11,11 @@ interface FlashcardProps {
   onAdvance: (opts: { failed: boolean; requeue: boolean }) => void;
   total: number;
   remaining: number;
+  micStatus: MicStatus;
+  pauseMic: () => void;
+  resumeMic: () => void;
+  onMicToggle: () => void;
+  onTranscriptRef: React.MutableRefObject<(text: string, isFinal: boolean) => void>;
 }
 
 // Strict state machine — do not add states.
@@ -37,7 +43,7 @@ function isCorrect(userAnswer: string, correctFrench: string): boolean {
 
 const AUTO_ADVANCE_MS = 1500;
 
-export function Flashcard({ card, onAdvance, total, remaining }: FlashcardProps) {
+export function Flashcard({ card, onAdvance, total, remaining, micStatus, pauseMic, resumeMic, onMicToggle, onTranscriptRef }: FlashcardProps) {
   const [state, setState] = useState<CardState>("QUESTION");
   const [textInput, setTextInput] = useState("");
   const [spokenText, setSpokenText] = useState("");
@@ -53,24 +59,22 @@ export function Flashcard({ card, onAdvance, total, remaining }: FlashcardProps)
   useEffect(() => { stateRef.current = state; }, [state]);
   useEffect(() => { cardFrenchRef.current = card.french; }, [card.french]);
 
-  // ── Mic transcript handler — only acts in QUESTION or WRONG_FIRST ──
-  const handleTranscript = useCallback((transcript: string, isFinal: boolean) => {
-    const s = stateRef.current;
-    if (s !== "QUESTION" && s !== "WRONG_FIRST") return;
+  // ── Wire transcript handler into parent's mic via ref ──
+  useEffect(() => {
+    onTranscriptRef.current = (transcript: string, isFinal: boolean) => {
+      const s = stateRef.current;
+      if (s !== "QUESTION" && s !== "WRONG_FIRST") return;
 
-    setSpokenText(transcript);
+      setSpokenText(transcript);
 
-    if (isCorrect(transcript, cardFrenchRef.current)) {
-      processAnswerRef.current?.(transcript);
-    } else if (isFinal) {
-      processAnswerRef.current?.(transcript);
-    }
-  }, []);
+      if (isCorrect(transcript, cardFrenchRef.current)) {
+        processAnswerRef.current?.(transcript);
+      } else if (isFinal) {
+        processAnswerRef.current?.(transcript);
+      }
+    };
+  }, [onTranscriptRef]);
 
-  const { status: micStatus, start: startMic, stop: stopMic, pause: pauseMic, resume: resumeMic } = useContinuousMic({
-    lang: "fr-FR",
-    onTranscript: handleTranscript,
-  });
 
   // ── Core state transitions ──
   const processAnswerRef = useRef<(answer: string) => void>();
@@ -125,7 +129,7 @@ export function Flashcard({ card, onAdvance, total, remaining }: FlashcardProps)
 
   useEffect(() => { processAnswerRef.current = processAnswer; }, [processAnswer]);
 
-  // ── Reset per-card state on new card; mic stays alive ──
+  // ── Reset per-card state on new card; mic is owned by parent and stays alive ──
   useEffect(() => {
     if (advanceTimerRef.current) {
       window.clearTimeout(advanceTimerRef.current);
@@ -139,9 +143,6 @@ export function Flashcard({ card, onAdvance, total, remaining }: FlashcardProps)
       setCardColorIndex((prev) => (prev + 1) % cardColors.length);
     }
     setIsFirstCard(false);
-
-    primeFrenchSpeech();
-    resumeMic();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card.id]);
 
@@ -150,13 +151,12 @@ export function Flashcard({ card, onAdvance, total, remaining }: FlashcardProps)
     prefetchAudio([card.french]);
   }, [card.french]);
 
-  // Stop mic when component unmounts (leaving session)
+  // Cleanup advance timer on unmount
   useEffect(() => {
     return () => {
       if (advanceTimerRef.current) window.clearTimeout(advanceTimerRef.current);
-      stopMic();
     };
-  }, [stopMic]);
+  }, []);
 
   // ── User actions ──
   const handleTextSubmit = (e: React.FormEvent) => {
@@ -230,36 +230,6 @@ export function Flashcard({ card, onAdvance, total, remaining }: FlashcardProps)
                 {spokenText && (
                   <p className="mt-3 text-sm text-gray-700 italic">"{spokenText}"</p>
                 )}
-                {!micUnsupported && (
-                  <button
-                    type="button"
-                    onClick={() => { unlockAudio(); isListening ? stopMic() : startMic(); }}
-                    className={`mt-4 flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-200 ${
-                      isListening
-                        ? "text-primary/80 bg-primary/10 animate-fade-in"
-                        : micDenied
-                        ? "text-destructive bg-destructive/10"
-                        : "text-muted-foreground bg-muted hover:bg-accent/50"
-                    }`}
-                  >
-                    {isListening ? (
-                      <>
-                        <Mic className="w-4 h-4 animate-pulse" />
-                        <span className="text-xs text-gray-600">Listening — tap to stop</span>
-                      </>
-                    ) : micDenied ? (
-                      <>
-                        <MicOff className="w-4 h-4" />
-                        <span className="text-xs">Mic blocked — check permissions</span>
-                      </>
-                    ) : (
-                      <>
-                        <Mic className="w-4 h-4" />
-                        <span className="text-xs">Tap once to enable mic</span>
-                      </>
-                    )}
-                  </button>
-                )}
               </>
             )}
 
@@ -317,7 +287,7 @@ export function Flashcard({ card, onAdvance, total, remaining }: FlashcardProps)
       </div>
 
       {/* Not sure — only during attempt phases */}
-      <div className="flex justify-center mt-8">
+      <div className="flex items-center justify-center gap-3 mt-8">
         <button
           onClick={handleDontKnow}
           disabled={!(isQuestion || isWrongFirst)}
@@ -325,6 +295,29 @@ export function Flashcard({ card, onAdvance, total, remaining }: FlashcardProps)
         >
           Not sure
         </button>
+        {!micUnsupported && (
+          <button
+            type="button"
+            onClick={onMicToggle}
+            aria-label={isListening ? "Mute mic" : micDenied ? "Mic blocked" : "Enable mic"}
+            title={isListening ? "Listening" : micDenied ? "Mic blocked" : micStatus === "paused" ? "Paused" : "Tap to enable mic"}
+            className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${
+              isListening
+                ? "bg-primary/15 text-primary"
+                : micDenied
+                ? "bg-destructive/10 text-destructive"
+                : "bg-muted text-muted-foreground hover:bg-accent/50"
+            }`}
+          >
+            {isListening ? (
+              <Mic className="w-4 h-4 animate-pulse" />
+            ) : micDenied ? (
+              <MicOff className="w-4 h-4" />
+            ) : (
+              <Mic className="w-4 h-4" />
+            )}
+          </button>
+        )}
       </div>
 
       {/* Text input — active in QUESTION and WRONG_FIRST */}
