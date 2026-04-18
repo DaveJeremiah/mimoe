@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { vocabularyLevels, phraseLevels, type FlashcardItem } from "@/lib/flashcardData";
 import { type Collection, CollectionFormData } from "@/lib/collectionTypes";
+import { prefetchAudio, unlockAudio } from "@/lib/speechUtils";
 import { PartyPopper, ArrowLeft, Plus, LogOut } from "lucide-react";
 
 type Tab = "vocabulary" | "phrases";
@@ -116,12 +117,16 @@ export function FlashcardApp() {
   const startLevel = useCallback((levelId: string) => {
     const level = levels.find((l) => l.id === levelId);
     if (!level) return;
+    unlockAudio();
     const custom = customCards[level.id] || [];
-    const allIds = [...level.cards, ...custom].map((c) => c.id);
+    const allItems = [...level.cards, ...custom];
+    const allIds = allItems.map((c) => c.id);
     setQueue(allIds);
     setSelectedLevelId(levelId);
     setFirstAttemptCorrect(new Set());
     setFailedCards(new Set());
+    // Pre-warm TTS cache for first 3 cards
+    prefetchAudio(allItems.slice(0, 3).map((c) => c.french));
   }, [levels, customCards]);
 
   const currentCard = useMemo(() => {
@@ -279,9 +284,11 @@ export function FlashcardApp() {
   }, [setCollections]);
 
   const handleStudyCollection = useCallback((collection: Collection) => {
+    unlockAudio();
     setSelectedCollection(collection);
     const queueIds = collection.entries.map((_, index) => `collection-${collection.id}-${index}`);
     setCollectionQueue(queueIds);
+    prefetchAudio(collection.entries.slice(0, 3).map((e) => e.french));
     setAppView("collection");
   }, []);
 
