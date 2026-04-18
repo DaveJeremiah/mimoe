@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { primeFrenchSpeech, speakFrench } from "@/lib/speechUtils";
+import { primeFrenchSpeech, speakFrench, unlockAudio, prefetchAudio } from "@/lib/speechUtils";
 import { useContinuousMic } from "@/hooks/useContinuousMic";
 import type { FlashcardItem } from "@/lib/flashcardData";
 import { Check, X, Send, Mic, MicOff, ArrowRight } from "lucide-react";
@@ -98,11 +98,12 @@ export function Flashcard({ card, onAdvance, total, remaining }: FlashcardProps)
       } else {
         // QUESTION → WRONG_FIRST
         setState("WRONG_FIRST");
-        speakFrench(cardFrenchRef.current);
+        pauseMic();
+        speakFrench(cardFrenchRef.current, () => {
+          resumeMic();
+          setTimeout(() => inputRef.current?.focus(), 50);
+        });
         setTextInput("");
-        // Refocus input for second attempt
-        setTimeout(() => inputRef.current?.focus(), 50);
-        // Mic stays active for retry
       }
     } else {
       // WRONG_FIRST
@@ -120,7 +121,7 @@ export function Flashcard({ card, onAdvance, total, remaining }: FlashcardProps)
         // No auto-advance — wait for button
       }
     }
-  }, [pauseMic, scheduleAutoAdvance]);
+  }, [pauseMic, resumeMic, scheduleAutoAdvance]);
 
   useEffect(() => { processAnswerRef.current = processAnswer; }, [processAnswer]);
 
@@ -227,7 +228,7 @@ export function Flashcard({ card, onAdvance, total, remaining }: FlashcardProps)
                 {!micUnsupported && (
                   <button
                     type="button"
-                    onClick={() => { isListening ? stopMic() : startMic(); }}
+                    onClick={() => { unlockAudio(); isListening ? stopMic() : startMic(); }}
                     className={`mt-4 flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-200 ${
                       isListening
                         ? "text-primary/80 bg-primary/10 animate-fade-in"
