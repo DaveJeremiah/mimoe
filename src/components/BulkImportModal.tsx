@@ -5,7 +5,7 @@ import type { FlashcardItem } from "@/lib/flashcardData";
 interface BulkImportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onImport: (entries: { english: string; french: string }[]) => void;
+  onImport: (entries: { english: string; french: string; alternatives?: string[] }[]) => void;
   existingItems: FlashcardItem[];
 }
 
@@ -14,34 +14,38 @@ export function BulkImportModal({ isOpen, onClose, onImport, existingItems }: Bu
   const [isImporting, setIsImporting] = useState(false);
   const [result, setResult] = useState<{ added: number; skipped: number } | null>(null);
 
-  const parseImportText = (text: string): { english: string; french: string }[] => {
-    const entries: { english: string; french: string }[] = [];
+  const parseImportText = (text: string): { english: string; french: string; alternatives?: string[] }[] => {
+    const entries: { english: string; french: string; alternatives?: string[] }[] = [];
     const lines = text.split('\n').filter(line => line.trim() !== '');
 
     for (const line of lines) {
       let english = '';
       let french = '';
+      let alternatives: string[] = [];
 
       // Try pipe separator first
       if (line.includes('|')) {
-        const parts = line.split('|');
+        const parts = line.split('|').map(p => p.trim()).filter(Boolean);
         if (parts.length >= 2) {
-          english = parts[0].trim();
-          french = parts.slice(1).join('|').trim();
+          english = parts[0];
+          french = parts[1];
+          alternatives = parts.slice(2);
         }
       }
       // Fallback to tab separator
       else if (line.includes('\t')) {
-        const parts = line.split('\t');
+        const parts = line.split('\t').map(p => p.trim()).filter(Boolean);
         if (parts.length >= 2) {
-          english = parts[0].trim();
-          french = parts.slice(1).join('\t').trim();
+          english = parts[0];
+          french = parts[1];
+          alternatives = parts.slice(2);
         }
       }
 
-      // Only add if both parts exist and are not empty
       if (english && french) {
-        entries.push({ english, french });
+        const entry: { english: string; french: string; alternatives?: string[] } = { english, french };
+        if (alternatives.length > 0) entry.alternatives = alternatives;
+        entries.push(entry);
       }
     }
 
@@ -113,14 +117,14 @@ export function BulkImportModal({ isOpen, onClose, onImport, existingItems }: Bu
             <textarea
               value={importText}
               onChange={(e) => setImportText(e.target.value)}
-              placeholder="One pair per line:&#10;Hello | Bonjour&#10;Goodbye | Au revoir&#10;Thank you | Merci&#10;&#10;Or use tab separation:&#10;Hello&#9;Bonjour&#10;Goodbye&#9;Au revoir"
-              className="w-full h-48 p-3 border border-amber-300 rounded-lg font-mono text-sm bg-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder={`One pair per line — tab separates alternatives:&#10;Hello&#9;Bonjour&#10;Goodbye&#9;Au revoir&#9;Salut&#10;Thank you&#9;Merci&#9;Merci beaucoup&#10;&#10;Or use pipe separators:&#10;Hello | Bonjour | Salut&#10;Goodbye | Au revoir`}
+              className="w-full h-48 p-3 border border-gray-600 rounded-lg font-mono text-sm bg-gray-900 text-green-300 placeholder:text-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               disabled={isImporting}
             />
           </div>
 
-          <div className="text-xs text-gray-600 mb-4">
-            Format: English | French (or tab-separated)
+          <div className="text-xs text-gray-400 mb-4">
+            Format: <span className="text-green-400 font-mono">English | French | Alt2 | Alt3</span> — extra columns are accepted alternatives
           </div>
 
           {/* Result Message */}

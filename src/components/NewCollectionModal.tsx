@@ -18,9 +18,12 @@ export function NewCollectionModal({ isOpen, onClose, onSave, editingCollection 
   // Pre-populate import text with existing entries when editing
   useEffect(() => {
     if (editingCollection && isOpen) {
-      const existingEntries = editingCollection.entries.map(entry => 
-        `${entry.english} | ${entry.french}`
-      ).join('\n');
+      const existingEntries = editingCollection.entries.map(entry => {
+        const alts = entry.alternatives && entry.alternatives.length > 0
+          ? ` | ${entry.alternatives.join(' | ')}`
+          : '';
+        return `${entry.english} | ${entry.french}${alts}`;
+      }).join('\n');
       setImportText(existingEntries);
     } else if (!isOpen) {
       setImportText("");
@@ -34,27 +37,31 @@ export function NewCollectionModal({ isOpen, onClose, onSave, editingCollection 
     for (const line of lines) {
       let english = '';
       let french = '';
+      let alternatives: string[] = [];
 
       // Try pipe separator first
       if (line.includes('|')) {
-        const parts = line.split('|');
+        const parts = line.split('|').map(p => p.trim()).filter(Boolean);
         if (parts.length >= 2) {
-          english = parts[0].trim();
-          french = parts.slice(1).join('|').trim();
+          english = parts[0];
+          french = parts[1];
+          alternatives = parts.slice(2);
         }
       }
       // Fallback to tab separator
       else if (line.includes('\t')) {
-        const parts = line.split('\t');
+        const parts = line.split('\t').map(p => p.trim()).filter(Boolean);
         if (parts.length >= 2) {
-          english = parts[0].trim();
-          french = parts.slice(1).join('\t').trim();
+          english = parts[0];
+          french = parts[1];
+          alternatives = parts.slice(2);
         }
       }
 
-      // Only add if both parts exist and are not empty
       if (english && french) {
-        entries.push({ english, french });
+        const entry: CollectionEntry = { english, french };
+        if (alternatives.length > 0) entry.alternatives = alternatives;
+        entries.push(entry);
       }
     }
 
@@ -148,14 +155,14 @@ export function NewCollectionModal({ isOpen, onClose, onSave, editingCollection 
             <textarea
               value={importText}
               onChange={(e) => setImportText(e.target.value)}
-              placeholder="One pair per line:&#10;Hello | Bonjour&#10;Goodbye | Au revoir&#10;Thank you | Merci&#10;&#10;Or use tab separation:&#10;Hello&#9;Bonjour&#10;Goodbye&#9;Au revoir"
-              className="w-full h-48 p-3 border border-amber-300 rounded-lg font-mono text-sm bg-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder={`One pair per line — tab or pipe separates alternatives:\nHello | Bonjour | Salut\nGoodbye | Au revoir\nThank you | Merci | Merci beaucoup`}
+              className="w-full h-48 p-3 border border-gray-600 rounded-lg font-mono text-sm bg-gray-900 text-green-300 placeholder:text-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               disabled={isSaving}
             />
           </div>
 
-          <div className="text-xs text-gray-600">
-            Format: English | French (or tab-separated)
+          <div className="text-xs text-gray-400">
+            Format: <span className="text-green-400 font-mono">English | French | Alt2 | Alt3</span> — extra columns are accepted alternatives
           </div>
 
           {/* Error Message */}

@@ -1,6 +1,8 @@
 export interface CollectionEntry {
   english: string;
   french: string;
+  /** Additional accepted French answers (synonyms/alternatives) */
+  alternatives?: string[];
 }
 
 export interface Collection {

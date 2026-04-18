@@ -218,10 +218,10 @@ export function FlashcardApp() {
   }, []);
 
   const handleAddItem = useCallback(
-    (english: string, french: string) => {
+    (english: string, french: string, alternatives?: string[]) => {
       if (!selectedLevelId) return;
       const id = `custom-${Date.now()}`;
-      const newItem: FlashcardItem = { id, english, french };
+      const newItem: FlashcardItem = { id, english, french, ...(alternatives && alternatives.length > 0 ? { alternatives } : {}) };
       setCustomCards((prev) => ({
         ...prev,
         [selectedLevelId]: [...(prev[selectedLevelId] || []), newItem],
@@ -244,7 +244,7 @@ export function FlashcardApp() {
   );
 
   const handleBulkAdd = useCallback(
-    (entries: { english: string; french: string }[]) => {
+    (entries: { english: string; french: string; alternatives?: string[] }[]) => {
       if (!selectedLevelId) return;
       const newItems = entries.map((entry) => {
         const id = `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;

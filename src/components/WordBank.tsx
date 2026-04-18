@@ -5,9 +5,9 @@ import { BulkImportModal } from "./BulkImportModal";
 
 interface WordBankProps {
   items: FlashcardItem[];
-  onAdd: (english: string, french: string) => void;
+  onAdd: (english: string, french: string, alternatives?: string[]) => void;
   onDelete: (id: string) => void;
-  onBulkAdd: (entries: { english: string; french: string }[]) => void;
+  onBulkAdd: (entries: { english: string; french: string; alternatives?: string[] }[]) => void;
   label: string;
 }
 
@@ -15,14 +15,17 @@ export function WordBank({ items, onAdd, onDelete, onBulkAdd, label }: WordBankP
   const [isOpen, setIsOpen] = useState(false);
   const [english, setEnglish] = useState("");
   const [french, setFrench] = useState("");
+  const [altInput, setAltInput] = useState("");
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!english.trim() || !french.trim()) return;
-    onAdd(english.trim(), french.trim());
+    const alternatives = altInput.split('|').map(a => a.trim()).filter(Boolean);
+    onAdd(english.trim(), french.trim(), alternatives.length > 0 ? alternatives : undefined);
     setEnglish("");
     setFrench("");
+    setAltInput("");
   };
 
   return (
@@ -62,6 +65,9 @@ export function WordBank({ items, onAdd, onDelete, onBulkAdd, label }: WordBankP
                     <span className="text-sm font-medium">{item.english}</span>
                     <span className="text-muted-foreground mx-2">→</span>
                     <span className="text-sm text-primary font-semibold">{item.french}</span>
+                    {item.alternatives && item.alternatives.length > 0 && (
+                      <span className="ml-2 text-xs text-muted-foreground italic">/ {item.alternatives.join(' / ')}</span>
+                    )}
                   </div>
                   <button
                     onClick={() => onDelete(item.id)}
@@ -75,27 +81,36 @@ export function WordBank({ items, onAdd, onDelete, onBulkAdd, label }: WordBankP
 
             <div className="p-4 border-t border-border space-y-3">
               {/* Single Entry Form */}
-              <form onSubmit={handleAdd} className="flex gap-2">
+              <form onSubmit={handleAdd} className="space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={english}
+                    onChange={(e) => setEnglish(e.target.value)}
+                    placeholder="English"
+                    className="flex-1 rounded-xl border border-input bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                  <input
+                    type="text"
+                    value={french}
+                    onChange={(e) => setFrench(e.target.value)}
+                    placeholder="French"
+                    className="flex-1 rounded-xl border border-input bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                  <button
+                    type="submit"
+                    className="rounded-xl bg-primary px-4 py-2.5 text-primary-foreground hover:opacity-90 transition-opacity"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
                 <input
                   type="text"
-                  value={english}
-                  onChange={(e) => setEnglish(e.target.value)}
-                  placeholder="English"
-                  className="flex-1 rounded-xl border border-input bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  value={altInput}
+                  onChange={(e) => setAltInput(e.target.value)}
+                  placeholder="Alternatives (optional): Salut | Bonsoir"
+                  className="w-full rounded-xl border border-input bg-background px-3 py-2 text-xs text-muted-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 />
-                <input
-                  type="text"
-                  value={french}
-                  onChange={(e) => setFrench(e.target.value)}
-                  placeholder="French"
-                  className="flex-1 rounded-xl border border-input bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-                <button
-                  type="submit"
-                  className="rounded-xl bg-primary px-4 py-2.5 text-primary-foreground hover:opacity-90 transition-opacity"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
               </form>
 
               {/* Bulk Import Button */}

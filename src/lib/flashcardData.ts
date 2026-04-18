@@ -2,6 +2,8 @@ export interface FlashcardItem {
   id: string;
   english: string;
   french: string;
+  /** Additional accepted French answers (synonyms/alternatives) */
+  alternatives?: string[];
 }
 
 export interface Level {

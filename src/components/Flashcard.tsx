@@ -24,6 +24,15 @@ type CardState =
 
 const AUTO_ADVANCE_MS = 1500;
 
+/** Returns true if the answer matches the primary french OR any alternative */
+function matchesCard(answer: string, french: string, alternatives?: string[]): boolean {
+  if (isMatch(answer, french)) return true;
+  if (alternatives) {
+    return alternatives.some(alt => isMatch(answer, alt));
+  }
+  return false;
+}
+
 export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef }: FlashcardProps) {
   const [state, setState] = useState<CardState>("QUESTION");
   const [textInput, setTextInput] = useState("");
@@ -48,7 +57,7 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef }
 
       setSpokenText(transcript);
 
-      if (isMatch(transcript, cardFrenchRef.current)) {
+      if (matchesCard(transcript, cardFrenchRef.current, card.alternatives)) {
         processAnswerRef.current?.(transcript);
       } else if (isFinal) {
         processAnswerRef.current?.(transcript);
@@ -71,7 +80,7 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef }
     const s = stateRef.current;
     if (s !== "QUESTION" && s !== "WRONG_FIRST") return;
 
-    const correct = isMatch(answer, cardFrenchRef.current);
+    const correct = matchesCard(answer, cardFrenchRef.current, card.alternatives);
 
     if (s === "QUESTION") {
       if (correct) {
