@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { speakFrench, prefetchAudio } from "@/lib/speechUtils";
+import { speakFrench, unlockAudio, prefetchAudio, isMatch } from "@/lib/speechUtils";
 import type { FlashcardItem } from "@/lib/flashcardData";
-import { Check, Send, Mic, ArrowRight } from "lucide-react";
+import { Check, Send, Mic, ArrowRight, Bookmark, Volume2 } from "lucide-react";
 
 type MicStatus = "idle" | "listening" | "denied" | "unsupported" | "paused";
 
@@ -21,21 +21,6 @@ type CardState =
   | "WRONG_FIRST"
   | "WRONG_RETRY_CORRECT"
   | "WRONG_FINAL";
-
-/** Pure normalizer — strips accents, punctuation, lowercases, collapses whitespace. */
-function normalizeAnswer(str: string): string {
-  return str
-    .toLowerCase()
-    .trim()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9\s]/g, "")
-    .replace(/\s+/g, " ");
-}
-
-function isCorrect(userAnswer: string, correctFrench: string): boolean {
-  return normalizeAnswer(userAnswer) === normalizeAnswer(correctFrench);
-}
 
 const AUTO_ADVANCE_MS = 1500;
 
@@ -63,7 +48,7 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef }
 
       setSpokenText(transcript);
 
-      if (isCorrect(transcript, cardFrenchRef.current)) {
+      if (isMatch(transcript, cardFrenchRef.current)) {
         processAnswerRef.current?.(transcript);
       } else if (isFinal) {
         processAnswerRef.current?.(transcript);
@@ -86,7 +71,7 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef }
     const s = stateRef.current;
     if (s !== "QUESTION" && s !== "WRONG_FIRST") return;
 
-    const correct = isCorrect(answer, cardFrenchRef.current);
+    const correct = isMatch(answer, cardFrenchRef.current);
 
     if (s === "QUESTION") {
       if (correct) {
@@ -202,9 +187,21 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef }
       {/* Main card */}
       <div className="relative w-full max-w-[300px]">
         <div
-          className={`relative aspect-[3/4] rounded-2xl ring-2 ${ringColor} transition-all duration-300 card-shadow-lg`}
+          className={`relative aspect-[3/4] rounded-[2rem] ring-2 ${ringColor} transition-all duration-300 card-shadow-lg`}
         >
-          <div className={`w-full h-full overflow-hidden flex flex-col items-center justify-center p-6 transition-colors duration-300 border-secondary rounded-md ${cardSurface}`}>
+          <div className={`relative w-full h-full flex flex-col items-center justify-center p-6 transition-colors duration-300 border-secondary rounded-[1.85rem] ${cardSurface}`}>
+            {/* Corner Icons */}
+            <div className="absolute top-4 left-4 z-10">
+              <button type="button" className="text-black/30 hover:text-black/50 transition-colors p-1" title="Bookmark">
+                <Bookmark className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="absolute top-4 right-4 z-10">
+              <button type="button" className="text-black/30 hover:text-black/50 transition-colors p-1" title="Listening is active">
+                <Volume2 className="w-5 h-5" />
+              </button>
+            </div>
+
             {(isQuestion || isWrongFirst) && (
               <>
                 <span className={`text-[10px] font-semibold uppercase tracking-widest mb-3 ${isWrongFirst ? "text-warning" : "text-sidebar"}`}>
