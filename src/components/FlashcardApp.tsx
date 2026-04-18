@@ -503,6 +503,14 @@ export function FlashcardApp() {
             onAdvance={handleAdvance}
             total={allCards.length}
             remaining={queue.length}
+            micStatus={micStatus}
+            pauseMic={pauseMic}
+            resumeMic={resumeMic}
+            onMicToggle={() => {
+              unlockAudio();
+              micStatus === "listening" ? stopMic() : startMic();
+            }}
+            onTranscriptRef={onTranscriptRef}
           />
         ) : null}
       </div>
