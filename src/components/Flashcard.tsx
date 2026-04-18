@@ -129,7 +129,7 @@ export function Flashcard({ card, onAdvance, total, remaining, micStatus, pauseM
 
   useEffect(() => { processAnswerRef.current = processAnswer; }, [processAnswer]);
 
-  // ── Reset per-card state on new card; mic stays alive ──
+  // ── Reset per-card state on new card; mic is owned by parent and stays alive ──
   useEffect(() => {
     if (advanceTimerRef.current) {
       window.clearTimeout(advanceTimerRef.current);
@@ -143,9 +143,6 @@ export function Flashcard({ card, onAdvance, total, remaining, micStatus, pauseM
       setCardColorIndex((prev) => (prev + 1) % cardColors.length);
     }
     setIsFirstCard(false);
-
-    primeFrenchSpeech();
-    resumeMic();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card.id]);
 
@@ -154,13 +151,12 @@ export function Flashcard({ card, onAdvance, total, remaining, micStatus, pauseM
     prefetchAudio([card.french]);
   }, [card.french]);
 
-  // Stop mic when component unmounts (leaving session)
+  // Cleanup advance timer on unmount
   useEffect(() => {
     return () => {
       if (advanceTimerRef.current) window.clearTimeout(advanceTimerRef.current);
-      stopMic();
     };
-  }, [stopMic]);
+  }, []);
 
   // ── User actions ──
   const handleTextSubmit = (e: React.FormEvent) => {
