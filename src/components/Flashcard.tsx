@@ -47,6 +47,11 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
   const [isFirstCard, setIsFirstCard] = useState(true);
   const cardColors = ["bg-indigo-400", "bg-green-400", "bg-yellow-400"];
 
+  const [exitAnim, setExitAnim] = useState<string>("");
+  const [enterAnim, setEnterAnim] = useState<string>("animate-enter-right");
+  const [cardAnim, setCardAnim] = useState<string>("");
+  const [isExiting, setIsExiting] = useState(false);
+
   const stateRef = useRef<CardState>("QUESTION");
   const cardFrenchRef = useRef(card.french);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -82,12 +87,26 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
   // ── Core state transitions ──
   const processAnswerRef = useRef<(answer: string) => void>();
 
+  const animateAndAdvance = useCallback((
+    exitClass: string,
+    opts: { failed: boolean; requeue: boolean }
+  ) => {
+    if (isExiting) return;
+    setIsExiting(true);
+    setExitAnim(exitClass);
+    setTimeout(() => {
+      setIsExiting(false);
+      setExitAnim("");
+      onAdvance(opts);
+    }, 420);
+  }, [isExiting, onAdvance]);
+
   const scheduleAutoAdvance = useCallback((failed: boolean) => {
     if (advanceTimerRef.current) window.clearTimeout(advanceTimerRef.current);
     advanceTimerRef.current = window.setTimeout(() => {
-      onAdvance({ failed, requeue: false });
+      animateAndAdvance("animate-swipe-right", { failed, requeue: false });
     }, AUTO_ADVANCE_MS);
-  }, [onAdvance]);
+  }, [animateAndAdvance]);
 
   const processAnswer = useCallback((answer: string) => {
     const s = stateRef.current;
@@ -99,11 +118,13 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
       if (correct) {
         // QUESTION → CORRECT_REVEAL
         setState("CORRECT_REVEAL");
+        setCardAnim("animate-glow-green");
         speakFrench(cardFrenchRef.current);
         scheduleAutoAdvance(false);
       } else {
         // QUESTION → WRONG_FIRST
         setState("WRONG_FIRST");
+        setCardAnim("animate-glow-red");
         speakFrench(cardFrenchRef.current, () => {
           setTimeout(() => inputRef.current?.focus(), 50);
         });
@@ -114,11 +135,14 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
       if (correct) {
         // WRONG_FIRST → WRONG_RETRY_CORRECT
         setState("WRONG_RETRY_CORRECT");
+        setCardAnim("animate-glow-green");
         speakFrench(cardFrenchRef.current);
         scheduleAutoAdvance(true);
       } else {
         // WRONG_FIRST → WRONG_FINAL
         setState("WRONG_FINAL");
+        setCardAnim("animate-flip-reveal");
+        setTimeout(() => setCardAnim(""), 500);
         speakFrench(cardFrenchRef.current);
         // No auto-advance — wait for button
       }
@@ -141,6 +165,9 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
       setCardColorIndex((prev) => (prev + 1) % cardColors.length);
     }
     setIsFirstCard(false);
+
+    setEnterAnim("animate-enter-right");
+    setTimeout(() => setEnterAnim(""), 400);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card.id]);
 
@@ -168,16 +195,20 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
   const handleDontKnow = () => {
     // Treat as final wrong: jump straight to WRONG_FINAL flow
     if (stateRef.current !== "QUESTION" && stateRef.current !== "WRONG_FIRST") return;
-    setState("WRONG_FINAL");
-    speakFrench(cardFrenchRef.current);
+    setCardAnim("animate-shake");
+    setTimeout(() => {
+      setCardAnim("");
+      setState("WRONG_FINAL");
+      speakFrench(cardFrenchRef.current);
+    }, 500);
   };
 
   const handleContinueAfterFinal = () => {
-    onAdvance({ failed: true, requeue: true });
+    animateAndAdvance("animate-swipe-left", { failed: true, requeue: true });
   };
 
   const handleKnewItAfterFinal = () => {
-    onAdvance({ failed: true, requeue: false });
+    animateAndAdvance("animate-swipe-right", { failed: true, requeue: false });
   };
 
   // Swipe event handlers
@@ -233,9 +264,9 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
       </div>
 
       {/* Main card */}
-      <div className="relative w-full max-w-[300px]">
+      <div className={`relative w-full max-w-[300px] card-perspective ${exitAnim} ${cardAnim}`}>
         <div
-          className={`relative aspect-[3/4] rounded-[2rem] ring-2 ${ringColor} transition-all duration-300 card-shadow-lg`}
+          className={`relative aspect-[3/4] rounded-[2rem] ring-2 ${ringColor} ${enterAnim} transition-all duration-300 card-shadow-lg`}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
@@ -272,11 +303,11 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
                 <span className={`text-xs font-semibold uppercase tracking-widest mb-3 ${state === "CORRECT_REVEAL" ? "text-success" : "text-warning"}`}>
                   {state === "CORRECT_REVEAL" ? "Correct!" : "Got it on retry"}
                 </span>
-                <h2 className="font-display text-3xl font-black text-black text-center leading-snug">
+                <h2 className="font-display text-3xl font-black text-black text-center leading-snug animate-pop-in">
                   {card.french}
                 </h2>
                 <p className="mt-2 text-sm text-gray-800">{card.english}</p>
-                <div className="mt-4 flex items-center gap-2 text-success animate-fade-in">
+                <div className="mt-4 flex items-center gap-2 text-success animate-bounce-in">
                   <Check className="w-6 h-6" />
                 </div>
               </>
@@ -287,7 +318,7 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
                 <span className="text-xs font-semibold uppercase tracking-widest text-destructive-foreground/60 mb-3">
                   Answer
                 </span>
-                <h2 className="font-display text-3xl font-black text-black text-center leading-snug">
+                <h2 className="font-display text-3xl font-black text-black text-center leading-snug animate-pop-in">
                   {card.french}
                 </h2>
                 <p className="mt-1 text-sm text-gray-800">{card.english}</p>
@@ -300,7 +331,7 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
                 >
                   <Mic className="w-3.5 h-3.5" /> Hear it again
                 </button>
-                <div className="mt-5 flex gap-3">
+                <div className="mt-5 flex gap-3 animate-bounce-in">
                   <button
                     onClick={handleContinueAfterFinal}
                     className="flex items-center gap-2 px-4 py-2 rounded-xl bg-card text-foreground font-semibold text-sm hover:opacity-90 transition-opacity"
