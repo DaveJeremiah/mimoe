@@ -230,36 +230,6 @@ export function Flashcard({ card, onAdvance, total, remaining, micStatus, pauseM
                 {spokenText && (
                   <p className="mt-3 text-sm text-gray-700 italic">"{spokenText}"</p>
                 )}
-                {!micUnsupported && (
-                  <button
-                    type="button"
-                    onClick={() => { unlockAudio(); isListening ? stopMic() : startMic(); }}
-                    className={`mt-4 flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-200 ${
-                      isListening
-                        ? "text-primary/80 bg-primary/10 animate-fade-in"
-                        : micDenied
-                        ? "text-destructive bg-destructive/10"
-                        : "text-muted-foreground bg-muted hover:bg-accent/50"
-                    }`}
-                  >
-                    {isListening ? (
-                      <>
-                        <Mic className="w-4 h-4 animate-pulse" />
-                        <span className="text-xs text-gray-600">Listening — tap to stop</span>
-                      </>
-                    ) : micDenied ? (
-                      <>
-                        <MicOff className="w-4 h-4" />
-                        <span className="text-xs">Mic blocked — check permissions</span>
-                      </>
-                    ) : (
-                      <>
-                        <Mic className="w-4 h-4" />
-                        <span className="text-xs">Tap once to enable mic</span>
-                      </>
-                    )}
-                  </button>
-                )}
               </>
             )}
 
