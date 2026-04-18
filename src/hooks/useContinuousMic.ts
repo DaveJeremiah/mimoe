@@ -1,126 +1,169 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import * as SpeechSDK from "microsoft-cognitiveservices-speech-sdk";
 
 type MicStatus = "idle" | "listening" | "denied" | "unsupported" | "paused";
 
 interface UseContinuousMicOptions {
-  lang?: string;
-  /** Called for each interim/final transcript */
   onTranscript: (text: string, isFinal: boolean) => void;
 }
 
-/**
- * A persistent SpeechRecognition session that survives across multiple cards.
- * Auto-restarts on `onend` while `enabled` is true. Caller must invoke `start()`
- * once from a user gesture (button click) — afterwards the mic stays open.
- */
-export function useContinuousMic({ lang = "fr-FR", onTranscript }: UseContinuousMicOptions) {
+async function fetchAzureToken(): Promise<{ token: string; region: string } | null> {
+  try {
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/azure-speech-token`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      },
+    });
+    if (!res.ok) {
+      console.warn("Azure token fetch failed:", res.status);
+      return null;
+    }
+    return await res.json();
+  } catch (e) {
+    console.warn("Azure token error:", e);
+    return null;
+  }
+}
+
+export function useContinuousMic({ onTranscript }: UseContinuousMicOptions) {
   const [status, setStatus] = useState<MicStatus>("idle");
-  const recognitionRef = useRef<any>(null);
-  const enabledRef = useRef(false);
+  const recognizerRef = useRef<SpeechSDK.SpeechRecognizer | null>(null);
   const onTranscriptRef = useRef(onTranscript);
   const pausedRef = useRef(false);
+  const enabledRef = useRef(false);
 
   useEffect(() => {
     onTranscriptRef.current = onTranscript;
   }, [onTranscript]);
 
-  const createRecognition = useCallback(() => {
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) return null;
-    const rec = new SR();
-    rec.lang = lang;
-    rec.interimResults = true;
-    rec.continuous = true;
-    rec.maxAlternatives = 5;
+  const createRecognizer = useCallback((token: string, region: string) => {
+    const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(token, region);
+    speechConfig.speechRecognitionLanguage = "fr-FR";
+    speechConfig.outputFormat = SpeechSDK.OutputFormat.Detailed;
 
-    rec.onresult = (event: any) => {
+    const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+    const recognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
+
+    recognizer.recognizing = (_sender, event) => {
       if (pausedRef.current) return;
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i];
-        const transcript = result[0]?.transcript?.trim() ?? "";
-        if (transcript) {
-          onTranscriptRef.current(transcript, result.isFinal);
+      const text = event.result.text?.trim();
+      if (text) onTranscriptRef.current(text, false);
+    };
+
+    recognizer.recognized = (_sender, event) => {
+      if (pausedRef.current) return;
+      if (event.result.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
+        const text = event.result.text?.trim();
+        if (text) onTranscriptRef.current(text, true);
+      }
+    };
+
+    recognizer.canceled = (_sender, event) => {
+      if (event.reason === SpeechSDK.CancellationReason.Error) {
+        console.error("Azure STT error:", event.errorDetails);
+        if (event.errorDetails?.includes("1006") || event.errorDetails?.includes("auth")) {
+          setStatus("denied");
+          enabledRef.current = false;
         }
       }
     };
 
-    rec.onerror = (e: any) => {
-      if (e.error === "not-allowed" || e.error === "service-not-allowed") {
-        enabledRef.current = false;
-        setStatus("denied");
-      } else if (e.error === "no-speech" || e.error === "aborted") {
-        // benign, will restart in onend
+    recognizer.sessionStopped = () => {
+      if (enabledRef.current && !pausedRef.current) {
+        setTimeout(() => {
+          if (enabledRef.current && !pausedRef.current) {
+            try {
+              recognizerRef.current?.startContinuousRecognitionAsync();
+              setStatus("listening");
+            } catch { /* ignore */ }
+          }
+        }, 300);
       }
     };
 
-    rec.onend = () => {
-      if (enabledRef.current) {
-        // Auto-restart to keep session continuous
-        try {
-          rec.start();
-          setStatus(pausedRef.current ? "paused" : "listening");
-        } catch {
-          // already started or transient — try once more shortly
-          setTimeout(() => {
-            if (enabledRef.current) {
-              try { rec.start(); } catch { }
-            }
-          }, 150);
-        }
-      } else {
-        setStatus("idle");
-      }
-    };
+    return recognizer;
+  }, []);
 
-    return rec;
-  }, [lang]);
+  const start = useCallback(async () => {
+    if (enabledRef.current) return;
 
-  const start = useCallback(() => {
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) {
+    const auth = await fetchAzureToken();
+    if (!auth) {
       setStatus("unsupported");
       return;
     }
-    if (recognitionRef.current && enabledRef.current) return;
-
-    const rec = recognitionRef.current ?? createRecognition();
-    if (!rec) return;
-    recognitionRef.current = rec;
-    enabledRef.current = true;
-    pausedRef.current = false;
 
     try {
-      rec.start();
-      setStatus("listening");
-    } catch {
-      // Already running — fine
-      setStatus("listening");
+      const recognizer = createRecognizer(auth.token, auth.region);
+      recognizerRef.current = recognizer;
+      enabledRef.current = true;
+      pausedRef.current = false;
+
+      recognizer.startContinuousRecognitionAsync(
+        () => setStatus("listening"),
+        (err) => {
+          console.error("Azure STT start error:", err);
+          if (String(err).includes("1006") || String(err).includes("microphone")) {
+            setStatus("denied");
+          }
+          enabledRef.current = false;
+        }
+      );
+    } catch (err) {
+      console.error("Failed to create recognizer:", err);
+      setStatus("unsupported");
     }
-  }, [createRecognition]);
+  }, [createRecognizer]);
 
   const stop = useCallback(() => {
     enabledRef.current = false;
     pausedRef.current = false;
-    try { recognitionRef.current?.stop(); } catch { }
-    recognitionRef.current = null;
-    setStatus("idle");
+    const rec = recognizerRef.current;
+    recognizerRef.current = null;
+    if (rec) {
+      rec.stopContinuousRecognitionAsync(
+        () => { rec.close(); setStatus("idle"); },
+        () => { rec.close(); setStatus("idle"); }
+      );
+    } else {
+      setStatus("idle");
+    }
   }, []);
 
   const pause = useCallback(() => {
     pausedRef.current = true;
     setStatus("paused");
+    recognizerRef.current?.stopContinuousRecognitionAsync();
   }, []);
 
   const resume = useCallback(() => {
+    if (!enabledRef.current) return;
     pausedRef.current = false;
-    if (enabledRef.current) setStatus("listening");
+    setTimeout(() => {
+      if (enabledRef.current && !pausedRef.current) {
+        recognizerRef.current?.startContinuousRecognitionAsync(
+          () => setStatus("listening"),
+          (err) => console.warn("Resume error:", err)
+        );
+      }
+    }, 200);
   }, []);
 
   useEffect(() => {
     return () => {
       enabledRef.current = false;
-      try { recognitionRef.current?.stop(); } catch { }
-      recognitionRef.current = null;
+      const rec = recognizerRef.current;
+      recognizerRef.current = null;
+      if (rec) {
+        rec.stopContinuousRecognitionAsync(
+          () => rec.close(),
+          () => rec.close()
+        );
+      }
     };
   }, []);
 
