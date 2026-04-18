@@ -83,6 +83,8 @@ export function FlashcardApp() {
   }, [selectedLevel, customCards, customOrder]);
 
   const [queue, setQueue] = useState<string[]>([]);
+  const [history, setHistory] = useState<string[]>([]); // Track completed cards for undo
+  const [collectionHistory, setCollectionHistory] = useState<string[]>([]); // Track collection cards for undo
 
   // Persistent mic across cards/sessions
   const onTranscriptRef = useRef<(text: string, isFinal: boolean) => void>(() => {});
@@ -167,15 +169,32 @@ export function FlashcardApp() {
     return allCards.find((i) => i.id === queue[0]) || null;
   }, [queue, allCards]);
 
+  const collectionCards = useMemo(() => {
+    if (!selectedCollection) return [];
+    return selectedCollection.entries.map((entry, index) => ({
+      id: `collection-${selectedCollection.id}-${index}`,
+      english: entry.english,
+      french: entry.french
+    }));
+  }, [selectedCollection]);
+
+  const currentCollectionCard = useMemo(() => {
+    if (collectionQueue.length === 0 || !selectedCollection) return null;
+    const firstQueueId = collectionQueue[0];
+    const index = parseInt(firstQueueId.split('-').pop() || '0');
+    return collectionCards[index] || null;
+  }, [collectionQueue, collectionCards, selectedCollection]);
+
   // Start mic once when first card appears, stop it if not on a card
   useEffect(() => {
-    if (currentCard && micStatus === "idle") {
+    const activeCard = currentCard || currentCollectionCard;
+    if (activeCard && micStatus === "idle") {
       unlockAudio();
       startMic();
-    } else if (!currentCard && micStatus !== "idle") {
+    } else if (!activeCard && micStatus !== "idle") {
       stopMic();
     }
-  }, [currentCard?.id, micStatus]);
+  }, [currentCard?.id, currentCollectionCard?.id, micStatus]);
 
   const handleAdvance = useCallback(({ failed, requeue }: { failed: boolean; requeue: boolean }) => {
     const cardId = queue[0];
@@ -242,6 +261,30 @@ export function FlashcardApp() {
     setFirstAttemptCorrect(new Set());
     setFailedCards(new Set());
   }, []);
+
+  // Swipe handlers for regular cards
+  const handleSwipeForward = useCallback(() => {
+    if (queue.length === 0) return;
+    const cardId = queue[0];
+    // Count as correct and add to history
+    setFirstAttemptCorrect(prev => new Set(prev).add(cardId));
+    setHistory(prev => [...prev, cardId]);
+    setQueue(prev => prev.slice(1));
+  }, [queue]);
+
+  const handleSwipeBackward = useCallback(() => {
+    if (history.length === 0) return;
+    const lastCardId = history[history.length - 1];
+    // Remove from history and put back in queue
+    setHistory(prev => prev.slice(0, -1));
+    setQueue(prev => [lastCardId, ...prev]);
+    // Remove from first attempt correct since we're undoing
+    setFirstAttemptCorrect(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(lastCardId);
+      return newSet;
+    });
+  }, [history]);
 
   const handleAddItem = useCallback(
     (english: string, french: string, alternatives?: string[]) => {
@@ -379,21 +422,21 @@ export function FlashcardApp() {
     setCollectionQueue([]);
   }, []);
 
-  const collectionCards = useMemo(() => {
-    if (!selectedCollection) return [];
-    return selectedCollection.entries.map((entry, index) => ({
-      id: `collection-${selectedCollection.id}-${index}`,
-      english: entry.english,
-      french: entry.french
-    }));
-  }, [selectedCollection]);
+  // Swipe handlers for collection cards
+  const handleCollectionSwipeForward = useCallback(() => {
+    if (collectionQueue.length === 0) return;
+    // Count as correct and add to history
+    setCollectionHistory(prev => [...prev, collectionQueue[0]]);
+    setCollectionQueue(prev => prev.slice(1));
+  }, [collectionQueue]);
 
-  const currentCollectionCard = useMemo(() => {
-    if (collectionQueue.length === 0 || !selectedCollection) return null;
-    const firstQueueId = collectionQueue[0];
-    const index = parseInt(firstQueueId.split('-').pop() || '0');
-    return collectionCards[index] || null;
-  }, [collectionQueue, collectionCards, selectedCollection]);
+  const handleCollectionSwipeBackward = useCallback(() => {
+    if (collectionHistory.length === 0) return;
+    const lastCardId = collectionHistory[collectionHistory.length - 1];
+    // Remove from history and put back in queue
+    setCollectionHistory(prev => prev.slice(0, -1));
+    setCollectionQueue(prev => [lastCardId, ...prev]);
+  }, [collectionHistory]);
 
   const handleCollectionAdvance = useCallback(({ requeue }: { failed: boolean; requeue: boolean }) => {
     if (requeue) {
@@ -453,6 +496,8 @@ export function FlashcardApp() {
               total={selectedCollection.entries.length}
               remaining={collectionQueue.length}
               onTranscriptRef={onTranscriptRef}
+              onSwipeForward={handleCollectionSwipeForward}
+              onSwipeBackward={handleCollectionSwipeBackward}
             />
           ) : null}
         </div>
@@ -606,6 +651,8 @@ export function FlashcardApp() {
                   : [...prev, currentCard.id]
               );
             }}
+            onSwipeForward={handleSwipeForward}
+            onSwipeBackward={handleSwipeBackward}
           />
         ) : null}
       </div>

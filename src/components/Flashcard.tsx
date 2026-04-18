@@ -14,6 +14,10 @@ interface FlashcardProps {
   onTranscriptRef: React.MutableRefObject<(text: string, isFinal: boolean) => void>;
   isBookmarked?: boolean;
   onToggleBookmark?: () => void;
+  /** Called when user swipes forward (skip as correct) */
+  onSwipeForward?: () => void;
+  /** Called when user swipes backward (undo) */
+  onSwipeBackward?: () => void;
 }
 
 // Strict state machine — do not add states.
@@ -35,7 +39,7 @@ function matchesCard(answer: string, french: string, alternatives?: string[]): b
   return false;
 }
 
-export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, isBookmarked, onToggleBookmark }: FlashcardProps) {
+export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, isBookmarked, onToggleBookmark, onSwipeForward, onSwipeBackward }: FlashcardProps) {
   const [state, setState] = useState<CardState>("QUESTION");
   const [textInput, setTextInput] = useState("");
   const [spokenText, setSpokenText] = useState("");
@@ -47,6 +51,13 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
   const cardFrenchRef = useRef(card.french);
   const inputRef = useRef<HTMLInputElement>(null);
   const advanceTimerRef = useRef<number | null>(null);
+
+  // Swipe detection state
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
+  const [touchEnd, setTouchEnd] = useState<{ x: number; y: number } | null>(null);
+
+  // Minimum swipe distance
+  const minSwipeDistance = 50;
 
   useEffect(() => { stateRef.current = state; }, [state]);
   useEffect(() => { cardFrenchRef.current = card.french; }, [card.french]);
@@ -169,6 +180,32 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
     onAdvance({ failed: true, requeue: false });
   };
 
+  // Swipe event handlers
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart({ x: e.targetTouches[0].clientX, y: e.targetTouches[0].clientY });
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd({ x: e.targetTouches[0].clientX, y: e.targetTouches[0].clientY });
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart.x - touchEnd.x;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    
+    if (isLeftSwipe && onSwipeForward) {
+      // Swipe left (forward) - count as correct and advance
+      onSwipeForward();
+    } else if (isRightSwipe && onSwipeBackward) {
+      // Swipe right (backward) - undo previous card
+      onSwipeBackward();
+    }
+  };
+
   // ── Derived UI flags ──
   const isWrongFinal = state === "WRONG_FINAL";
   const isWrongFirst = state === "WRONG_FIRST";
@@ -199,6 +236,9 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
       <div className="relative w-full max-w-[300px]">
         <div
           className={`relative aspect-[3/4] rounded-[2rem] ring-2 ${ringColor} transition-all duration-300 card-shadow-lg`}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
         >
           <div className={`relative w-full h-full flex flex-col items-center justify-center p-6 transition-colors duration-300 border-secondary rounded-[1.85rem] ${cardSurface}`}>
             {/* Corner Icons */}
