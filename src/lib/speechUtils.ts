@@ -176,19 +176,41 @@ async function fetchTTSAudio(text: string, rate: number): Promise<string | null>
   }
 }
 
+// Single reusable audio element — unlocked on first user gesture
+let sharedAudio: HTMLAudioElement | null = null;
+
+function getAudio(): HTMLAudioElement {
+  if (!sharedAudio) {
+    sharedAudio = new Audio();
+    sharedAudio.preload = "auto";
+  }
+  return sharedAudio;
+}
+
+export function unlockAudio(): void {
+  // Call this from a direct user gesture (button tap etc)
+  const audio = getAudio();
+  audio.src =
+    "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAEAAQARAAIAIgACABAAEABkYXRhAgAAAAEA";
+  audio.play().catch(() => {});
+}
+
 function playAudioUrl(url: string): Promise<void> {
   return new Promise((resolve) => {
-    const audio = new Audio(url);
+    const audio = getAudio();
     audio.onended = () => resolve();
-    audio.onerror = (e) => {
-      console.warn("Audio playback error:", e);
-      resolve();
-    };
+    audio.onerror = () => resolve();
+    audio.src = url;
     audio.play().catch((err) => {
-      console.warn("Audio.play() rejected:", err);
+      console.warn("Audio play blocked, falling back to browser TTS:", err);
       resolve();
     });
   });
+}
+
+export async function prefetchAudio(texts: string[]): Promise<void> {
+  // Fire all fetches in parallel, silently — just warming the cache
+  await Promise.allSettled(texts.map((text) => fetchTTSAudio(text, 0.88)));
 }
 
 // ── Browser TTS fallback ──
@@ -248,16 +270,18 @@ if (typeof window !== "undefined" && window.speechSynthesis) {
   getBestFrenchVoice();
 }
 
-export async function speakFrench(text: string): Promise<void> {
-  if (!text.trim()) return;
+export async function speakFrench(text: string, onEnd?: () => void): Promise<void> {
+  if (!text.trim()) { onEnd?.(); return; }
   const url = await fetchTTSAudio(text, 0.88);
-  if (url) { await playAudioUrl(url); return; }
+  if (url) { await playAudioUrl(url); onEnd?.(); return; }
   browserSpeak(text, 0.88);
+  onEnd?.();
 }
 
-export async function speakCorrect(text: string): Promise<void> {
-  if (!text.trim()) return;
+export async function speakCorrect(text: string, onEnd?: () => void): Promise<void> {
+  if (!text.trim()) { onEnd?.(); return; }
   const url = await fetchTTSAudio(text, 0.95);
-  if (url) { await playAudioUrl(url); return; }
+  if (url) { await playAudioUrl(url); onEnd?.(); return; }
   browserSpeak(text, 0.95);
+  onEnd?.();
 }
