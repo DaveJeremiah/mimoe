@@ -43,7 +43,7 @@ function isCorrect(userAnswer: string, correctFrench: string): boolean {
 
 const AUTO_ADVANCE_MS = 1500;
 
-export function Flashcard({ card, onAdvance, total, remaining }: FlashcardProps) {
+export function Flashcard({ card, onAdvance, total, remaining, micStatus, pauseMic, resumeMic, onMicToggle, onTranscriptRef }: FlashcardProps) {
   const [state, setState] = useState<CardState>("QUESTION");
   const [textInput, setTextInput] = useState("");
   const [spokenText, setSpokenText] = useState("");
