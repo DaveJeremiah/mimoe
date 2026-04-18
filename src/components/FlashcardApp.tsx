@@ -144,7 +144,7 @@ export function FlashcardApp() {
   }, [queue, allCards]);
 
   // Auto-start mic when a study session begins; stop when it ends
-  const inSession = !!currentCard;
+  const inSession = !!currentCard || !!selectedCollection;
   useEffect(() => {
     if (inSession && micStatus === "idle") {
       unlockAudio();
