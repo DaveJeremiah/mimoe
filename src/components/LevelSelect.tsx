@@ -1,13 +1,23 @@
 import type { Level } from "@/lib/flashcardData";
-import { Check, Plus } from "lucide-react";
+import { Check, Plus, Heart } from "lucide-react";
 
 interface LevelSelectProps {
   levels: Level[];
   completedLevelIds: string[];
   onSelectLevel: (levelId: string) => void;
+  onAddLevel?: () => void;
+  bookmarkedCount?: number;
+  onStudyBookmarked?: () => void;
 }
 
-export function LevelSelect({ levels, completedLevelIds, onSelectLevel }: LevelSelectProps) {
+export function LevelSelect({
+  levels,
+  completedLevelIds,
+  onSelectLevel,
+  onAddLevel,
+  bookmarkedCount = 0,
+  onStudyBookmarked,
+}: LevelSelectProps) {
   return (
     <div className="grid grid-cols-2 gap-3 w-full">
       {levels.map((level, index) => {
@@ -36,8 +46,22 @@ export function LevelSelect({ levels, completedLevelIds, onSelectLevel }: LevelS
           </button>
         );
       })}
-      
+
+      {bookmarkedCount > 0 && onStudyBookmarked && (
+        <button
+          onClick={onStudyBookmarked}
+          className="relative flex flex-col items-start justify-between p-4 rounded-2xl border border-red-400/30 bg-red-400/10 hover:bg-red-400/20 transition-all duration-200 aspect-square text-left card-shadow active:scale-[0.97]"
+        >
+          <Heart className="w-8 h-8 text-red-400 fill-red-400" />
+          <div>
+            <h3 className="font-semibold text-foreground text-sm leading-tight">Favorites</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">{bookmarkedCount} cards</p>
+          </div>
+        </button>
+      )}
+
       <button
+        onClick={onAddLevel}
         className="relative flex flex-col items-center justify-center p-4 rounded-2xl border border-dashed border-border bg-card/50 hover:bg-muted transition-all duration-200 aspect-square text-center active:scale-[0.97]"
       >
         <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-2">

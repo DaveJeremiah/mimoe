@@ -7,6 +7,7 @@ import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { PersonalSpaceDivider } from "./PersonalSpaceDivider";
 import { CollectionCard } from "./CollectionCard";
 import { NewCollectionModal } from "./NewCollectionModal";
+import { NewLevelModal } from "./NewLevelModal";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { vocabularyLevels, phraseLevels, type FlashcardItem } from "@/lib/flashcardData";
@@ -40,11 +41,19 @@ export function FlashcardApp() {
   const [customVocab, setCustomVocab] = useLocalStorage<Record<string, FlashcardItem[]>>("mimoe-custom-vocab", {});
   const [customPhrases, setCustomPhrases] = useLocalStorage<Record<string, FlashcardItem[]>>("mimoe-custom-phrases", {});
 
+  // User-created levels (persisted per tab)
+  const [customVocabLevels, setCustomVocabLevels] = useLocalStorage<{ id: string; title: string }[]>("mimoe-custom-levels-vocab", []);
+  const [customPhraseLevels, setCustomPhraseLevels] = useLocalStorage<{ id: string; title: string }[]>("mimoe-custom-levels-phrases", []);
+  const [isNewLevelModalOpen, setIsNewLevelModalOpen] = useState(false);
+
   // Track which cards were answered correctly on FIRST attempt in current session
   const [firstAttemptCorrect, setFirstAttemptCorrect] = useState<Set<string>>(new Set());
   const [failedCards, setFailedCards] = useState<Set<string>>(new Set());
   const [bookmarkedCards, setBookmarkedCards] = useLocalStorage<string[]>("mimoe-bookmarked-cards", []);
-  
+
+  // Special "bookmarked" study session — synthetic level
+  const [isBookmarkedSession, setIsBookmarkedSession] = useState(false);
+
   const [customOrder, setCustomOrder] = useLocalStorage<Record<string, string[]>>("mimoe-custom-order", {});
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -59,18 +68,56 @@ export function FlashcardApp() {
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, []);
 
-  const levels = activeTab === "vocabulary" ? vocabularyLevels : phraseLevels;
+  const baseLevels = activeTab === "vocabulary" ? vocabularyLevels : phraseLevels;
   const completedIds = activeTab === "vocabulary" ? completedVocab : completedPhrases;
   const setCompletedIds = activeTab === "vocabulary" ? setCompletedVocab : setCompletedPhrases;
   const customCards = activeTab === "vocabulary" ? customVocab : customPhrases;
   const setCustomCards = activeTab === "vocabulary" ? setCustomVocab : setCustomPhrases;
+  const customLevelsList = activeTab === "vocabulary" ? customVocabLevels : customPhraseLevels;
+  const setCustomLevelsList = activeTab === "vocabulary" ? setCustomVocabLevels : setCustomPhraseLevels;
 
-  const selectedLevel = useMemo(() => levels.find((l) => l.id === selectedLevelId) || null, [levels, selectedLevelId]);
+  // Merge built-in levels with user-created custom levels
+  const levels = useMemo(() => {
+    const customAsLevels = customLevelsList.map((cl) => ({
+      id: cl.id,
+      title: cl.title,
+      cards: customCards[cl.id] || [],
+    }));
+    return [...baseLevels, ...customAsLevels];
+  }, [baseLevels, customLevelsList, customCards]);
+
+  // Build a synthetic "bookmarked" level pulling cards from every level (current tab)
+  const bookmarkedLevel = useMemo(() => {
+    if (bookmarkedCards.length === 0) return null;
+    const allItems: FlashcardItem[] = [];
+    for (const lvl of levels) {
+      const custom = customCards[lvl.id] || [];
+      const customDict = Object.fromEntries(custom.map((c) => [c.id, c]));
+      const merged = [
+        ...lvl.cards.map((c) => customDict[c.id] || c),
+        ...custom.filter((c) => !lvl.cards.some((sc) => sc.id === c.id)),
+      ];
+      for (const card of merged) {
+        if (bookmarkedCards.includes(card.id) && !allItems.some((a) => a.id === card.id)) {
+          allItems.push(card);
+        }
+      }
+    }
+    if (allItems.length === 0) return null;
+    return { id: "__bookmarked__", title: "Favorites", cards: allItems };
+  }, [bookmarkedCards, levels, customCards]);
+
+  // selectedLevel resolves to a normal level OR the synthetic bookmarked one
+  const selectedLevel = useMemo(() => {
+    if (isBookmarkedSession) return bookmarkedLevel;
+    return levels.find((l) => l.id === selectedLevelId) || null;
+  }, [isBookmarkedSession, bookmarkedLevel, levels, selectedLevelId]);
 
   const allCards = useMemo(() => {
     if (!selectedLevel) return [];
+    if (isBookmarkedSession) return selectedLevel.cards;
     const custom = customCards[selectedLevel.id] || [];
-    
+
     // Merge base cards with custom overrides
     const customDict = Object.fromEntries(custom.map(c => [c.id, c]));
     const baseCards = selectedLevel.cards.map(c => customDict[c.id] || c);
@@ -91,7 +138,7 @@ export function FlashcardApp() {
       return [...sorted, ...Object.values(mergedDict)];
     }
     return merged;
-  }, [selectedLevel, customCards, customOrder]);
+  }, [selectedLevel, isBookmarkedSession, customCards, customOrder]);
 
   const [queue, setQueue] = useState<string[]>([]);
   const [history, setHistory] = useState<string[]>([]); // Track completed cards for undo
@@ -166,6 +213,7 @@ export function FlashcardApp() {
     const level = levels.find((l) => l.id === levelId);
     if (!level) return;
     unlockAudio();
+    setIsBookmarkedSession(false);
     const custom = customCards[level.id] || [];
     const allItems = [...level.cards, ...custom];
     const allIds = allItems.map((c) => c.id);
@@ -176,6 +224,22 @@ export function FlashcardApp() {
     // Pre-warm TTS cache for first 3 cards
     prefetchAudio(allItems.slice(0, 3).map((c) => c.french));
   }, [levels, customCards]);
+
+  const startBookmarkedSession = useCallback(() => {
+    if (!bookmarkedLevel || bookmarkedLevel.cards.length === 0) return;
+    unlockAudio();
+    setIsBookmarkedSession(true);
+    setSelectedLevelId(bookmarkedLevel.id);
+    setQueue(bookmarkedLevel.cards.map((c) => c.id));
+    setFirstAttemptCorrect(new Set());
+    setFailedCards(new Set());
+    prefetchAudio(bookmarkedLevel.cards.slice(0, 3).map((c) => c.french));
+  }, [bookmarkedLevel]);
+
+  const handleAddLevel = useCallback((title: string) => {
+    const newId = `custom-level-${Date.now()}`;
+    setCustomLevelsList((prev) => [...prev, { id: newId, title }]);
+  }, [setCustomLevelsList]);
 
   const currentCard = useMemo(() => {
     if (queue.length === 0) return null;
@@ -241,28 +305,32 @@ export function FlashcardApp() {
       }, { onConflict: "user_id,level_id,tab" });
   }, [user]);
 
-  // Check completion when deck finishes
+  // Check completion when deck finishes (skip DB save for synthetic bookmarked session)
   useEffect(() => {
-    if (isDeckComplete && selectedLevelId) {
+    if (isDeckComplete && selectedLevelId && !isBookmarkedSession) {
       const allCorrectFirstTry = allCards.length > 0 && failedCards.size === 0;
-      
+
       if (allCorrectFirstTry && !completedIds.includes(selectedLevelId)) {
         setCompletedIds((prev) => [...prev, selectedLevelId]);
       }
-      
+
       saveCompletion(selectedLevelId, activeTab, allCorrectFirstTry);
     }
-  }, [isDeckComplete, selectedLevelId]);
+  }, [isDeckComplete, selectedLevelId, isBookmarkedSession]);
 
   const allCorrectThisSession = allCards.length > 0 && failedCards.size === 0;
 
   const resetDeck = useCallback(() => {
+    if (isBookmarkedSession) {
+      startBookmarkedSession();
+      return;
+    }
     if (!selectedLevelId) return;
     startLevel(selectedLevelId);
-  }, [selectedLevelId, startLevel]);
+  }, [isBookmarkedSession, selectedLevelId, startLevel, startBookmarkedSession]);
 
   const currentLevelIndex = levels.findIndex((l) => l.id === selectedLevelId);
-  const nextLevel = currentLevelIndex >= 0 && currentLevelIndex < levels.length - 1
+  const nextLevel = !isBookmarkedSession && currentLevelIndex >= 0 && currentLevelIndex < levels.length - 1
     ? levels[currentLevelIndex + 1]
     : null;
 
@@ -271,6 +339,7 @@ export function FlashcardApp() {
   }, [nextLevel, startLevel]);
 
   const handleBack = useCallback(() => {
+    setIsBookmarkedSession(false);
     setSelectedLevelId(null);
     setQueue([]);
     setFirstAttemptCorrect(new Set());
@@ -625,6 +694,9 @@ export function FlashcardApp() {
             levels={levels}
             completedLevelIds={completedIds}
             onSelectLevel={startLevel}
+            onAddLevel={() => setIsNewLevelModalOpen(true)}
+            bookmarkedCount={bookmarkedLevel?.cards.length ?? 0}
+            onStudyBookmarked={startBookmarkedSession}
           />
         ) : isDeckComplete ? (
           <div className="flex flex-col items-center gap-4 text-center animate-fade-in">
@@ -796,6 +868,12 @@ export function FlashcardApp() {
           </div>
         </div>
       )}
+
+      <NewLevelModal
+        isOpen={isNewLevelModalOpen}
+        onClose={() => setIsNewLevelModalOpen(false)}
+        onSave={handleAddLevel}
+      />
     </div>
   );
 }

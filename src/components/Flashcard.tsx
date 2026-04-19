@@ -224,7 +224,8 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
   };
 
   const handleContinueAfterFinal = () => {
-    animateAndAdvance("animate-swipe-left", { failed: true, requeue: false });
+    // Failed cards go back to the end of the deck for re-practice
+    animateAndAdvance("animate-swipe-left", { failed: true, requeue: true });
   };
 
   const handleKnewItAfterFinal = () => {
