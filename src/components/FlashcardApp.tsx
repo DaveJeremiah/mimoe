@@ -305,28 +305,32 @@ export function FlashcardApp() {
       }, { onConflict: "user_id,level_id,tab" });
   }, [user]);
 
-  // Check completion when deck finishes
+  // Check completion when deck finishes (skip DB save for synthetic bookmarked session)
   useEffect(() => {
-    if (isDeckComplete && selectedLevelId) {
+    if (isDeckComplete && selectedLevelId && !isBookmarkedSession) {
       const allCorrectFirstTry = allCards.length > 0 && failedCards.size === 0;
-      
+
       if (allCorrectFirstTry && !completedIds.includes(selectedLevelId)) {
         setCompletedIds((prev) => [...prev, selectedLevelId]);
       }
-      
+
       saveCompletion(selectedLevelId, activeTab, allCorrectFirstTry);
     }
-  }, [isDeckComplete, selectedLevelId]);
+  }, [isDeckComplete, selectedLevelId, isBookmarkedSession]);
 
   const allCorrectThisSession = allCards.length > 0 && failedCards.size === 0;
 
   const resetDeck = useCallback(() => {
+    if (isBookmarkedSession) {
+      startBookmarkedSession();
+      return;
+    }
     if (!selectedLevelId) return;
     startLevel(selectedLevelId);
-  }, [selectedLevelId, startLevel]);
+  }, [isBookmarkedSession, selectedLevelId, startLevel, startBookmarkedSession]);
 
   const currentLevelIndex = levels.findIndex((l) => l.id === selectedLevelId);
-  const nextLevel = currentLevelIndex >= 0 && currentLevelIndex < levels.length - 1
+  const nextLevel = !isBookmarkedSession && currentLevelIndex >= 0 && currentLevelIndex < levels.length - 1
     ? levels[currentLevelIndex + 1]
     : null;
 
@@ -335,6 +339,7 @@ export function FlashcardApp() {
   }, [nextLevel, startLevel]);
 
   const handleBack = useCallback(() => {
+    setIsBookmarkedSession(false);
     setSelectedLevelId(null);
     setQueue([]);
     setFirstAttemptCorrect(new Set());
