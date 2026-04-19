@@ -156,13 +156,21 @@ async function fetchAzureTTS(text: string): Promise<string | null> {
   if (cached) return cached
 
   try {
+    const { supabase } = await import('@/integrations/supabase/client')
+    const { data: sessionData } = await supabase.auth.getSession()
+    const accessToken = sessionData.session?.access_token
+    if (!accessToken) {
+      // Not signed in — TTS endpoint requires auth
+      return null
+    }
+
     const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/azure-tts`
     const res = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({ text }),
     })
