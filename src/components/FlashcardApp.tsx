@@ -41,11 +41,19 @@ export function FlashcardApp() {
   const [customVocab, setCustomVocab] = useLocalStorage<Record<string, FlashcardItem[]>>("mimoe-custom-vocab", {});
   const [customPhrases, setCustomPhrases] = useLocalStorage<Record<string, FlashcardItem[]>>("mimoe-custom-phrases", {});
 
+  // User-created levels (persisted per tab)
+  const [customVocabLevels, setCustomVocabLevels] = useLocalStorage<{ id: string; title: string }[]>("mimoe-custom-levels-vocab", []);
+  const [customPhraseLevels, setCustomPhraseLevels] = useLocalStorage<{ id: string; title: string }[]>("mimoe-custom-levels-phrases", []);
+  const [isNewLevelModalOpen, setIsNewLevelModalOpen] = useState(false);
+
   // Track which cards were answered correctly on FIRST attempt in current session
   const [firstAttemptCorrect, setFirstAttemptCorrect] = useState<Set<string>>(new Set());
   const [failedCards, setFailedCards] = useState<Set<string>>(new Set());
   const [bookmarkedCards, setBookmarkedCards] = useLocalStorage<string[]>("mimoe-bookmarked-cards", []);
-  
+
+  // Special "bookmarked" study session — synthetic level
+  const [isBookmarkedSession, setIsBookmarkedSession] = useState(false);
+
   const [customOrder, setCustomOrder] = useLocalStorage<Record<string, string[]>>("mimoe-custom-order", {});
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
