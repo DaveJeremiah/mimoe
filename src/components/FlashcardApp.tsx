@@ -213,6 +213,7 @@ export function FlashcardApp() {
     const level = levels.find((l) => l.id === levelId);
     if (!level) return;
     unlockAudio();
+    setIsBookmarkedSession(false);
     const custom = customCards[level.id] || [];
     const allItems = [...level.cards, ...custom];
     const allIds = allItems.map((c) => c.id);
@@ -223,6 +224,22 @@ export function FlashcardApp() {
     // Pre-warm TTS cache for first 3 cards
     prefetchAudio(allItems.slice(0, 3).map((c) => c.french));
   }, [levels, customCards]);
+
+  const startBookmarkedSession = useCallback(() => {
+    if (!bookmarkedLevel || bookmarkedLevel.cards.length === 0) return;
+    unlockAudio();
+    setIsBookmarkedSession(true);
+    setSelectedLevelId(bookmarkedLevel.id);
+    setQueue(bookmarkedLevel.cards.map((c) => c.id));
+    setFirstAttemptCorrect(new Set());
+    setFailedCards(new Set());
+    prefetchAudio(bookmarkedLevel.cards.slice(0, 3).map((c) => c.french));
+  }, [bookmarkedLevel]);
+
+  const handleAddLevel = useCallback((title: string) => {
+    const newId = `custom-level-${Date.now()}`;
+    setCustomLevelsList((prev) => [...prev, { id: newId, title }]);
+  }, [setCustomLevelsList]);
 
   const currentCard = useMemo(() => {
     if (queue.length === 0) return null;
