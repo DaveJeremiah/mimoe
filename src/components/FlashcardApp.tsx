@@ -283,6 +283,10 @@ export function FlashcardApp() {
     } else {
       setFirstAttemptCorrect(prev => new Set(prev).add(cardId));
     }
+    // Add to history unless requeuing
+    if (!requeue) {
+      setHistory(prev => [...prev, cardId]);
+    }
     if (requeue) {
       setQueue((q) => [...q.slice(1), q[0]]);
     } else {
@@ -532,6 +536,42 @@ export function FlashcardApp() {
 
   const isCollectionDeckComplete = collectionQueue.length === 0 && selectedCollection !== null;
 
+  // Add these handlers in FlashcardApp
+  const [touchStart, setTouchStart] = useState<{x: number; y: number} | null>(null);
+
+  const handleSessionTouchStart = (e: React.TouchEvent) => {
+    setTouchStart({ x: e.targetTouches[0].clientX, y: e.targetTouches[0].clientY });
+  };
+
+  const handleSessionTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStart) return;
+    const dx = touchStart.x - e.changedTouches[0].clientX;
+    const dy = Math.abs(touchStart.y - e.changedTouches[0].clientY);
+    // Only register horizontal swipes (ignore scrolling)
+    if (Math.abs(dx) < 60 || dy > 80) return;
+    if (dx > 0) {
+      // Swipe left = forward
+      handleSwipeForward();
+    } else {
+      // Swipe right = backward
+      handleSwipeBackward();
+    }
+    setTouchStart(null);
+  };
+
+  const handleCollectionSessionTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStart) return;
+    const dx = touchStart.x - e.changedTouches[0].clientX;
+    const dy = Math.abs(touchStart.y - e.changedTouches[0].clientY);
+    if (Math.abs(dx) < 60 || dy > 80) return;
+    if (dx > 0) {
+      handleCollectionSwipeForward();
+    } else {
+      handleCollectionSwipeBackward();
+    }
+    setTouchStart(null);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -544,10 +584,23 @@ export function FlashcardApp() {
 
   if (appView === "collection" && selectedCollection) {
     return (
-      <div className="min-h-screen flex flex-col items-center max-w-[480px] mx-auto px-[15px] py-[61px]">
+      <div 
+        className="min-h-screen flex flex-col items-center max-w-[480px] mx-auto px-[15px] py-[61px]"
+        onTouchStart={handleSessionTouchStart}
+        onTouchEnd={handleCollectionSessionTouchEnd}
+      >
         <header className="text-center mb-6 w-full">
           <div className="flex items-center gap-3">
-            <button onClick={handleBackToMain} className="p-2 -ml-2 rounded-xl hover:bg-accent/50 transition-colors">
+            <button
+              onClick={() => {
+                if (collectionHistory.length > 0) {
+                  handleCollectionSwipeBackward();
+                } else {
+                  handleBackToMain();
+                }
+              }}
+              className="p-2 -ml-2 rounded-xl hover:bg-accent/50 transition-colors"
+            >
               <ArrowLeft className="w-5 h-5 text-foreground" />
             </button>
             <div className="text-left">
@@ -580,8 +633,6 @@ export function FlashcardApp() {
               total={selectedCollection.entries.length}
               remaining={collectionQueue.length}
               onTranscriptRef={onTranscriptRef}
-              onSwipeForward={handleCollectionSwipeForward}
-              onSwipeBackward={handleCollectionSwipeBackward}
               isMicOn={isMicEnabled}
               onToggleMic={() => setIsMicEnabled(prev => !prev)}
             />
@@ -592,12 +643,25 @@ export function FlashcardApp() {
   }
 
   return (
-    <div className={`min-h-screen flex flex-col items-center max-w-[480px] mx-auto px-[15px] pt-[61px] ${selectedLevelId ? 'pb-36' : 'pb-24'}`}>
+    <div 
+      className={`min-h-screen flex flex-col items-center max-w-[480px] mx-auto px-[15px] pt-[61px] ${selectedLevelId ? 'pb-36' : 'pb-24'}`}
+      onTouchStart={handleSessionTouchStart}
+      onTouchEnd={handleSessionTouchEnd}
+    >
       {/* Header */}
       <header className="text-center mb-6 w-full">
         {selectedLevelId ? (
           <div className="w-full flex items-center gap-3">
-            <button onClick={handleBack} className="p-2 -ml-2 rounded-xl hover:bg-muted transition-colors">
+            <button
+              onClick={() => {
+                if (history.length > 0) {
+                  handleSwipeBackward();
+                } else {
+                  handleBack();
+                }
+              }}
+              className="p-2 -ml-2 rounded-xl hover:bg-muted transition-colors"
+            >
               <ArrowLeft className="w-5 h-5 text-foreground" />
             </button>
             <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
@@ -752,8 +816,6 @@ export function FlashcardApp() {
                   : [...prev, currentCard.id]
               );
             }}
-            onSwipeForward={handleSwipeForward}
-            onSwipeBackward={handleSwipeBackward}
             isMicOn={isMicEnabled}
             onToggleMic={() => setIsMicEnabled(prev => !prev)}
             onAnimateAdvance={(fn) => { animateAdvanceRef.current = fn; }}
@@ -848,7 +910,9 @@ export function FlashcardApp() {
             <div className="flex items-center justify-between w-full">
               <button
                 onClick={() => {
-                  animateAdvanceRef.current?.("animate-swipe-left", { failed: true, requeue: true });
+                  if (history.length > 0) {
+                    handleSwipeBackward();
+                  }
                 }}
                 className="p-4 rounded-2xl hover:bg-white/5 transition-colors"
               >
