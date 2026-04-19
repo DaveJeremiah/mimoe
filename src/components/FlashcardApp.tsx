@@ -784,7 +784,7 @@ export function FlashcardApp() {
           <div className="w-full space-y-4">
             <button
               onClick={handleCreateCollection}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-white transition-colors font-medium bg-muted-foreground"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-white transition-colors font-medium bg-[#818898]/0"
             >
               <Plus className="w-5 h-5" />
               New Collection
