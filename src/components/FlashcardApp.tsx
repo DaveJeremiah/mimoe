@@ -186,7 +186,9 @@ export function FlashcardApp() {
   }, [user]);
 
   // Restore progress on component mount
+  const hasRestoredRef = useRef(false);
   useEffect(() => {
+    if (hasRestoredRef.current) return;
     if (selectedLevelId && savedQueue.length > 0) {
       const level = levels.find((l) => l.id === selectedLevelId);
       if (level) {
@@ -197,6 +199,9 @@ export function FlashcardApp() {
           setQueue(validQueue);
         }
       }
+    }
+    if (levels.length > 0) {
+      hasRestoredRef.current = true;
     }
   }, [selectedLevelId, savedQueue, levels, customCards, queue.length]);
 
@@ -221,6 +226,7 @@ export function FlashcardApp() {
     setSelectedLevelId(levelId);
     setFirstAttemptCorrect(new Set());
     setFailedCards(new Set());
+    setHistory([]);
     // Pre-warm TTS cache for first 3 cards
     prefetchAudio(allItems.slice(0, 3).map((c) => c.french));
   }, [levels, customCards]);
@@ -233,6 +239,7 @@ export function FlashcardApp() {
     setQueue(bookmarkedLevel.cards.map((c) => c.id));
     setFirstAttemptCorrect(new Set());
     setFailedCards(new Set());
+    setHistory([]);
     prefetchAudio(bookmarkedLevel.cards.slice(0, 3).map((c) => c.french));
   }, [bookmarkedLevel]);
 
@@ -348,6 +355,7 @@ export function FlashcardApp() {
     setQueue([]);
     setFirstAttemptCorrect(new Set());
     setFailedCards(new Set());
+    setHistory([]);
   }, []);
 
   // Swipe handlers for regular cards
@@ -415,6 +423,7 @@ export function FlashcardApp() {
         [selectedLevelId]: (prev[selectedLevelId] || []).filter((i) => i.id !== id),
       }));
       setQueue((prev) => prev.filter((i) => i !== id));
+      setHistory((prev) => prev.filter((i) => i !== id));
     },
     [selectedLevelId, setCustomCards]
   );
@@ -450,6 +459,7 @@ export function FlashcardApp() {
     setSavedQueue(shuffledIds);
     setFirstAttemptCorrect(new Set());
     setFailedCards(new Set());
+    setHistory([]);
     setCustomOrder(prev => ({ ...prev, [selectedLevelId]: shuffledIds }));
     setIsMenuOpen(false);
   };
@@ -460,6 +470,7 @@ export function FlashcardApp() {
     setQueue([]);
     setFirstAttemptCorrect(new Set());
     setFailedCards(new Set());
+    setHistory([]);
   };
 
   // Collection management functions
@@ -500,6 +511,7 @@ export function FlashcardApp() {
     setSelectedCollection(collection);
     const queueIds = collection.entries.map((_, index) => `collection-${collection.id}-${index}`);
     setCollectionQueue(queueIds);
+    setCollectionHistory([]);
     prefetchAudio(collection.entries.slice(0, 3).map((e) => e.french));
     setAppView("collection");
   }, []);
@@ -508,6 +520,7 @@ export function FlashcardApp() {
     setAppView("main");
     setSelectedCollection(null);
     setCollectionQueue([]);
+    setCollectionHistory([]);
   }, []);
 
   // Swipe handlers for collection cards
@@ -701,6 +714,7 @@ export function FlashcardApp() {
                           if (validBookmarked.length > 0) {
                             setQueue(validBookmarked);
                             setSavedQueue(validBookmarked);
+                            setHistory([]);
                           }
                         }
                       }}
