@@ -694,6 +694,9 @@ export function FlashcardApp() {
             levels={levels}
             completedLevelIds={completedIds}
             onSelectLevel={startLevel}
+            onAddLevel={() => setIsNewLevelModalOpen(true)}
+            bookmarkedCount={bookmarkedLevel?.cards.length ?? 0}
+            onStudyBookmarked={startBookmarkedSession}
           />
         ) : isDeckComplete ? (
           <div className="flex flex-col items-center gap-4 text-center animate-fade-in">
