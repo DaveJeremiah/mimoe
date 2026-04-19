@@ -894,7 +894,7 @@ export function FlashcardApp() {
             </button>
             <button
               onClick={handleCreateCollection}
-              className="w-14 h-14 rounded-full flex items-center justify-center shadow-lg shadow-secondary/30 active:scale-95 transition-transform bg-fuchsia-950 mx-0 mt-0"
+              className="w-14 h-14 rounded-full flex items-center justify-center shadow-lg shadow-secondary/30 active:scale-95 transition-transform bg-fuchsia-950 mx-0 mt-0 border-stone-800"
             >
               <Plus className="w-6 h-6 text-white" />
             </button>
