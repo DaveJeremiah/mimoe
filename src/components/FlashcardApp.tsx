@@ -68,13 +68,44 @@ export function FlashcardApp() {
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, []);
 
-  const levels = activeTab === "vocabulary" ? vocabularyLevels : phraseLevels;
+  const baseLevels = activeTab === "vocabulary" ? vocabularyLevels : phraseLevels;
   const completedIds = activeTab === "vocabulary" ? completedVocab : completedPhrases;
   const setCompletedIds = activeTab === "vocabulary" ? setCompletedVocab : setCompletedPhrases;
   const customCards = activeTab === "vocabulary" ? customVocab : customPhrases;
   const setCustomCards = activeTab === "vocabulary" ? setCustomVocab : setCustomPhrases;
+  const customLevelsList = activeTab === "vocabulary" ? customVocabLevels : customPhraseLevels;
+  const setCustomLevelsList = activeTab === "vocabulary" ? setCustomVocabLevels : setCustomPhraseLevels;
 
-  const selectedLevel = useMemo(() => levels.find((l) => l.id === selectedLevelId) || null, [levels, selectedLevelId]);
+  // Merge built-in levels with user-created custom levels
+  const levels = useMemo(() => {
+    const customAsLevels = customLevelsList.map((cl) => ({
+      id: cl.id,
+      title: cl.title,
+      cards: customCards[cl.id] || [],
+    }));
+    return [...baseLevels, ...customAsLevels];
+  }, [baseLevels, customLevelsList, customCards]);
+
+  // Build a synthetic "bookmarked" level pulling cards from every level (current tab)
+  const bookmarkedLevel = useMemo(() => {
+    if (bookmarkedCards.length === 0) return null;
+    const allItems: FlashcardItem[] = [];
+    for (const lvl of levels) {
+      const custom = customCards[lvl.id] || [];
+      const customDict = Object.fromEntries(custom.map((c) => [c.id, c]));
+      const merged = [
+        ...lvl.cards.map((c) => customDict[c.id] || c),
+        ...custom.filter((c) => !lvl.cards.some((sc) => sc.id === c.id)),
+      ];
+      for (const card of merged) {
+        if (bookmarkedCards.includes(card.id) && !allItems.some((a) => a.id === card.id)) {
+          allItems.push(card);
+        }
+      }
+    }
+    if (allItems.length === 0) return null;
+    return { id: "__bookmarked__", title: "Favorites", cards: allItems };
+  }, [bookmarkedCards, levels, customCards]);
 
   const allCards = useMemo(() => {
     if (!selectedLevel) return [];
