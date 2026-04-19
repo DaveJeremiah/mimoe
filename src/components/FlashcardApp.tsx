@@ -784,7 +784,7 @@ export function FlashcardApp() {
           <div className="w-full space-y-4">
             <button
               onClick={handleCreateCollection}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-orange-500 text-white hover:bg-orange-600 transition-colors font-medium"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-white transition-colors font-medium bg-secondary-foreground"
             >
               <Plus className="w-5 h-5" />
               New Collection
@@ -823,7 +823,7 @@ export function FlashcardApp() {
       {/* Navigation Bars */}
       {!selectedLevelId && appView === "main" && (
         <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-end justify-center pb-safe">
-          <div className="w-full max-w-[480px] flex items-center justify-around px-8 py-3 bg-card/90 backdrop-blur-xl border-t border-border">
+          <div className="w-full max-w-[480px] flex items-center justify-around bg-card/90 backdrop-blur-xl border-t border-border py-[36px] px-[16px] rounded-full">
             <button className="flex flex-col items-center gap-1 text-primary">
               <Home className="w-5 h-5" />
               <span className="text-[10px] font-medium">Home</span>
