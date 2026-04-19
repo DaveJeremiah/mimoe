@@ -605,13 +605,7 @@ export function FlashcardApp() {
         <header className="text-center mb-6 w-full">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => {
-                if (collectionHistory.length > 0) {
-                  handleCollectionSwipeBackward();
-                } else {
-                  handleBackToMain();
-                }
-              }}
+              onClick={handleBackToMain}
               className="p-2 -ml-2 rounded-xl hover:bg-accent/50 transition-colors"
             >
               <ArrowLeft className="w-5 h-5 text-foreground" />
@@ -666,13 +660,7 @@ export function FlashcardApp() {
         {selectedLevelId ? (
           <div className="w-full flex items-center gap-3">
             <button
-              onClick={() => {
-                if (history.length > 0) {
-                  handleSwipeBackward();
-                } else {
-                  handleBack();
-                }
-              }}
+              onClick={handleBack}
               className="p-2 -ml-2 rounded-xl hover:bg-muted transition-colors"
             >
               <ArrowLeft className="w-5 h-5 text-foreground" />
