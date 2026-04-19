@@ -107,10 +107,17 @@ export function FlashcardApp() {
     return { id: "__bookmarked__", title: "Favorites", cards: allItems };
   }, [bookmarkedCards, levels, customCards]);
 
+  // selectedLevel resolves to a normal level OR the synthetic bookmarked one
+  const selectedLevel = useMemo(() => {
+    if (isBookmarkedSession) return bookmarkedLevel;
+    return levels.find((l) => l.id === selectedLevelId) || null;
+  }, [isBookmarkedSession, bookmarkedLevel, levels, selectedLevelId]);
+
   const allCards = useMemo(() => {
     if (!selectedLevel) return [];
+    if (isBookmarkedSession) return selectedLevel.cards;
     const custom = customCards[selectedLevel.id] || [];
-    
+
     // Merge base cards with custom overrides
     const customDict = Object.fromEntries(custom.map(c => [c.id, c]));
     const baseCards = selectedLevel.cards.map(c => customDict[c.id] || c);
@@ -131,7 +138,7 @@ export function FlashcardApp() {
       return [...sorted, ...Object.values(mergedDict)];
     }
     return merged;
-  }, [selectedLevel, customCards, customOrder]);
+  }, [selectedLevel, isBookmarkedSession, customCards, customOrder]);
 
   const [queue, setQueue] = useState<string[]>([]);
   const [history, setHistory] = useState<string[]>([]); // Track completed cards for undo
