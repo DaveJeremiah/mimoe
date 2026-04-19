@@ -698,6 +698,16 @@ export function FlashcardApp() {
             bookmarkedCount={bookmarkedLevel?.cards.length ?? 0}
             onStudyBookmarked={startBookmarkedSession}
           />
+        ) : allCards.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 text-center animate-fade-in py-8">
+            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+              <Plus className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h2 className="font-display text-xl font-bold text-foreground">No cards yet</h2>
+            <p className="text-sm text-muted-foreground max-w-[260px]">
+              Add cards to this level using the Word Bank below — single entries or bulk import.
+            </p>
+          </div>
         ) : isDeckComplete ? (
           <div className="flex flex-col items-center gap-4 text-center animate-fade-in">
             <PartyPopper className="w-16 h-16 text-secondary" />
@@ -751,8 +761,8 @@ export function FlashcardApp() {
         ) : null}
       </div>
 
-      {/* Word bank */}
-      {selectedLevelId && !isDeckComplete && (
+      {/* Word bank — shown for any selected level (including empty new ones) */}
+      {selectedLevelId && !isBookmarkedSession && (allCards.length === 0 || !isDeckComplete) && (
         <div className="mt-6 w-full flex justify-center">
           <WordBank
             items={allCards}
