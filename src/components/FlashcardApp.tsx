@@ -868,6 +868,12 @@ export function FlashcardApp() {
           </div>
         </div>
       )}
+
+      <NewLevelModal
+        isOpen={isNewLevelModalOpen}
+        onClose={() => setIsNewLevelModalOpen(false)}
+        onSave={handleAddLevel}
+      />
     </div>
   );
 }
