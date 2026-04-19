@@ -1,3 +1,5 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -9,6 +11,28 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Require authenticated user to prevent abuse of Azure quota
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+    )
+    const token = authHeader.replace('Bearer ', '')
+    const { data: claimsData, error: claimsErr } = await supabase.auth.getClaims(token)
+    if (claimsErr || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     const AZURE_TTS_KEY = Deno.env.get('AZURE_TTS_KEY')
     const AZURE_TTS_REGION = Deno.env.get('AZURE_TTS_REGION')
 
@@ -33,15 +57,15 @@ Deno.serve(async (req) => {
     if (!tokenRes.ok) {
       const err = await tokenRes.text()
       console.error('Azure token error:', tokenRes.status, err)
-      return new Response(JSON.stringify({ error: 'Token mint failed', detail: err }), {
+      return new Response(JSON.stringify({ error: 'Token mint failed' }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    const token = await tokenRes.text()
+    const azureToken = await tokenRes.text()
 
-    return new Response(JSON.stringify({ token, region: AZURE_TTS_REGION }), {
+    return new Response(JSON.stringify({ token: azureToken, region: AZURE_TTS_REGION }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (error) {

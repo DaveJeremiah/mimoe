@@ -9,20 +9,15 @@ interface UseContinuousMicOptions {
 
 async function fetchAzureToken(): Promise<{ token: string; region: string } | null> {
   try {
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/azure-speech-token`;
-    const res = await fetch(url, {
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { data, error } = await supabase.functions.invoke("azure-speech-token", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-      },
     });
-    if (!res.ok) {
-      console.warn("Azure token fetch failed:", res.status);
+    if (error || !data?.token) {
+      console.warn("Azure token fetch failed:", error);
       return null;
     }
-    return await res.json();
+    return data as { token: string; region: string };
   } catch (e) {
     console.warn("Azure token error:", e);
     return null;

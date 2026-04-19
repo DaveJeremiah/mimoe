@@ -1,6 +1,17 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+function escapeXml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;')
 }
 
 Deno.serve(async (req) => {
@@ -9,6 +20,28 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Require authenticated user to prevent abuse of Azure quota
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+    )
+    const jwt = authHeader.replace('Bearer ', '')
+    const { data: claimsData, error: claimsErr } = await supabase.auth.getClaims(jwt)
+    if (claimsErr || !claimsData?.claims) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     const AZURE_TTS_KEY = Deno.env.get('AZURE_TTS_KEY')
     const AZURE_TTS_REGION = Deno.env.get('AZURE_TTS_REGION')
 
@@ -27,10 +60,11 @@ Deno.serve(async (req) => {
       })
     }
 
+    const safeText = escapeXml(text)
     const ssml = `
       <speak version='1.0' xml:lang='fr-FR'>
         <voice xml:lang='fr-FR' name='fr-FR-DeniseNeural'>
-          <prosody rate='-10%'>${text}</prosody>
+          <prosody rate='-10%'>${safeText}</prosody>
         </voice>
       </speak>
     `
@@ -51,7 +85,7 @@ Deno.serve(async (req) => {
     if (!response.ok) {
       const err = await response.text()
       console.error('Azure TTS error:', response.status, err)
-      return new Response(JSON.stringify({ error: 'TTS failed', detail: err }), {
+      return new Response(JSON.stringify({ error: 'TTS failed' }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
