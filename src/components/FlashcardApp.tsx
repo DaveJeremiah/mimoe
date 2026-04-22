@@ -14,7 +14,7 @@ import { vocabularyLevels, phraseLevels, type FlashcardItem } from "@/lib/flashc
 import { type Collection, CollectionFormData } from "@/lib/collectionTypes";
 import { prefetchAudio, unlockAudio } from "@/lib/speechUtils";
 import { useContinuousMic } from "@/hooks/useContinuousMic";
-import { PartyPopper, ArrowLeft, Plus, LogOut, MoreVertical, Shuffle, Bookmark, Home, User, ChevronLeft, ChevronRight, Mic, Activity } from "lucide-react";
+import { PartyPopper, ArrowLeft, Plus, LogOut, MoreVertical, Shuffle, Bookmark, Home, User, ChevronLeft, ChevronRight, Mic, Activity, Play } from "lucide-react";
 
 type Tab = "vocabulary" | "phrases";
 type AppView = "main" | "collection";
@@ -153,6 +153,10 @@ export function FlashcardApp() {
   });
 
   const animateAdvanceRef = useRef<((exitClass: string, opts: { failed: boolean; requeue: boolean }) => void) | null>(null);
+
+  const [isCollectionMenuOpen, setIsCollectionMenuOpen] = useState(false);
+  const [collectionBookmarkedCards, setCollectionBookmarkedCards] = useState<string[]>([]);
+  const collectionAnimateAdvanceRef = useRef<((exitClass: string, opts: { failed: boolean; requeue: boolean }) => void) | null>(null);
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -599,40 +603,103 @@ export function FlashcardApp() {
 
   if (appView === "collection" && selectedCollection) {
     return (
-      <div 
-        className="min-h-screen flex flex-col items-center max-w-[480px] mx-auto px-[15px] py-[61px]"
+      <div
+        className="min-h-screen flex flex-col items-center max-w-[480px] mx-auto px-[15px] pt-[61px] pb-36"
         onTouchStart={handleSessionTouchStart}
         onTouchEnd={handleCollectionSessionTouchEnd}
       >
-        <header className="text-center mb-6 w-full">
-          <div className="flex items-center gap-3">
+        {/* Header — progress bar + back to previous card */}
+        <header className="w-full flex items-center gap-3 mb-6">
+          <button
+            onClick={() => {
+              if (collectionHistory.length > 0) {
+                handleCollectionSwipeBackward();
+              } else {
+                handleBackToMain();
+              }
+            }}
+            className="p-2 -ml-2 rounded-xl hover:bg-muted transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5 text-foreground" />
+          </button>
+          <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+            <div
+              className="h-full rounded-full bg-primary transition-all duration-500"
+              style={{
+                width: `${selectedCollection.entries.length > 0
+                  ? ((selectedCollection.entries.length - collectionQueue.length) / selectedCollection.entries.length) * 100
+                  : 0}%`
+              }}
+            />
+          </div>
+          <span className="text-sm text-muted-foreground font-medium min-w-[40px] text-right">
+            {selectedCollection.entries.length - collectionQueue.length}/{selectedCollection.entries.length}
+          </span>
+          {/* 3-dot menu */}
+          <div className="relative">
             <button
-              onClick={handleBackToMain}
-              className="p-2 -ml-2 rounded-xl hover:bg-accent/50 transition-colors"
+              onClick={() => setIsCollectionMenuOpen(!isCollectionMenuOpen)}
+              className="p-2 mr-[-8px] rounded-xl hover:bg-muted transition-colors"
             >
-              <ArrowLeft className="w-5 h-5 text-foreground" />
+              <MoreVertical className="w-5 h-5 text-foreground" />
             </button>
-            <div className="text-left">
-              <h1 className="font-display text-xl font-bold text-foreground tracking-tight">
-                {selectedCollection.title}
-              </h1>
-              <p className="text-xs text-muted-foreground">Personal Collection</p>
-            </div>
+            {isCollectionMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setIsCollectionMenuOpen(false)} />
+                <div className="absolute right-0 top-full mt-2 w-48 rounded-xl bg-card border border-border shadow-lg z-50 overflow-hidden animate-fade-in">
+                  <button
+                    onClick={() => {
+                      setIsCollectionMenuOpen(false);
+                      const shuffled = [...collectionQueue].sort(() => Math.random() - 0.5);
+                      setCollectionQueue(shuffled);
+                      setCollectionHistory([]);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                  >
+                    <Shuffle className="w-4 h-4" />
+                    Shuffle Cards
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsCollectionMenuOpen(false);
+                      handleBackToMain();
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors border-t border-border"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Exit Collection
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </header>
 
+        {/* Content */}
         <div className="flex-1 w-full flex flex-col items-center justify-center">
           {isCollectionDeckComplete ? (
             <div className="flex flex-col items-center gap-4 text-center animate-fade-in">
               <PartyPopper className="w-16 h-16 text-secondary" />
               <h2 className="font-display text-2xl font-bold text-foreground">Bien joué! 🎉</h2>
-              <p className="text-muted-foreground">You've mastered this collection!</p>
-              <button
-                onClick={handleBackToMain}
-                className="px-5 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 transition-opacity"
-              >
-                Back to Collections
-              </button>
+              <p className="text-muted-foreground">You finished "{selectedCollection.title}"!</p>
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={() => {
+                    const queueIds = selectedCollection.entries.map((_, i) => `collection-${selectedCollection.id}-${i}`);
+                    setCollectionQueue(queueIds);
+                    setCollectionHistory([]);
+                  }}
+                  className="px-5 py-3 rounded-xl bg-card border border-border text-foreground font-semibold hover:bg-muted transition-colors"
+                >
+                  Practice again
+                </button>
+                <button
+                  onClick={handleBackToMain}
+                  className="px-5 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 transition-opacity"
+                >
+                  Back
+                </button>
+              </div>
             </div>
           ) : currentCollectionCard ? (
             <Flashcard
@@ -642,10 +709,47 @@ export function FlashcardApp() {
               total={selectedCollection.entries.length}
               remaining={collectionQueue.length}
               onTranscriptRef={onTranscriptRef}
+              isBookmarked={collectionBookmarkedCards.includes(currentCollectionCard.id)}
+              onToggleBookmark={() => {
+                setCollectionBookmarkedCards(prev =>
+                  prev.includes(currentCollectionCard.id)
+                    ? prev.filter(id => id !== currentCollectionCard.id)
+                    : [...prev, currentCollectionCard.id]
+                );
+              }}
               isMicOn={isMicEnabled}
               onToggleMic={() => setIsMicEnabled(prev => !prev)}
+              onAnimateAdvance={(fn) => { collectionAnimateAdvanceRef.current = fn; }}
             />
           ) : null}
+        </div>
+
+        {/* Bottom bar — same as main session */}
+        <div className="fixed bottom-0 left-0 right-0 flex justify-center z-50">
+          <div className="w-full max-w-[480px] bg-card/90 backdrop-blur-xl border-t border-border px-6 py-4">
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => {
+                  if (collectionHistory.length > 0) handleCollectionSwipeBackward();
+                }}
+                className="p-3 rounded-full hover:bg-muted transition-colors"
+              >
+                <ChevronLeft className="w-5 h-5 text-foreground" />
+              </button>
+              <button className="p-3 rounded-full bg-muted" disabled>
+                <Play className="w-4 h-4 text-muted-foreground fill-muted-foreground" />
+              </button>
+              <button
+                onClick={() => handleCollectionSwipeForward()}
+                className="p-3 rounded-full hover:bg-muted transition-colors"
+              >
+                <ChevronRight className="w-5 h-5 text-foreground" />
+              </button>
+            </div>
+            <div className="flex justify-center mt-3">
+              <div className="w-24 h-1 rounded-full bg-muted" />
+            </div>
+          </div>
         </div>
       </div>
     );
