@@ -14,7 +14,7 @@ import { vocabularyLevels, phraseLevels, type FlashcardItem } from "@/lib/flashc
 import { type Collection, CollectionFormData } from "@/lib/collectionTypes";
 import { prefetchAudio, unlockAudio } from "@/lib/speechUtils";
 import { useContinuousMic } from "@/hooks/useContinuousMic";
-import { PartyPopper, ArrowLeft, Plus, LogOut, MoreVertical, Shuffle, Bookmark, Home, User, ChevronLeft, ChevronRight, Mic, Activity } from "lucide-react";
+import { PartyPopper, ArrowLeft, Plus, LogOut, MoreVertical, Shuffle, Bookmark, Home, User, ChevronLeft, ChevronRight, Mic, Activity, Play } from "lucide-react";
 
 type Tab = "vocabulary" | "phrases";
 type AppView = "main" | "collection";
