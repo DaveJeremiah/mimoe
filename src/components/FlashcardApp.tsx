@@ -269,12 +269,10 @@ export function FlashcardApp() {
     return collectionCards[index] || null;
   }, [collectionQueue, collectionCards, selectedCollection]);
 
-  // Start mic only while actively reviewing a flashcard; stop when leaving
+  // Start mic once when first card appears, stop it if not on a card
   useEffect(() => {
-    const inFlashcardSession =
-      (appView === "main" && !!selectedLevelId && !!currentCard) ||
-      (appView === "collection" && !!selectedCollection && !!currentCollectionCard);
-    const shouldListen = inFlashcardSession && isMicEnabled && isVisible;
+    const activeCard = currentCard || currentCollectionCard;
+    const shouldListen = activeCard && isMicEnabled && isVisible;
 
     if (shouldListen && micStatus === "idle") {
       unlockAudio();
@@ -282,7 +280,7 @@ export function FlashcardApp() {
     } else if (!shouldListen && micStatus !== "idle") {
       stopMic();
     }
-  }, [appView, selectedLevelId, selectedCollection, currentCard?.id, currentCollectionCard?.id, isVisible, isMicEnabled, micStatus, startMic, stopMic]);
+  }, [currentCard?.id, currentCollectionCard?.id, isVisible, isMicEnabled, micStatus, startMic, stopMic]);
 
   const handleAdvance = useCallback(({ failed, requeue }: { failed: boolean; requeue: boolean }) => {
     const cardId = queue[0];
