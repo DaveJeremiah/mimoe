@@ -66,7 +66,6 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
   const cardFrenchRef = useRef(card.french);
   const inputRef = useRef<HTMLInputElement>(null);
   const advanceTimerRef = useRef<number | null>(null);
-  const transitionLockRef = useRef(false);
 
   useEffect(() => { stateRef.current = state; }, [state]);
   useEffect(() => { cardFrenchRef.current = card.french; }, [card.french]);
@@ -74,9 +73,6 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
   // ── Wire transcript handler into parent's mic via ref ──
   useEffect(() => {
     onTranscriptRef.current = (transcript: string, isFinal: boolean) => {
-      // Reject any buffered audio from the previous card
-      if (transitionLockRef.current) return;
-
       const s = stateRef.current;
       if (s !== "QUESTION" && s !== "WRONG_FIRST") return;
 
@@ -88,7 +84,7 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
         processAnswerRef.current?.(transcript);
       }
     };
-  }, [onTranscriptRef, card.alternatives]);
+  }, [onTranscriptRef]);
 
 
   // ── Core state transitions ──
@@ -127,7 +123,6 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
   }, [animateAndAdvance]);
 
   const processAnswer = useCallback((answer: string) => {
-    if (transitionLockRef.current) return;
     const s = stateRef.current;
     if (s !== "QUESTION" && s !== "WRONG_FIRST") return;
 
@@ -172,12 +167,6 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
 
   // ── Reset per-card state on new card; mic is owned by parent and stays alive ──
   useEffect(() => {
-    // Block transcript processing during card transition
-    transitionLockRef.current = true;
-    const lockTimer = setTimeout(() => {
-      transitionLockRef.current = false;
-    }, 600); // 600ms covers Azure's audio buffer flush
-
     if (advanceTimerRef.current) {
       window.clearTimeout(advanceTimerRef.current);
       advanceTimerRef.current = null;
@@ -193,8 +182,6 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
 
     setEnterAnim("animate-enter-right");
     setTimeout(() => setEnterAnim(""), 400);
-
-    return () => clearTimeout(lockTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card.id]);
 
