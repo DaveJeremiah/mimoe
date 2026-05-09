@@ -10,10 +10,11 @@ import { NewCollectionModal } from "./NewCollectionModal";
 import { NewLevelModal } from "./NewLevelModal";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { vocabularyLevels, phraseLevels, type FlashcardItem } from "@/lib/flashcardData";
+import { vocabularyLevels, phraseLevels, arabicVocabularyLevels, arabicPhraseLevels, type FlashcardItem } from "@/lib/flashcardData";
 import { type Collection, CollectionFormData } from "@/lib/collectionTypes";
 import { prefetchAudio, unlockAudio } from "@/lib/speechUtils";
 import { useContinuousMic } from "@/hooks/useContinuousMic";
+import { LANGUAGE_CONFIGS, ARABIC_DIALECTS, getArabicConfigForDialect, type Language } from "@/lib/languageConfig";
 import { PartyPopper, ArrowLeft, Plus, LogOut, MoreVertical, Shuffle, Bookmark, Home, User, ChevronLeft, ChevronRight, Mic, Activity } from "lucide-react";
 
 type Tab = "vocabulary" | "phrases";
@@ -23,6 +24,7 @@ export function FlashcardApp() {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
 
+  const [activeLanguage, setActiveLanguage] = useLocalStorage<Language>("mimoe-language", "french");
   const [activeTab, setActiveTab] = useLocalStorage<Tab>("mimoe-active-tab", "vocabulary");
   const [selectedLevelId, setSelectedLevelId] = useLocalStorage<string | null>("mimoe-selected-level", null);
   const [savedQueue, setSavedQueue] = useLocalStorage<string[]>("mimoe-saved-queue", []);
@@ -42,8 +44,8 @@ export function FlashcardApp() {
   const [customPhrases, setCustomPhrases] = useLocalStorage<Record<string, FlashcardItem[]>>("mimoe-custom-phrases", {});
 
   // User-created levels (persisted per tab)
-  const [customVocabLevels, setCustomVocabLevels] = useLocalStorage<{ id: string; title: string }[]>("mimoe-custom-levels-vocab", []);
-  const [customPhraseLevels, setCustomPhraseLevels] = useLocalStorage<{ id: string; title: string }[]>("mimoe-custom-levels-phrases", []);
+  const [customVocabLevels, setCustomVocabLevels] = useLocalStorage<{ id: string; title: string; dialect?: string }[]>("mimoe-custom-levels-vocab", []);
+  const [customPhraseLevels, setCustomPhraseLevels] = useLocalStorage<{ id: string; title: string; dialect?: string }[]>("mimoe-custom-levels-phrases", []);
   const [isNewLevelModalOpen, setIsNewLevelModalOpen] = useState(false);
 
   // Track which cards were answered correctly on FIRST attempt in current session
@@ -68,7 +70,11 @@ export function FlashcardApp() {
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, []);
 
-  const baseLevels = activeTab === "vocabulary" ? vocabularyLevels : phraseLevels;
+  const baseLevels = useMemo(() => {
+    const vocabSource = activeLanguage === "arabic" ? arabicVocabularyLevels : vocabularyLevels;
+    const phraseSource = activeLanguage === "arabic" ? arabicPhraseLevels : phraseLevels;
+    return activeTab === "vocabulary" ? vocabSource : phraseSource;
+  }, [activeLanguage, activeTab]);
   const completedIds = activeTab === "vocabulary" ? completedVocab : completedPhrases;
   const setCompletedIds = activeTab === "vocabulary" ? setCompletedVocab : setCompletedPhrases;
   const customCards = activeTab === "vocabulary" ? customVocab : customPhrases;
@@ -144,12 +150,23 @@ export function FlashcardApp() {
   const [history, setHistory] = useState<string[]>([]); // Track completed cards for undo
   const [collectionHistory, setCollectionHistory] = useState<string[]>([]); // Track collection cards for undo
 
+  // Compute the active language config (with dialect override if Arabic)
+  const customLevelDialect = selectedLevelId
+    ? customLevelsList.find(l => l.id === selectedLevelId)?.dialect ?? null
+    : null;
+  const sessionDialect: string | null = customLevelDialect ?? selectedCollection?.dialect ?? null;
+
+  const langConfig = activeLanguage === "arabic"
+    ? (sessionDialect ? getArabicConfigForDialect(sessionDialect) : LANGUAGE_CONFIGS.arabic)
+    : LANGUAGE_CONFIGS.french;
+
   // Persistent mic across cards/sessions
   const onTranscriptRef = useRef<(text: string, isFinal: boolean) => void>(() => {});
   const { status: micStatus, start: startMic, stop: stopMic } = useContinuousMic({
     onTranscript: useCallback((text: string, isFinal: boolean) => {
       onTranscriptRef.current(text, isFinal);
     }, []),
+    sttLang: langConfig.sttLang,
   });
 
   const animateAdvanceRef = useRef<((exitClass: string, opts: { failed: boolean; requeue: boolean }) => void) | null>(null);
@@ -228,8 +245,8 @@ export function FlashcardApp() {
     setFailedCards(new Set());
     setHistory([]);
     // Pre-warm TTS cache for first 3 cards
-    prefetchAudio(allItems.slice(0, 3).map((c) => c.french));
-  }, [levels, customCards]);
+    prefetchAudio(allItems.slice(0, 3).map((c) => c.target ?? c.french ?? ""), langConfig);
+  }, [levels, customCards, langConfig]);
 
   const startBookmarkedSession = useCallback(() => {
     if (!bookmarkedLevel || bookmarkedLevel.cards.length === 0) return;
@@ -240,12 +257,12 @@ export function FlashcardApp() {
     setFirstAttemptCorrect(new Set());
     setFailedCards(new Set());
     setHistory([]);
-    prefetchAudio(bookmarkedLevel.cards.slice(0, 3).map((c) => c.french));
-  }, [bookmarkedLevel]);
+    prefetchAudio(bookmarkedLevel.cards.slice(0, 3).map((c) => c.target ?? c.french ?? ""), langConfig);
+  }, [bookmarkedLevel, langConfig]);
 
-  const handleAddLevel = useCallback((title: string) => {
+  const handleAddLevel = useCallback((title: string, dialect?: string) => {
     const newId = `custom-level-${Date.now()}`;
-    setCustomLevelsList((prev) => [...prev, { id: newId, title }]);
+    setCustomLevelsList((prev) => [...prev, { id: newId, title, ...(dialect ? { dialect } : {}) }]);
   }, [setCustomLevelsList]);
 
   const currentCard = useMemo(() => {
@@ -253,12 +270,14 @@ export function FlashcardApp() {
     return allCards.find((i) => i.id === queue[0]) || null;
   }, [queue, allCards]);
 
-  const collectionCards = useMemo(() => {
+  const collectionCards = useMemo<FlashcardItem[]>(() => {
     if (!selectedCollection) return [];
     return selectedCollection.entries.map((entry, index) => ({
       id: `collection-${selectedCollection.id}-${index}`,
       english: entry.english,
-      french: entry.french
+      french: entry.french,
+      target: entry.target ?? entry.french,
+      ...(entry.alternatives && entry.alternatives.length > 0 ? { alternatives: entry.alternatives } : {}),
     }));
   }, [selectedCollection]);
 
@@ -386,7 +405,7 @@ export function FlashcardApp() {
     (english: string, french: string, alternatives?: string[]) => {
       if (!selectedLevelId) return;
       const id = `custom-${Date.now()}`;
-      const newItem: FlashcardItem = { id, english, french, ...(alternatives && alternatives.length > 0 ? { alternatives } : {}) };
+      const newItem: FlashcardItem = { id, english, french, target: french, ...(alternatives && alternatives.length > 0 ? { alternatives } : {}) };
       setCustomCards((prev) => ({
         ...prev,
         [selectedLevelId]: [...(prev[selectedLevelId] || []), newItem],
@@ -399,7 +418,7 @@ export function FlashcardApp() {
   const handleUpdateItem = useCallback(
     (id: string, english: string, french: string, alternatives?: string[]) => {
       if (!selectedLevelId) return;
-      const updatedItem: FlashcardItem = { id, english, french, ...(alternatives && alternatives.length > 0 ? { alternatives } : {}) };
+      const updatedItem: FlashcardItem = { id, english, french, target: french, ...(alternatives && alternatives.length > 0 ? { alternatives } : {}) };
       setCustomCards((prev) => {
         const levelCards = prev[selectedLevelId] || [];
         const index = levelCards.findIndex((i) => i.id === id);
@@ -431,9 +450,9 @@ export function FlashcardApp() {
   const handleBulkAdd = useCallback(
     (entries: { english: string; french: string; alternatives?: string[] }[]) => {
       if (!selectedLevelId) return;
-      const newItems = entries.map((entry) => {
+      const newItems: FlashcardItem[] = entries.map((entry) => {
         const id = `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        return { id, ...entry };
+        return { id, english: entry.english, french: entry.french, target: entry.french, ...(entry.alternatives && entry.alternatives.length > 0 ? { alternatives: entry.alternatives } : {}) };
       });
       setCustomCards((prev) => ({
         ...prev,
@@ -490,6 +509,8 @@ export function FlashcardApp() {
       const newCollection: Collection = {
         id: `collection-${Date.now()}`,
         title: data.title,
+        language: data.language ?? activeLanguage,
+        dialect: data.dialect,
         entries: data.entries,
         createdAt: new Date().toISOString()
       };
@@ -512,7 +533,10 @@ export function FlashcardApp() {
     const queueIds = collection.entries.map((_, index) => `collection-${collection.id}-${index}`);
     setCollectionQueue(queueIds);
     setCollectionHistory([]);
-    prefetchAudio(collection.entries.slice(0, 3).map((e) => e.french));
+    const collLang = collection.language === "arabic"
+      ? (collection.dialect ? getArabicConfigForDialect(collection.dialect) : LANGUAGE_CONFIGS.arabic)
+      : LANGUAGE_CONFIGS.french;
+    prefetchAudio(collection.entries.slice(0, 3).map((e) => e.target ?? e.french ?? ""), collLang);
     setAppView("collection");
   }, []);
 
@@ -642,6 +666,11 @@ export function FlashcardApp() {
               onTranscriptRef={onTranscriptRef}
               isMicOn={isMicEnabled}
               onToggleMic={() => setIsMicEnabled(prev => !prev)}
+              langConfig={
+                selectedCollection.language === "arabic"
+                  ? (selectedCollection.dialect ? getArabicConfigForDialect(selectedCollection.dialect) : LANGUAGE_CONFIGS.arabic)
+                  : LANGUAGE_CONFIGS.french
+              }
             />
           ) : null}
         </div>
@@ -674,6 +703,11 @@ export function FlashcardApp() {
             <span className="text-sm text-muted-foreground font-medium min-w-[40px] text-right">
               {allCards.length - queue.length}/{allCards.length}
             </span>
+            {activeLanguage === "arabic" && sessionDialect && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                {ARABIC_DIALECTS.find(d => d.code === sessionDialect)?.flag ?? "🇸🇦"}
+              </span>
+            )}
             <div className="relative">
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -722,8 +756,27 @@ export function FlashcardApp() {
               <p className="text-sm text-muted-foreground">Welcome back 👋</p>
               <h1 className="font-display text-2xl font-bold text-foreground">Mimoe</h1>
             </div>
-            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-              <span className="text-primary font-bold text-sm">FR</span>
+            <div className="flex items-center gap-1.5 bg-muted rounded-full p-1">
+              {(["french", "arabic"] as Language[]).map((lang) => {
+                const cfg = LANGUAGE_CONFIGS[lang];
+                return (
+                  <button
+                    key={lang}
+                    onClick={() => {
+                      setActiveLanguage(lang);
+                      handleBack();
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                      activeLanguage === lang
+                        ? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <span>{cfg.flag}</span>
+                    <span>{cfg.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -812,8 +865,8 @@ export function FlashcardApp() {
             onTranscriptRef={onTranscriptRef}
             isBookmarked={bookmarkedCards.includes(currentCard.id)}
             onToggleBookmark={() => {
-              setBookmarkedCards(prev => 
-                prev.includes(currentCard.id) 
+              setBookmarkedCards(prev =>
+                prev.includes(currentCard.id)
                   ? prev.filter(id => id !== currentCard.id)
                   : [...prev, currentCard.id]
               );
@@ -821,6 +874,7 @@ export function FlashcardApp() {
             isMicOn={isMicEnabled}
             onToggleMic={() => setIsMicEnabled(prev => !prev)}
             onAnimateAdvance={(fn) => { animateAdvanceRef.current = fn; }}
+            langConfig={langConfig}
           />
         ) : null}
       </div>
@@ -880,6 +934,7 @@ export function FlashcardApp() {
             onClose={() => setIsCollectionModalOpen(false)}
             onSave={handleSaveCollection}
             editingCollection={editingCollection}
+            activeLanguage={activeLanguage}
           />
         </>
       )}
@@ -949,6 +1004,7 @@ export function FlashcardApp() {
         isOpen={isNewLevelModalOpen}
         onClose={() => setIsNewLevelModalOpen(false)}
         onSave={handleAddLevel}
+        activeLanguage={activeLanguage}
       />
     </div>
   );

@@ -20,7 +20,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Require authenticated user to prevent abuse of Azure quota
     const authHeader = req.headers.get('Authorization')
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -52,7 +51,7 @@ Deno.serve(async (req) => {
       })
     }
 
-    const { text } = await req.json()
+    const { text, lang, voice } = await req.json()
     if (!text || typeof text !== 'string' || text.length > 500) {
       return new Response(JSON.stringify({ error: 'Invalid text' }), {
         status: 400,
@@ -60,10 +59,13 @@ Deno.serve(async (req) => {
       })
     }
 
+    const ttsLang = (typeof lang === 'string' && lang.length > 0) ? lang : 'fr-FR'
+    const ttsVoice = (typeof voice === 'string' && voice.length > 0) ? voice : 'fr-FR-DeniseNeural'
     const safeText = escapeXml(text)
+
     const ssml = `
-      <speak version='1.0' xml:lang='fr-FR'>
-        <voice xml:lang='fr-FR' name='fr-FR-DeniseNeural'>
+      <speak version='1.0' xml:lang='${ttsLang}'>
+        <voice xml:lang='${ttsLang}' name='${ttsVoice}'>
           <prosody rate='-10%'>${safeText}</prosody>
         </voice>
       </speak>

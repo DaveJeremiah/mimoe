@@ -1,4 +1,7 @@
+import type { LanguageConfig } from "./languageConfig";
+import { LANGUAGE_CONFIGS } from "./languageConfig";
 
+const DEFAULT_LANG = LANGUAGE_CONFIGS.french;
 
 export function normalize(str: string): string {
   return str
@@ -6,14 +9,11 @@ export function normalize(str: string): string {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/['']/g, "'")
-    .replace(/[^a-z0-9' ]/g, "")
+    .replace(/[^a-z0-9' \u0600-\u06ff]/g, "")
     .replace(/\s+/g, " ")
     .trim();
 }
 
-/**
- * Known acceptable alternatives for French phrases/words.
- */
 const ACCEPTABLE_ALTERNATIVES: Record<string, string[]> = {
   "comment allez-vous": ["comment allez vous", "comment ca va", "comment sa va", "ca va", "sa va", "comment vas tu", "comment tu vas"],
   "bonjour": ["bon jour", "bonsoir"],
@@ -111,12 +111,8 @@ export function isMatch(spoken: string, expected: string): boolean {
   return false;
 }
 
-// ── Azure TTS with localStorage caching ──
-
 const memCache = new Map<string, string>()
-const LS_PREFIX = 'tts_az_'
 
-// Single shared Audio element — avoids autoplay blocks on repeated calls
 let sharedAudio: HTMLAudioElement | null = null
 function getAudio(): HTMLAudioElement {
   if (!sharedAudio) sharedAudio = new Audio()
@@ -124,9 +120,7 @@ function getAudio(): HTMLAudioElement {
 }
 
 export function unlockAudio(): void {
-  // Call once from any direct user gesture to unblock autoplay
   const audio = getAudio()
-  // Play a silent 1-frame wav to unlock the element
   audio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAA' +
     'EAAQARAAIAIgACABAAEABkYXRhAgAAAAEA'
   audio.play().catch(() => {})
@@ -135,7 +129,7 @@ export function unlockAudio(): void {
 function getCached(key: string): string | null {
   if (memCache.has(key)) return memCache.get(key)!
   try {
-    const stored = localStorage.getItem(LS_PREFIX + key)
+    const stored = localStorage.getItem(key)
     if (stored) { memCache.set(key, stored); return stored }
   } catch { /* quota */ }
   return null
@@ -150,19 +144,17 @@ function blobToBase64(blob: Blob): Promise<string> {
   })
 }
 
-async function fetchAzureTTS(text: string): Promise<string | null> {
-  const key = text.trim().toLowerCase()
+async function fetchAzureTTS(text: string, langConfig: LanguageConfig = DEFAULT_LANG): Promise<string | null> {
+  const key = langConfig.cachePrefix + text.trim().toLowerCase()
   const cached = getCached(key)
   if (cached) return cached
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return null
 
   try {
     const { supabase } = await import('@/integrations/supabase/client')
     const { data: sessionData } = await supabase.auth.getSession()
     const accessToken = sessionData.session?.access_token
-    if (!accessToken) {
-      // Not signed in — TTS endpoint requires auth
-      return null
-    }
+    if (!accessToken) return null
 
     const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/azure-tts`
     const res = await fetch(url, {
@@ -172,35 +164,30 @@ async function fetchAzureTTS(text: string): Promise<string | null> {
         apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, lang: langConfig.ttsLang, voice: langConfig.ttsVoice }),
     })
-
-    if (!res.ok) {
-      console.warn('Azure TTS failed:', res.status)
-      return null
-    }
-
+    if (!res.ok) return null
     const blob = await res.blob()
     const dataUri = await blobToBase64(blob)
-    try { localStorage.setItem(LS_PREFIX + key, dataUri) } catch { /* quota */ }
+    try { localStorage.setItem(key, dataUri) } catch { /* quota */ }
     memCache.set(key, dataUri)
     return dataUri
-  } catch (e) {
-    console.warn('Azure TTS error:', e)
+  } catch {
     return null
   }
 }
 
-function browserSpeak(text: string, onEnd?: () => void): void {
+function browserSpeak(text: string, langConfig: LanguageConfig = DEFAULT_LANG, onEnd?: () => void): void {
   if (!window.speechSynthesis) { onEnd?.(); return }
   window.speechSynthesis.cancel()
   const utter = new SpeechSynthesisUtterance(text)
-  utter.lang = 'fr-FR'
+  utter.lang = langConfig.ttsLang
   utter.rate = 0.85
   if (onEnd) utter.onend = onEnd
   const voices = window.speechSynthesis.getVoices()
-  const frVoice = voices.find(v => v.lang === 'fr-FR') || voices.find(v => v.lang.startsWith('fr'))
-  if (frVoice) utter.voice = frVoice
+  const voice = voices.find(v => v.lang === langConfig.ttsLang)
+    || voices.find(v => v.lang.startsWith(langConfig.ttsLang.split('-')[0]))
+  if (voice) utter.voice = voice
   window.speechSynthesis.speak(utter)
 }
 
@@ -212,28 +199,20 @@ function playDataUri(uri: string, onEnd?: () => void): void {
   audio.play().catch(() => { onEnd?.() })
 }
 
-// ── Public API ──
+export function primeFrenchSpeech(): void {}
 
-export function primeFrenchSpeech(): void {
-  // no-op — kept for compatibility, Azure has no warm-up needed
+export async function prefetchAudio(texts: string[], langConfig: LanguageConfig = DEFAULT_LANG): Promise<void> {
+  await Promise.allSettled(texts.map(t => fetchAzureTTS(t, langConfig)))
 }
 
-export async function prefetchAudio(texts: string[]): Promise<void> {
-  await Promise.allSettled(texts.map(t => fetchAzureTTS(t)))
-}
-
-export function speakFrench(text: string, onEnd?: () => void): void {
+export function speakFrench(text: string, onEnd?: () => void, langConfig: LanguageConfig = DEFAULT_LANG): void {
   if (!text.trim()) { onEnd?.(); return }
-  fetchAzureTTS(text).then(uri => {
-    if (uri) {
-      playDataUri(uri, onEnd)
-    } else {
-      browserSpeak(text, onEnd)
-    }
+  fetchAzureTTS(text, langConfig).then(uri => {
+    if (uri) playDataUri(uri, onEnd)
+    else browserSpeak(text, langConfig, onEnd)
   })
 }
 
-export function speakCorrect(text: string, onEnd?: () => void): void {
-  speakFrench(text, onEnd)
+export function speakCorrect(text: string, onEnd?: () => void, langConfig: LanguageConfig = DEFAULT_LANG): void {
+  speakFrench(text, onEnd, langConfig)
 }
-

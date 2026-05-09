@@ -1,17 +1,24 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
+import { ARABIC_DIALECTS } from "@/lib/languageConfig";
+import type { Language } from "@/lib/languageConfig";
 
 interface NewLevelModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (title: string) => void;
+  onSave: (title: string, dialect?: string) => void;
+  activeLanguage?: Language;
 }
 
-export function NewLevelModal({ isOpen, onClose, onSave }: NewLevelModalProps) {
+export function NewLevelModal({ isOpen, onClose, onSave, activeLanguage }: NewLevelModalProps) {
   const [title, setTitle] = useState("");
+  const [selectedDialect, setSelectedDialect] = useState("ar-SA");
 
   useEffect(() => {
-    if (isOpen) setTitle("");
+    if (isOpen) {
+      setTitle("");
+      setSelectedDialect("ar-SA");
+    }
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -20,7 +27,7 @@ export function NewLevelModal({ isOpen, onClose, onSave }: NewLevelModalProps) {
     e.preventDefault();
     const trimmed = title.trim();
     if (!trimmed) return;
-    onSave(trimmed);
+    onSave(trimmed, activeLanguage === "arabic" ? selectedDialect : undefined);
     onClose();
   };
 
@@ -29,10 +36,7 @@ export function NewLevelModal({ isOpen, onClose, onSave }: NewLevelModalProps) {
       <div className="w-full max-w-sm bg-card rounded-2xl border border-border shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <h3 className="font-display text-lg font-bold text-foreground">New Level</h3>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-muted transition-colors"
-          >
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
             <X className="w-4 h-4 text-muted-foreground" />
           </button>
         </div>
@@ -53,6 +57,32 @@ export function NewLevelModal({ isOpen, onClose, onSave }: NewLevelModalProps) {
               You'll add cards inside the level using the Word Bank.
             </p>
           </div>
+
+          {activeLanguage === "arabic" && (
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                Arabic Dialect
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {ARABIC_DIALECTS.map((dialect) => (
+                  <button
+                    key={dialect.code}
+                    type="button"
+                    onClick={() => setSelectedDialect(dialect.code)}
+                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-medium transition-all text-left ${
+                      selectedDialect === dialect.code
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-muted text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <span>{dialect.flag}</span>
+                    <span>{dialect.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-2 pt-2">
             <button
               type="button"
