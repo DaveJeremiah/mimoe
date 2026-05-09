@@ -509,6 +509,8 @@ export function FlashcardApp() {
       const newCollection: Collection = {
         id: `collection-${Date.now()}`,
         title: data.title,
+        language: data.language ?? activeLanguage,
+        dialect: data.dialect,
         entries: data.entries,
         createdAt: new Date().toISOString()
       };
@@ -664,6 +666,11 @@ export function FlashcardApp() {
               onTranscriptRef={onTranscriptRef}
               isMicOn={isMicEnabled}
               onToggleMic={() => setIsMicEnabled(prev => !prev)}
+              langConfig={
+                selectedCollection.language === "arabic"
+                  ? (selectedCollection.dialect ? getArabicConfigForDialect(selectedCollection.dialect) : LANGUAGE_CONFIGS.arabic)
+                  : LANGUAGE_CONFIGS.french
+              }
             />
           ) : null}
         </div>
@@ -744,8 +751,27 @@ export function FlashcardApp() {
               <p className="text-sm text-muted-foreground">Welcome back 👋</p>
               <h1 className="font-display text-2xl font-bold text-foreground">Mimoe</h1>
             </div>
-            <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-              <span className="text-primary font-bold text-sm">FR</span>
+            <div className="flex items-center gap-1.5 bg-muted rounded-full p-1">
+              {(["french", "arabic"] as Language[]).map((lang) => {
+                const cfg = LANGUAGE_CONFIGS[lang];
+                return (
+                  <button
+                    key={lang}
+                    onClick={() => {
+                      setActiveLanguage(lang);
+                      handleBack();
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                      activeLanguage === lang
+                        ? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <span>{cfg.flag}</span>
+                    <span>{cfg.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -834,8 +860,8 @@ export function FlashcardApp() {
             onTranscriptRef={onTranscriptRef}
             isBookmarked={bookmarkedCards.includes(currentCard.id)}
             onToggleBookmark={() => {
-              setBookmarkedCards(prev => 
-                prev.includes(currentCard.id) 
+              setBookmarkedCards(prev =>
+                prev.includes(currentCard.id)
                   ? prev.filter(id => id !== currentCard.id)
                   : [...prev, currentCard.id]
               );
@@ -843,6 +869,7 @@ export function FlashcardApp() {
             isMicOn={isMicEnabled}
             onToggleMic={() => setIsMicEnabled(prev => !prev)}
             onAnimateAdvance={(fn) => { animateAdvanceRef.current = fn; }}
+            langConfig={langConfig}
           />
         ) : null}
       </div>
@@ -902,6 +929,7 @@ export function FlashcardApp() {
             onClose={() => setIsCollectionModalOpen(false)}
             onSave={handleSaveCollection}
             editingCollection={editingCollection}
+            activeLanguage={activeLanguage}
           />
         </>
       )}
@@ -971,6 +999,7 @@ export function FlashcardApp() {
         isOpen={isNewLevelModalOpen}
         onClose={() => setIsNewLevelModalOpen(false)}
         onSave={handleAddLevel}
+        activeLanguage={activeLanguage}
       />
     </div>
   );
