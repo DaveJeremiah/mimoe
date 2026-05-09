@@ -703,6 +703,11 @@ export function FlashcardApp() {
             <span className="text-sm text-muted-foreground font-medium min-w-[40px] text-right">
               {allCards.length - queue.length}/{allCards.length}
             </span>
+            {activeLanguage === "arabic" && sessionDialect && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                {ARABIC_DIALECTS.find(d => d.code === sessionDialect)?.flag ?? "🇸🇦"}
+              </span>
+            )}
             <div className="relative">
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
