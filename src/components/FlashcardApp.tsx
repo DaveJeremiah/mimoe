@@ -151,9 +151,10 @@ export function FlashcardApp() {
   const [collectionHistory, setCollectionHistory] = useState<string[]>([]); // Track collection cards for undo
 
   // Compute the active language config (with dialect override if Arabic)
-  const sessionDialect = (selectedLevelId
-    ? (customLevelsList.find(l => l.id === selectedLevelId)?.dialect ?? null)
-    : null) ?? selectedCollection?.dialect ?? null;
+  const customLevelDialect = selectedLevelId
+    ? customLevelsList.find(l => l.id === selectedLevelId)?.dialect ?? null
+    : null;
+  const sessionDialect: string | null = customLevelDialect ?? selectedCollection?.dialect ?? null;
 
   const langConfig = activeLanguage === "arabic"
     ? (sessionDialect ? getArabicConfigForDialect(sessionDialect) : LANGUAGE_CONFIGS.arabic)
@@ -402,7 +403,7 @@ export function FlashcardApp() {
     (english: string, french: string, alternatives?: string[]) => {
       if (!selectedLevelId) return;
       const id = `custom-${Date.now()}`;
-      const newItem: FlashcardItem = { id, english, french, ...(alternatives && alternatives.length > 0 ? { alternatives } : {}) };
+      const newItem: FlashcardItem = { id, english, french, target: french, ...(alternatives && alternatives.length > 0 ? { alternatives } : {}) };
       setCustomCards((prev) => ({
         ...prev,
         [selectedLevelId]: [...(prev[selectedLevelId] || []), newItem],
@@ -415,7 +416,7 @@ export function FlashcardApp() {
   const handleUpdateItem = useCallback(
     (id: string, english: string, french: string, alternatives?: string[]) => {
       if (!selectedLevelId) return;
-      const updatedItem: FlashcardItem = { id, english, french, ...(alternatives && alternatives.length > 0 ? { alternatives } : {}) };
+      const updatedItem: FlashcardItem = { id, english, french, target: french, ...(alternatives && alternatives.length > 0 ? { alternatives } : {}) };
       setCustomCards((prev) => {
         const levelCards = prev[selectedLevelId] || [];
         const index = levelCards.findIndex((i) => i.id === id);
@@ -447,9 +448,9 @@ export function FlashcardApp() {
   const handleBulkAdd = useCallback(
     (entries: { english: string; french: string; alternatives?: string[] }[]) => {
       if (!selectedLevelId) return;
-      const newItems = entries.map((entry) => {
+      const newItems: FlashcardItem[] = entries.map((entry) => {
         const id = `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        return { id, ...entry };
+        return { id, english: entry.english, french: entry.french, target: entry.french, ...(entry.alternatives && entry.alternatives.length > 0 ? { alternatives: entry.alternatives } : {}) };
       });
       setCustomCards((prev) => ({
         ...prev,
