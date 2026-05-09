@@ -10,10 +10,11 @@ import { NewCollectionModal } from "./NewCollectionModal";
 import { NewLevelModal } from "./NewLevelModal";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { vocabularyLevels, phraseLevels, type FlashcardItem } from "@/lib/flashcardData";
+import { vocabularyLevels, phraseLevels, arabicVocabularyLevels, arabicPhraseLevels, type FlashcardItem } from "@/lib/flashcardData";
 import { type Collection, CollectionFormData } from "@/lib/collectionTypes";
 import { prefetchAudio, unlockAudio } from "@/lib/speechUtils";
 import { useContinuousMic } from "@/hooks/useContinuousMic";
+import { LANGUAGE_CONFIGS, ARABIC_DIALECTS, getArabicConfigForDialect, type Language } from "@/lib/languageConfig";
 import { PartyPopper, ArrowLeft, Plus, LogOut, MoreVertical, Shuffle, Bookmark, Home, User, ChevronLeft, ChevronRight, Mic, Activity } from "lucide-react";
 
 type Tab = "vocabulary" | "phrases";
@@ -23,6 +24,7 @@ export function FlashcardApp() {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
 
+  const [activeLanguage, setActiveLanguage] = useLocalStorage<Language>("mimoe-language", "french");
   const [activeTab, setActiveTab] = useLocalStorage<Tab>("mimoe-active-tab", "vocabulary");
   const [selectedLevelId, setSelectedLevelId] = useLocalStorage<string | null>("mimoe-selected-level", null);
   const [savedQueue, setSavedQueue] = useLocalStorage<string[]>("mimoe-saved-queue", []);
@@ -42,8 +44,8 @@ export function FlashcardApp() {
   const [customPhrases, setCustomPhrases] = useLocalStorage<Record<string, FlashcardItem[]>>("mimoe-custom-phrases", {});
 
   // User-created levels (persisted per tab)
-  const [customVocabLevels, setCustomVocabLevels] = useLocalStorage<{ id: string; title: string }[]>("mimoe-custom-levels-vocab", []);
-  const [customPhraseLevels, setCustomPhraseLevels] = useLocalStorage<{ id: string; title: string }[]>("mimoe-custom-levels-phrases", []);
+  const [customVocabLevels, setCustomVocabLevels] = useLocalStorage<{ id: string; title: string; dialect?: string }[]>("mimoe-custom-levels-vocab", []);
+  const [customPhraseLevels, setCustomPhraseLevels] = useLocalStorage<{ id: string; title: string; dialect?: string }[]>("mimoe-custom-levels-phrases", []);
   const [isNewLevelModalOpen, setIsNewLevelModalOpen] = useState(false);
 
   // Track which cards were answered correctly on FIRST attempt in current session
@@ -68,7 +70,11 @@ export function FlashcardApp() {
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, []);
 
-  const baseLevels = activeTab === "vocabulary" ? vocabularyLevels : phraseLevels;
+  const baseLevels = useMemo(() => {
+    const vocabSource = activeLanguage === "arabic" ? arabicVocabularyLevels : vocabularyLevels;
+    const phraseSource = activeLanguage === "arabic" ? arabicPhraseLevels : phraseLevels;
+    return activeTab === "vocabulary" ? vocabSource : phraseSource;
+  }, [activeLanguage, activeTab]);
   const completedIds = activeTab === "vocabulary" ? completedVocab : completedPhrases;
   const setCompletedIds = activeTab === "vocabulary" ? setCompletedVocab : setCompletedPhrases;
   const customCards = activeTab === "vocabulary" ? customVocab : customPhrases;
@@ -144,12 +150,22 @@ export function FlashcardApp() {
   const [history, setHistory] = useState<string[]>([]); // Track completed cards for undo
   const [collectionHistory, setCollectionHistory] = useState<string[]>([]); // Track collection cards for undo
 
+  // Compute the active language config (with dialect override if Arabic)
+  const sessionDialect = (selectedLevelId
+    ? (customLevelsList.find(l => l.id === selectedLevelId)?.dialect ?? null)
+    : null) ?? selectedCollection?.dialect ?? null;
+
+  const langConfig = activeLanguage === "arabic"
+    ? (sessionDialect ? getArabicConfigForDialect(sessionDialect) : LANGUAGE_CONFIGS.arabic)
+    : LANGUAGE_CONFIGS.french;
+
   // Persistent mic across cards/sessions
   const onTranscriptRef = useRef<(text: string, isFinal: boolean) => void>(() => {});
   const { status: micStatus, start: startMic, stop: stopMic } = useContinuousMic({
     onTranscript: useCallback((text: string, isFinal: boolean) => {
       onTranscriptRef.current(text, isFinal);
     }, []),
+    sttLang: langConfig.sttLang,
   });
 
   const animateAdvanceRef = useRef<((exitClass: string, opts: { failed: boolean; requeue: boolean }) => void) | null>(null);
@@ -228,8 +244,8 @@ export function FlashcardApp() {
     setFailedCards(new Set());
     setHistory([]);
     // Pre-warm TTS cache for first 3 cards
-    prefetchAudio(allItems.slice(0, 3).map((c) => c.french));
-  }, [levels, customCards]);
+    prefetchAudio(allItems.slice(0, 3).map((c) => c.target ?? c.french ?? ""), langConfig);
+  }, [levels, customCards, langConfig]);
 
   const startBookmarkedSession = useCallback(() => {
     if (!bookmarkedLevel || bookmarkedLevel.cards.length === 0) return;
@@ -240,12 +256,12 @@ export function FlashcardApp() {
     setFirstAttemptCorrect(new Set());
     setFailedCards(new Set());
     setHistory([]);
-    prefetchAudio(bookmarkedLevel.cards.slice(0, 3).map((c) => c.french));
-  }, [bookmarkedLevel]);
+    prefetchAudio(bookmarkedLevel.cards.slice(0, 3).map((c) => c.target ?? c.french ?? ""), langConfig);
+  }, [bookmarkedLevel, langConfig]);
 
-  const handleAddLevel = useCallback((title: string) => {
+  const handleAddLevel = useCallback((title: string, dialect?: string) => {
     const newId = `custom-level-${Date.now()}`;
-    setCustomLevelsList((prev) => [...prev, { id: newId, title }]);
+    setCustomLevelsList((prev) => [...prev, { id: newId, title, ...(dialect ? { dialect } : {}) }]);
   }, [setCustomLevelsList]);
 
   const currentCard = useMemo(() => {
