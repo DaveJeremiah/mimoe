@@ -270,12 +270,14 @@ export function FlashcardApp() {
     return allCards.find((i) => i.id === queue[0]) || null;
   }, [queue, allCards]);
 
-  const collectionCards = useMemo(() => {
+  const collectionCards = useMemo<FlashcardItem[]>(() => {
     if (!selectedCollection) return [];
     return selectedCollection.entries.map((entry, index) => ({
       id: `collection-${selectedCollection.id}-${index}`,
       english: entry.english,
-      french: entry.french
+      french: entry.french,
+      target: entry.target ?? entry.french,
+      ...(entry.alternatives && entry.alternatives.length > 0 ? { alternatives: entry.alternatives } : {}),
     }));
   }, [selectedCollection]);
 
@@ -529,7 +531,10 @@ export function FlashcardApp() {
     const queueIds = collection.entries.map((_, index) => `collection-${collection.id}-${index}`);
     setCollectionQueue(queueIds);
     setCollectionHistory([]);
-    prefetchAudio(collection.entries.slice(0, 3).map((e) => e.french));
+    const collLang = collection.language === "arabic"
+      ? (collection.dialect ? getArabicConfigForDialect(collection.dialect) : LANGUAGE_CONFIGS.arabic)
+      : LANGUAGE_CONFIGS.french;
+    prefetchAudio(collection.entries.slice(0, 3).map((e) => e.target ?? e.french ?? ""), collLang);
     setAppView("collection");
   }, []);
 
