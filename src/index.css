@@ -69,6 +69,11 @@
     font-family: 'Fraunces', serif;
   }
 
+  .font-arabic {
+    font-family: "Noto Naskh Arabic", serif;
+    line-height: 1.8;
+  }
+
   .card-shadow {
     box-shadow: 0 8px 30px -8px hsl(var(--foreground) / 0.12),
                 0 2px 8px -2px hsl(var(--foreground) / 0.08);

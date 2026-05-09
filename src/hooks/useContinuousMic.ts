@@ -5,6 +5,7 @@ type MicStatus = "idle" | "listening" | "denied" | "unsupported" | "paused";
 
 interface UseContinuousMicOptions {
   onTranscript: (text: string, isFinal: boolean) => void;
+  sttLang?: string;
 }
 
 async function fetchAzureToken(): Promise<{ token: string; region: string } | null> {
@@ -24,19 +25,24 @@ async function fetchAzureToken(): Promise<{ token: string; region: string } | nu
   }
 }
 
-export function useContinuousMic({ onTranscript }: UseContinuousMicOptions) {
+export function useContinuousMic({ onTranscript, sttLang = "fr-FR" }: UseContinuousMicOptions) {
   const [status, setStatus] = useState<MicStatus>("idle");
   const recognizerRef = useRef<SpeechSDK.SpeechRecognizer | null>(null);
   const onTranscriptRef = useRef(onTranscript);
   const enabledRef = useRef(false);
+  const sttLangRef = useRef(sttLang);
 
   useEffect(() => {
     onTranscriptRef.current = onTranscript;
   }, [onTranscript]);
 
+  useEffect(() => {
+    sttLangRef.current = sttLang;
+  }, [sttLang]);
+
   const createRecognizer = useCallback((token: string, region: string) => {
     const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(token, region);
-    speechConfig.speechRecognitionLanguage = "fr-FR";
+    speechConfig.speechRecognitionLanguage = sttLangRef.current;
     speechConfig.outputFormat = SpeechSDK.OutputFormat.Detailed;
 
     const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();

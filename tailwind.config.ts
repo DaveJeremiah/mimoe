@@ -16,6 +16,7 @@ export default {
       fontFamily: {
         sans: ["DM Sans", "sans-serif"],
         display: ["Fraunces", "serif"],
+        arabic: ['"Noto Naskh Arabic"', "serif"],
       },
       colors: {
         border: "hsl(var(--border))",
