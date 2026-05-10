@@ -70,6 +70,8 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
   const lcRef = useRef(lc);
   const inputRef = useRef<HTMLInputElement>(null);
   const advanceTimerRef = useRef<number | null>(null);
+  const ignoreUntilRef = useRef<number>(0);
+  const lastProcessedRef = useRef<string>("");
 
   useEffect(() => { stateRef.current = state; }, [state]);
   useEffect(() => { targetRef.current = targetWord; }, [targetWord]);
@@ -79,16 +81,22 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
     onTranscriptRef.current = (transcript: string, isFinal: boolean) => {
       const s = stateRef.current;
       if (s !== "QUESTION" && s !== "WRONG_FIRST") return;
+      // Ignore stale transcripts that arrived from speech before this card mounted
+      if (Date.now() < ignoreUntilRef.current) return;
+      // Avoid re-processing the same transcript twice (partial then final)
+      if (transcript === lastProcessedRef.current) return;
 
       setSpokenText(transcript);
 
       if (matchesCard(transcript, targetRef.current, card.alternatives)) {
+        lastProcessedRef.current = transcript;
         processAnswerRef.current?.(transcript);
       } else if (isFinal) {
+        lastProcessedRef.current = transcript;
         processAnswerRef.current?.(transcript);
       }
     };
-  }, [onTranscriptRef]);
+  }, [onTranscriptRef, card.alternatives]);
 
   const processAnswerRef = useRef<(answer: string) => void>();
 
