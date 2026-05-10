@@ -176,6 +176,9 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
     setState("QUESTION");
     setTextInput("");
     setSpokenText("");
+    // Suppress any in-flight transcript from the previous card for ~800ms
+    ignoreUntilRef.current = Date.now() + 800;
+    lastProcessedRef.current = "";
 
     if (!isFirstCard) {
       setCardColorIndex((prev) => (prev + 1) % cardColors.length);
