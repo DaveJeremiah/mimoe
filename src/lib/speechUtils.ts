@@ -8,6 +8,13 @@ export function normalize(str: string): string {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
+    // Arabic normalization
+    .replace(/[\u064B-\u065F\u0670]/g, "")     // tashkeel/diacritics
+    .replace(/\u0640/g, "")                     // tatweel
+    .replace(/[\u0622\u0623\u0625\u0671]/g, "\u0627") // alef variants -> ا
+    .replace(/\u0649/g, "\u064A")              // alef maksura -> ya
+    .replace(/\u0629/g, "\u0647")              // ta marbuta -> ha
+    .replace(/[\u0624\u0626]/g, "")             // hamza on waw/ya -> drop hamza carrier
     .replace(/['']/g, "'")
     .replace(/[^a-z0-9' \u0600-\u06ff]/g, "")
     .replace(/\s+/g, " ")
