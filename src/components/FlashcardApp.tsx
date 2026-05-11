@@ -162,7 +162,7 @@ export function FlashcardApp() {
 
   // Persistent mic across cards/sessions
   const onTranscriptRef = useRef<(text: string, isFinal: boolean) => void>(() => {});
-  const { status: micStatus, start: startMic, stop: stopMic } = useContinuousMic({
+  const { status: micStatus, start: startMic, stop: stopMic, reset: resetMic } = useContinuousMic({
     onTranscript: useCallback((text: string, isFinal: boolean) => {
       onTranscriptRef.current(text, isFinal);
     }, []),
@@ -300,6 +300,12 @@ export function FlashcardApp() {
       stopMic();
     }
   }, [currentCard?.id, currentCollectionCard?.id, isVisible, isMicEnabled, micStatus, startMic, stopMic]);
+
+  useEffect(() => {
+    const activeCardId = currentCollectionCard?.id ?? currentCard?.id;
+    if (!activeCardId || !isMicEnabled || !isVisible || micStatus === "idle") return;
+    void resetMic();
+  }, [currentCard?.id, currentCollectionCard?.id, isMicEnabled, isVisible, micStatus, resetMic]);
 
   const handleAdvance = useCallback(({ failed, requeue }: { failed: boolean; requeue: boolean }) => {
     const cardId = queue[0];
