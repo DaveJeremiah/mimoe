@@ -37,7 +37,27 @@ export function useContinuousMic({ onTranscript, sttLang = "fr-FR" }: UseContinu
   }, [onTranscript]);
 
   useEffect(() => {
+    const prev = sttLangRef.current;
     sttLangRef.current = sttLang;
+    // If language changed while listening, restart the recognizer with the new language.
+    if (prev !== sttLang && enabledRef.current) {
+      const rec = recognizerRef.current;
+      recognizerRef.current = null;
+      enabledRef.current = false;
+      const restart = async () => {
+        if (rec) {
+          await new Promise<void>((resolve) => {
+            rec.stopContinuousRecognitionAsync(
+              () => { rec.close(); resolve(); },
+              () => { rec.close(); resolve(); }
+            );
+          });
+        }
+        await start();
+      };
+      restart();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sttLang]);
 
   const createRecognizer = useCallback((token: string, region: string) => {
