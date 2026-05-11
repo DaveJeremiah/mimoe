@@ -32,6 +32,7 @@ export function useContinuousMic({ onTranscript, sttLang = "fr-FR" }: UseContinu
   const enabledRef = useRef(false);
   const sttLangRef = useRef(sttLang);
   const recognizerGenerationRef = useRef(0);
+  const startingRef = useRef(false);
 
   useEffect(() => {
     onTranscriptRef.current = onTranscript;
@@ -118,40 +119,60 @@ export function useContinuousMic({ onTranscript, sttLang = "fr-FR" }: UseContinu
   }, []);
 
   const start = useCallback(async () => {
-    if (enabledRef.current || recognizerRef.current) return;
+    if (enabledRef.current || recognizerRef.current || startingRef.current) return;
+
+    const generation = recognizerGenerationRef.current + 1;
+    recognizerGenerationRef.current = generation;
+    startingRef.current = true;
 
     const auth = await fetchAzureToken();
-    if (!auth) {
+    if (!auth || recognizerGenerationRef.current !== generation) {
+      startingRef.current = false;
       setStatus("unsupported");
       return;
     }
 
     try {
-      const generation = recognizerGenerationRef.current + 1;
-      recognizerGenerationRef.current = generation;
       const recognizer = createRecognizer(auth.token, auth.region, generation);
+      if (recognizerGenerationRef.current !== generation) {
+        recognizer.close();
+        startingRef.current = false;
+        return;
+      }
+
       recognizerRef.current = recognizer;
       enabledRef.current = true;
 
       recognizer.startContinuousRecognitionAsync(
-        () => setStatus("listening"),
+        () => {
+          if (recognizerGenerationRef.current !== generation) {
+            recognizer.close();
+            return;
+          }
+          startingRef.current = false;
+          setStatus("listening");
+        },
         (err) => {
           console.error("Azure STT start error:", err);
           if (String(err).includes("1006") || String(err).includes("microphone")) {
             setStatus("denied");
           }
+          startingRef.current = false;
+          recognizerRef.current = null;
           enabledRef.current = false;
         }
       );
     } catch (err) {
       console.error("Failed to create recognizer:", err);
       setStatus("unsupported");
+      startingRef.current = false;
       recognizerRef.current = null;
       enabledRef.current = false;
     }
   }, [createRecognizer]);
 
   const stop = useCallback(async () => {
+    startingRef.current = false;
     enabledRef.current = false;
     recognizerGenerationRef.current += 1;
     const rec = recognizerRef.current;
@@ -176,6 +197,7 @@ export function useContinuousMic({ onTranscript, sttLang = "fr-FR" }: UseContinu
 
   useEffect(() => {
     return () => {
+      startingRef.current = false;
       enabledRef.current = false;
       recognizerGenerationRef.current += 1;
       const rec = recognizerRef.current;
