@@ -106,12 +106,30 @@ export function isMatch(spoken: string, expected: string): boolean {
   const phoneticExpected = phoneticNormalize(normExpected);
   if (phoneticSpoken === phoneticExpected) return true;
 
-  const threshold = normExpected.length <= 6 ? 0.75 : 0.7;
+  const isArabic = /[\u0600-\u06ff]/.test(normExpected);
+  // Strip common Arabic prefixes (definite article + conjunctions/prepositions)
+  const stripAr = (s: string) => s
+    .split(" ")
+    .map(w => w.replace(/^(وال|فال|بال|كال|لل|ال)/, "").replace(/^[وفبكل]/, ""))
+    .join(" ")
+    .trim();
+  const arSpoken = isArabic ? stripAr(normSpoken) : normSpoken;
+  const arExpected = isArabic ? stripAr(normExpected) : normExpected;
+  if (isArabic && arSpoken === arExpected) return true;
+
+  const threshold = isArabic
+    ? (arExpected.length <= 4 ? 0.7 : 0.6)
+    : (normExpected.length <= 6 ? 0.75 : 0.7);
   if (similarity(normSpoken, normExpected) >= threshold) return true;
   if (similarity(phoneticSpoken, phoneticExpected) >= threshold) return true;
+  if (isArabic && similarity(arSpoken, arExpected) >= threshold) return true;
 
   if (normSpoken.includes(normExpected) || normExpected.includes(normSpoken)) {
     const ratio = Math.min(normSpoken.length, normExpected.length) / Math.max(normSpoken.length, normExpected.length);
+    if (ratio >= 0.5) return true;
+  }
+  if (isArabic && (arSpoken.includes(arExpected) || arExpected.includes(arSpoken))) {
+    const ratio = Math.min(arSpoken.length, arExpected.length) / Math.max(arSpoken.length, arExpected.length);
     if (ratio >= 0.5) return true;
   }
 
