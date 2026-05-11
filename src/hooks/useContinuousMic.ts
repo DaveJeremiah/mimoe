@@ -31,36 +31,38 @@ export function useContinuousMic({ onTranscript, sttLang = "fr-FR" }: UseContinu
   const onTranscriptRef = useRef(onTranscript);
   const enabledRef = useRef(false);
   const sttLangRef = useRef(sttLang);
+  const recognizerGenerationRef = useRef(0);
 
   useEffect(() => {
     onTranscriptRef.current = onTranscript;
   }, [onTranscript]);
 
-  useEffect(() => {
-    const prev = sttLangRef.current;
-    sttLangRef.current = sttLang;
-    // If language changed while listening, restart the recognizer with the new language.
-    if (prev !== sttLang && enabledRef.current) {
-      const rec = recognizerRef.current;
-      recognizerRef.current = null;
-      enabledRef.current = false;
-      const restart = async () => {
-        if (rec) {
-          await new Promise<void>((resolve) => {
-            rec.stopContinuousRecognitionAsync(
-              () => { rec.close(); resolve(); },
-              () => { rec.close(); resolve(); }
-            );
-          });
-        }
-        await start();
-      };
-      restart();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sttLang]);
+  const closeRecognizer = useCallback((recognizer: SpeechSDK.SpeechRecognizer | null) => {
+    return new Promise<void>((resolve) => {
+      if (!recognizer) {
+        resolve();
+        return;
+      }
 
-  const createRecognizer = useCallback((token: string, region: string) => {
+      recognizer.recognizing = () => {};
+      recognizer.recognized = () => {};
+      recognizer.canceled = () => {};
+      recognizer.sessionStopped = () => {};
+
+      recognizer.stopContinuousRecognitionAsync(
+        () => {
+          recognizer.close();
+          resolve();
+        },
+        () => {
+          recognizer.close();
+          resolve();
+        }
+      );
+    });
+  }, []);
+
+  const createRecognizer = useCallback((token: string, region: string, generation: number) => {
     const speechConfig = SpeechSDK.SpeechConfig.fromAuthorizationToken(token, region);
     speechConfig.speechRecognitionLanguage = sttLangRef.current;
     speechConfig.outputFormat = SpeechSDK.OutputFormat.Detailed;
@@ -68,12 +70,20 @@ export function useContinuousMic({ onTranscript, sttLang = "fr-FR" }: UseContinu
     const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
     const recognizer = new SpeechSDK.SpeechRecognizer(speechConfig, audioConfig);
 
+    const isCurrentRecognizer = () => (
+      enabledRef.current &&
+      recognizerGenerationRef.current === generation &&
+      recognizerRef.current === recognizer
+    );
+
     recognizer.recognizing = (_sender, event) => {
+      if (!isCurrentRecognizer()) return;
       const text = event.result.text?.trim();
       if (text) onTranscriptRef.current(text, false);
     };
 
     recognizer.recognized = (_sender, event) => {
+      if (!isCurrentRecognizer()) return;
       if (event.result.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
         const text = event.result.text?.trim();
         if (text) onTranscriptRef.current(text, true);
@@ -81,6 +91,7 @@ export function useContinuousMic({ onTranscript, sttLang = "fr-FR" }: UseContinu
     };
 
     recognizer.canceled = (_sender, event) => {
+      if (!isCurrentRecognizer()) return;
       if (event.reason === SpeechSDK.CancellationReason.Error) {
         console.error("Azure STT error:", event.errorDetails);
         if (event.errorDetails?.includes("1006") || event.errorDetails?.includes("auth")) {
@@ -91,11 +102,11 @@ export function useContinuousMic({ onTranscript, sttLang = "fr-FR" }: UseContinu
     };
 
     recognizer.sessionStopped = () => {
-      if (enabledRef.current) {
+      if (isCurrentRecognizer()) {
         setTimeout(() => {
-          if (enabledRef.current) {
+          if (isCurrentRecognizer()) {
             try {
-              recognizerRef.current?.startContinuousRecognitionAsync();
+              recognizer.startContinuousRecognitionAsync();
               setStatus("listening");
             } catch { /* ignore */ }
           }
@@ -107,7 +118,7 @@ export function useContinuousMic({ onTranscript, sttLang = "fr-FR" }: UseContinu
   }, []);
 
   const start = useCallback(async () => {
-    if (enabledRef.current) return;
+    if (enabledRef.current || recognizerRef.current) return;
 
     const auth = await fetchAzureToken();
     if (!auth) {
@@ -116,7 +127,9 @@ export function useContinuousMic({ onTranscript, sttLang = "fr-FR" }: UseContinu
     }
 
     try {
-      const recognizer = createRecognizer(auth.token, auth.region);
+      const generation = recognizerGenerationRef.current + 1;
+      recognizerGenerationRef.current = generation;
+      const recognizer = createRecognizer(auth.token, auth.region, generation);
       recognizerRef.current = recognizer;
       enabledRef.current = true;
 
@@ -133,36 +146,43 @@ export function useContinuousMic({ onTranscript, sttLang = "fr-FR" }: UseContinu
     } catch (err) {
       console.error("Failed to create recognizer:", err);
       setStatus("unsupported");
+      recognizerRef.current = null;
+      enabledRef.current = false;
     }
   }, [createRecognizer]);
 
-  const stop = useCallback(() => {
+  const stop = useCallback(async () => {
     enabledRef.current = false;
+    recognizerGenerationRef.current += 1;
     const rec = recognizerRef.current;
     recognizerRef.current = null;
-    if (rec) {
-      rec.stopContinuousRecognitionAsync(
-        () => { rec.close(); setStatus("idle"); },
-        () => { rec.close(); setStatus("idle"); }
-      );
-    } else {
-      setStatus("idle");
+    await closeRecognizer(rec);
+    setStatus("idle");
+  }, [closeRecognizer]);
+
+  const reset = useCallback(async () => {
+    if (!enabledRef.current && !recognizerRef.current) return;
+    await stop();
+    await start();
+  }, [start, stop]);
+
+  useEffect(() => {
+    const prev = sttLangRef.current;
+    sttLangRef.current = sttLang;
+    if (prev !== sttLang && enabledRef.current) {
+      void reset();
     }
-  }, []);
+  }, [sttLang, reset]);
 
   useEffect(() => {
     return () => {
       enabledRef.current = false;
+      recognizerGenerationRef.current += 1;
       const rec = recognizerRef.current;
       recognizerRef.current = null;
-      if (rec) {
-        rec.stopContinuousRecognitionAsync(
-          () => rec.close(),
-          () => rec.close()
-        );
-      }
+      void closeRecognizer(rec);
     };
-  }, []);
+  }, [closeRecognizer]);
 
-  return { status, start, stop };
+  return { status, start, stop, reset };
 }
