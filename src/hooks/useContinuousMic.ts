@@ -126,7 +126,11 @@ export function useContinuousMic({ onTranscript, sttLang = "fr-FR" }: UseContinu
     startingRef.current = true;
 
     const auth = await fetchAzureToken();
-    if (!auth || recognizerGenerationRef.current !== generation) {
+    if (recognizerGenerationRef.current !== generation) {
+      startingRef.current = false;
+      return;
+    }
+    if (!auth) {
       startingRef.current = false;
       setStatus("unsupported");
       return;
