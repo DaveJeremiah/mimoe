@@ -597,34 +597,46 @@ export function FlashcardApp() {
     setIsCollectionModalOpen(true);
   }, []);
 
-  const handleSaveCollection = useCallback((data: CollectionFormData) => {
+  const handleSaveCollection = useCallback(async (data: CollectionFormData) => {
     if (editingCollection) {
-      setCollections(prev => prev.map(col => 
-        col.id === editingCollection.id 
-          ? { ...col, ...data, updatedAt: new Date().toISOString() }
-          : col
-      ));
+      try {
+        await db.updateCollection(editingCollection.id, {
+          title: data.title,
+          dialect: data.dialect,
+          entries: data.entries,
+        });
+        setCollections(prev => prev.map(col =>
+          col.id === editingCollection.id
+            ? { ...col, title: data.title, dialect: data.dialect, entries: data.entries, language: data.language ?? col.language }
+            : col
+        ));
+      } catch (e) {
+        console.error("Failed to update collection", e);
+      }
     } else {
-      const newCollection: Collection = {
-        id: `collection-${Date.now()}`,
-        title: data.title,
-        language: data.language ?? activeLanguage,
-        dialect: data.dialect,
-        entries: data.entries,
-        createdAt: new Date().toISOString()
-      };
-      setCollections(prev => [...prev, newCollection]);
+      try {
+        const created = await db.createCollection({
+          title: data.title,
+          language: data.language ?? activeLanguage,
+          dialect: data.dialect,
+          entries: data.entries,
+        });
+        setCollections(prev => [...prev, created]);
+      } catch (e) {
+        console.error("Failed to create collection", e);
+      }
     }
-  }, [editingCollection, setCollections]);
+  }, [editingCollection, activeLanguage]);
 
   const handleEditCollection = useCallback((collection: Collection) => {
     setEditingCollection(collection);
     setIsCollectionModalOpen(true);
   }, []);
 
-  const handleDeleteCollection = useCallback((collectionId: string) => {
+  const handleDeleteCollection = useCallback(async (collectionId: string) => {
+    try { await db.deleteCollection(collectionId); } catch (e) { console.error("Failed to delete collection", e); }
     setCollections(prev => prev.filter(col => col.id !== collectionId));
-  }, [setCollections]);
+  }, []);
 
   const handleStudyCollection = useCallback((collection: Collection) => {
     unlockAudio();
