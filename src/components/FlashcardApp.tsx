@@ -35,24 +35,24 @@ export function FlashcardApp() {
 
   // Personal Space state
   const [appView, setAppView] = useState<AppView>("main");
-  const [collections, setCollections] = useLocalStorage<Collection[]>("mimoe-collections", []);
+  const [collections, setCollections] = useState<Collection[]>([]);
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
   const [isCollectionModalOpen, setIsCollectionModalOpen] = useState(false);
   const [editingCollection, setEditingCollection] = useState<Collection | undefined>();
   const [collectionQueue, setCollectionQueue] = useState<string[]>([]);
 
-  const [customVocab, setCustomVocab] = useLocalStorage<Record<string, FlashcardItem[]>>("mimoe-custom-vocab", {});
-  const [customPhrases, setCustomPhrases] = useLocalStorage<Record<string, FlashcardItem[]>>("mimoe-custom-phrases", {});
+  const [customVocab, setCustomVocab] = useState<Record<string, FlashcardItem[]>>({});
+  const [customPhrases, setCustomPhrases] = useState<Record<string, FlashcardItem[]>>({});
 
-  // User-created levels (persisted per tab)
-  const [customVocabLevels, setCustomVocabLevels] = useLocalStorage<{ id: string; title: string; dialect?: string }[]>("mimoe-custom-levels-vocab", []);
-  const [customPhraseLevels, setCustomPhraseLevels] = useLocalStorage<{ id: string; title: string; dialect?: string }[]>("mimoe-custom-levels-phrases", []);
+  // User-created levels (loaded from DB per tab+language)
+  const [customVocabLevels, setCustomVocabLevels] = useState<{ id: string; title: string; dialect?: string }[]>([]);
+  const [customPhraseLevels, setCustomPhraseLevels] = useState<{ id: string; title: string; dialect?: string }[]>([]);
   const [isNewLevelModalOpen, setIsNewLevelModalOpen] = useState(false);
 
   // Track which cards were answered correctly on FIRST attempt in current session
   const [firstAttemptCorrect, setFirstAttemptCorrect] = useState<Set<string>>(new Set());
   const [failedCards, setFailedCards] = useState<Set<string>>(new Set());
-  const [bookmarkedCards, setBookmarkedCards] = useLocalStorage<string[]>("mimoe-bookmarked-cards", []);
+  const [bookmarkedCards, setBookmarkedCards] = useState<string[]>([]);
 
   // Special "bookmarked" study session — synthetic level
   const [isBookmarkedSession, setIsBookmarkedSession] = useState(false);
