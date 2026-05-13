@@ -203,6 +203,47 @@ export function FlashcardApp() {
     loadProgress();
   }, [user]);
 
+  // Load collections + bookmarks on user/language change
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      try {
+        const [cols, bms] = await Promise.all([
+          db.listCollections(),
+          db.listBookmarks(activeLanguage),
+        ]);
+        setCollections(cols);
+        setBookmarkedCards(bms);
+      } catch (e) {
+        console.error("Failed to load collections/bookmarks", e);
+      }
+    })();
+  }, [user, activeLanguage]);
+
+  // Load custom levels + their cards for the current tab+language
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      try {
+        const rows = await db.listCustomLevels(activeTab, activeLanguage);
+        const lvls = rows.map((r) => ({ id: r.id, title: r.title, ...(r.dialect ? { dialect: r.dialect } : {}) }));
+        if (activeTab === "vocabulary") setCustomVocabLevels(lvls);
+        else setCustomPhraseLevels(lvls);
+
+        const cardsByLevel: Record<string, FlashcardItem[]> = {};
+        await Promise.all(
+          rows.map(async (r) => {
+            cardsByLevel[r.id] = await db.listCustomCards(r.id);
+          })
+        );
+        if (activeTab === "vocabulary") setCustomVocab(cardsByLevel);
+        else setCustomPhrases(cardsByLevel);
+      } catch (e) {
+        console.error("Failed to load custom levels", e);
+      }
+    })();
+  }, [user, activeTab, activeLanguage]);
+
   // Restore progress on component mount
   const hasRestoredRef = useRef(false);
   useEffect(() => {
