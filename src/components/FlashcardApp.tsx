@@ -10,6 +10,7 @@ import { NewCollectionModal } from "./NewCollectionModal";
 import { NewLevelModal } from "./NewLevelModal";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/lib/db";
 import { vocabularyLevels, phraseLevels, arabicVocabularyLevels, arabicPhraseLevels, type FlashcardItem } from "@/lib/flashcardData";
 import { type Collection, CollectionFormData } from "@/lib/collectionTypes";
 import { prefetchAudio, unlockAudio } from "@/lib/speechUtils";
@@ -34,24 +35,24 @@ export function FlashcardApp() {
 
   // Personal Space state
   const [appView, setAppView] = useState<AppView>("main");
-  const [collections, setCollections] = useLocalStorage<Collection[]>("mimoe-collections", []);
+  const [collections, setCollections] = useState<Collection[]>([]);
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
   const [isCollectionModalOpen, setIsCollectionModalOpen] = useState(false);
   const [editingCollection, setEditingCollection] = useState<Collection | undefined>();
   const [collectionQueue, setCollectionQueue] = useState<string[]>([]);
 
-  const [customVocab, setCustomVocab] = useLocalStorage<Record<string, FlashcardItem[]>>("mimoe-custom-vocab", {});
-  const [customPhrases, setCustomPhrases] = useLocalStorage<Record<string, FlashcardItem[]>>("mimoe-custom-phrases", {});
+  const [customVocab, setCustomVocab] = useState<Record<string, FlashcardItem[]>>({});
+  const [customPhrases, setCustomPhrases] = useState<Record<string, FlashcardItem[]>>({});
 
-  // User-created levels (persisted per tab)
-  const [customVocabLevels, setCustomVocabLevels] = useLocalStorage<{ id: string; title: string; dialect?: string }[]>("mimoe-custom-levels-vocab", []);
-  const [customPhraseLevels, setCustomPhraseLevels] = useLocalStorage<{ id: string; title: string; dialect?: string }[]>("mimoe-custom-levels-phrases", []);
+  // User-created levels (loaded from DB per tab+language)
+  const [customVocabLevels, setCustomVocabLevels] = useState<{ id: string; title: string; dialect?: string }[]>([]);
+  const [customPhraseLevels, setCustomPhraseLevels] = useState<{ id: string; title: string; dialect?: string }[]>([]);
   const [isNewLevelModalOpen, setIsNewLevelModalOpen] = useState(false);
 
   // Track which cards were answered correctly on FIRST attempt in current session
   const [firstAttemptCorrect, setFirstAttemptCorrect] = useState<Set<string>>(new Set());
   const [failedCards, setFailedCards] = useState<Set<string>>(new Set());
-  const [bookmarkedCards, setBookmarkedCards] = useLocalStorage<string[]>("mimoe-bookmarked-cards", []);
+  const [bookmarkedCards, setBookmarkedCards] = useState<string[]>([]);
 
   // Special "bookmarked" study session — synthetic level
   const [isBookmarkedSession, setIsBookmarkedSession] = useState(false);
@@ -202,6 +203,47 @@ export function FlashcardApp() {
     loadProgress();
   }, [user]);
 
+  // Load collections + bookmarks on user/language change
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      try {
+        const [cols, bms] = await Promise.all([
+          db.listCollections(),
+          db.listBookmarks(activeLanguage),
+        ]);
+        setCollections(cols);
+        setBookmarkedCards(bms);
+      } catch (e) {
+        console.error("Failed to load collections/bookmarks", e);
+      }
+    })();
+  }, [user, activeLanguage]);
+
+  // Load custom levels + their cards for the current tab+language
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      try {
+        const rows = await db.listCustomLevels(activeTab, activeLanguage);
+        const lvls = rows.map((r) => ({ id: r.id, title: r.title, ...(r.dialect ? { dialect: r.dialect } : {}) }));
+        if (activeTab === "vocabulary") setCustomVocabLevels(lvls);
+        else setCustomPhraseLevels(lvls);
+
+        const cardsByLevel: Record<string, FlashcardItem[]> = {};
+        await Promise.all(
+          rows.map(async (r) => {
+            cardsByLevel[r.id] = await db.listCustomCards(r.id);
+          })
+        );
+        if (activeTab === "vocabulary") setCustomVocab(cardsByLevel);
+        else setCustomPhrases(cardsByLevel);
+      } catch (e) {
+        console.error("Failed to load custom levels", e);
+      }
+    })();
+  }, [user, activeTab, activeLanguage]);
+
   // Restore progress on component mount
   const hasRestoredRef = useRef(false);
   useEffect(() => {
@@ -260,10 +302,14 @@ export function FlashcardApp() {
     prefetchAudio(bookmarkedLevel.cards.slice(0, 3).map((c) => c.target ?? c.french ?? ""), langConfig);
   }, [bookmarkedLevel, langConfig]);
 
-  const handleAddLevel = useCallback((title: string, dialect?: string) => {
-    const newId = `custom-level-${Date.now()}`;
-    setCustomLevelsList((prev) => [...prev, { id: newId, title, ...(dialect ? { dialect } : {}) }]);
-  }, [setCustomLevelsList]);
+  const handleAddLevel = useCallback(async (title: string, dialect?: string) => {
+    try {
+      const row = await db.createCustomLevel({ title, tab: activeTab, language: activeLanguage, dialect });
+      setCustomLevelsList((prev) => [...prev, { id: row.id, title: row.title, ...(row.dialect ? { dialect: row.dialect } : {}) }]);
+    } catch (e) {
+      console.error("Failed to create level", e);
+    }
+  }, [activeTab, activeLanguage, setCustomLevelsList]);
 
   const currentCard = useMemo(() => {
     if (queue.length === 0) return null;
@@ -407,24 +453,52 @@ export function FlashcardApp() {
     });
   }, [history]);
 
+  const isCustomDbLevel = useCallback(
+    (id: string | null) => !!id && customLevelsList.some((l) => l.id === id),
+    [customLevelsList]
+  );
+
   const handleAddItem = useCallback(
-    (english: string, french: string, alternatives?: string[]) => {
+    async (english: string, french: string, alternatives?: string[]) => {
       if (!selectedLevelId) return;
-      const id = `custom-${Date.now()}`;
-      const newItem: FlashcardItem = { id, english, french, target: french, ...(alternatives && alternatives.length > 0 ? { alternatives } : {}) };
-      setCustomCards((prev) => ({
-        ...prev,
-        [selectedLevelId]: [...(prev[selectedLevelId] || []), newItem],
-      }));
-      setQueue((prev) => [...prev, id]);
+      if (isCustomDbLevel(selectedLevelId)) {
+        try {
+          const created = await db.createCustomCard({
+            levelId: selectedLevelId,
+            english,
+            target: french,
+            alternatives,
+            position: (customCards[selectedLevelId]?.length ?? 0),
+          });
+          setCustomCards((prev) => ({
+            ...prev,
+            [selectedLevelId]: [...(prev[selectedLevelId] || []), created],
+          }));
+          setQueue((prev) => [...prev, created.id]);
+        } catch (e) {
+          console.error("Failed to add card", e);
+        }
+      } else {
+        const id = `custom-${Date.now()}`;
+        const newItem: FlashcardItem = { id, english, french, target: french, ...(alternatives && alternatives.length > 0 ? { alternatives } : {}) };
+        setCustomCards((prev) => ({
+          ...prev,
+          [selectedLevelId]: [...(prev[selectedLevelId] || []), newItem],
+        }));
+        setQueue((prev) => [...prev, id]);
+      }
     },
-    [selectedLevelId, setCustomCards]
+    [selectedLevelId, setCustomCards, customCards, isCustomDbLevel]
   );
 
   const handleUpdateItem = useCallback(
-    (id: string, english: string, french: string, alternatives?: string[]) => {
+    async (id: string, english: string, french: string, alternatives?: string[]) => {
       if (!selectedLevelId) return;
       const updatedItem: FlashcardItem = { id, english, french, target: french, ...(alternatives && alternatives.length > 0 ? { alternatives } : {}) };
+      if (isCustomDbLevel(selectedLevelId)) {
+        try { await db.updateCustomCard(id, { english, target: french, alternatives }); }
+        catch (e) { console.error("Failed to update card", e); }
+      }
       setCustomCards((prev) => {
         const levelCards = prev[selectedLevelId] || [];
         const index = levelCards.findIndex((i) => i.id === id);
@@ -437,12 +511,15 @@ export function FlashcardApp() {
         }
       });
     },
-    [selectedLevelId, setCustomCards]
+    [selectedLevelId, setCustomCards, isCustomDbLevel]
   );
 
   const handleDeleteItem = useCallback(
-    (id: string) => {
+    async (id: string) => {
       if (!selectedLevelId) return;
+      if (isCustomDbLevel(selectedLevelId)) {
+        try { await db.deleteCustomCard(id); } catch (e) { console.error("Failed to delete card", e); }
+      }
       setCustomCards((prev) => ({
         ...prev,
         [selectedLevelId]: (prev[selectedLevelId] || []).filter((i) => i.id !== id),
@@ -450,23 +527,39 @@ export function FlashcardApp() {
       setQueue((prev) => prev.filter((i) => i !== id));
       setHistory((prev) => prev.filter((i) => i !== id));
     },
-    [selectedLevelId, setCustomCards]
+    [selectedLevelId, setCustomCards, isCustomDbLevel]
   );
 
   const handleBulkAdd = useCallback(
-    (entries: { english: string; french: string; alternatives?: string[] }[]) => {
+    async (entries: { english: string; french: string; alternatives?: string[] }[]) => {
       if (!selectedLevelId) return;
-      const newItems: FlashcardItem[] = entries.map((entry) => {
-        const id = `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        return { id, english: entry.english, french: entry.french, target: entry.french, ...(entry.alternatives && entry.alternatives.length > 0 ? { alternatives: entry.alternatives } : {}) };
-      });
-      setCustomCards((prev) => ({
-        ...prev,
-        [selectedLevelId]: [...(prev[selectedLevelId] || []), ...newItems],
-      }));
-      setQueue((prev) => [...prev, ...newItems.map((item) => item.id)]);
+      if (isCustomDbLevel(selectedLevelId)) {
+        try {
+          const created = await db.bulkCreateCustomCards(
+            selectedLevelId,
+            entries.map((e) => ({ english: e.english, target: e.french, alternatives: e.alternatives })),
+          );
+          setCustomCards((prev) => ({
+            ...prev,
+            [selectedLevelId]: [...(prev[selectedLevelId] || []), ...created],
+          }));
+          setQueue((prev) => [...prev, ...created.map((c) => c.id)]);
+        } catch (e) {
+          console.error("Failed to bulk add", e);
+        }
+      } else {
+        const newItems: FlashcardItem[] = entries.map((entry) => {
+          const id = `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          return { id, english: entry.english, french: entry.french, target: entry.french, ...(entry.alternatives && entry.alternatives.length > 0 ? { alternatives: entry.alternatives } : {}) };
+        });
+        setCustomCards((prev) => ({
+          ...prev,
+          [selectedLevelId]: [...(prev[selectedLevelId] || []), ...newItems],
+        }));
+        setQueue((prev) => [...prev, ...newItems.map((item) => item.id)]);
+      }
     },
-    [selectedLevelId, setCustomCards]
+    [selectedLevelId, setCustomCards, isCustomDbLevel]
   );
 
   const handleReorder = useCallback((newOrderIds: string[]) => {
@@ -504,34 +597,46 @@ export function FlashcardApp() {
     setIsCollectionModalOpen(true);
   }, []);
 
-  const handleSaveCollection = useCallback((data: CollectionFormData) => {
+  const handleSaveCollection = useCallback(async (data: CollectionFormData) => {
     if (editingCollection) {
-      setCollections(prev => prev.map(col => 
-        col.id === editingCollection.id 
-          ? { ...col, ...data, updatedAt: new Date().toISOString() }
-          : col
-      ));
+      try {
+        await db.updateCollection(editingCollection.id, {
+          title: data.title,
+          dialect: data.dialect,
+          entries: data.entries,
+        });
+        setCollections(prev => prev.map(col =>
+          col.id === editingCollection.id
+            ? { ...col, title: data.title, dialect: data.dialect, entries: data.entries, language: data.language ?? col.language }
+            : col
+        ));
+      } catch (e) {
+        console.error("Failed to update collection", e);
+      }
     } else {
-      const newCollection: Collection = {
-        id: `collection-${Date.now()}`,
-        title: data.title,
-        language: data.language ?? activeLanguage,
-        dialect: data.dialect,
-        entries: data.entries,
-        createdAt: new Date().toISOString()
-      };
-      setCollections(prev => [...prev, newCollection]);
+      try {
+        const created = await db.createCollection({
+          title: data.title,
+          language: data.language ?? activeLanguage,
+          dialect: data.dialect,
+          entries: data.entries,
+        });
+        setCollections(prev => [...prev, created]);
+      } catch (e) {
+        console.error("Failed to create collection", e);
+      }
     }
-  }, [editingCollection, setCollections]);
+  }, [editingCollection, activeLanguage]);
 
   const handleEditCollection = useCallback((collection: Collection) => {
     setEditingCollection(collection);
     setIsCollectionModalOpen(true);
   }, []);
 
-  const handleDeleteCollection = useCallback((collectionId: string) => {
+  const handleDeleteCollection = useCallback(async (collectionId: string) => {
+    try { await db.deleteCollection(collectionId); } catch (e) { console.error("Failed to delete collection", e); }
     setCollections(prev => prev.filter(col => col.id !== collectionId));
-  }, [setCollections]);
+  }, []);
 
   const handleStudyCollection = useCallback((collection: Collection) => {
     unlockAudio();
@@ -870,12 +975,18 @@ export function FlashcardApp() {
             remaining={queue.length}
             onTranscriptRef={onTranscriptRef}
             isBookmarked={bookmarkedCards.includes(currentCard.id)}
-            onToggleBookmark={() => {
-              setBookmarkedCards(prev =>
-                prev.includes(currentCard.id)
-                  ? prev.filter(id => id !== currentCard.id)
-                  : [...prev, currentCard.id]
-              );
+            onToggleBookmark={async () => {
+              const cardId = currentCard.id;
+              const wasBookmarked = bookmarkedCards.includes(cardId);
+              // optimistic
+              setBookmarkedCards(prev => wasBookmarked ? prev.filter(id => id !== cardId) : [...prev, cardId]);
+              try {
+                await db.toggleBookmark(cardId, currentCard.english, currentCard.target ?? currentCard.french ?? "", activeLanguage, "level");
+              } catch (e) {
+                console.error("Failed to toggle bookmark", e);
+                // revert
+                setBookmarkedCards(prev => wasBookmarked ? [...prev, cardId] : prev.filter(id => id !== cardId));
+              }
             }}
             isMicOn={isMicEnabled}
             onToggleMic={() => setIsMicEnabled(prev => !prev)}

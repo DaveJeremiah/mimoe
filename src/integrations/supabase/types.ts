@@ -14,6 +14,231 @@ export type Database = {
   }
   public: {
     Tables: {
+      bookmarks: {
+        Row: {
+          card_id: string
+          created_at: string
+          english: string
+          id: string
+          language: string
+          source: string
+          target: string
+          user_id: string
+        }
+        Insert: {
+          card_id: string
+          created_at?: string
+          english: string
+          id?: string
+          language?: string
+          source?: string
+          target: string
+          user_id: string
+        }
+        Update: {
+          card_id?: string
+          created_at?: string
+          english?: string
+          id?: string
+          language?: string
+          source?: string
+          target?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      card_results: {
+        Row: {
+          attempts: number
+          card_id: string
+          correct: boolean
+          created_at: string
+          english: string
+          id: string
+          language: string
+          session_id: string | null
+          target: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          card_id: string
+          correct?: boolean
+          created_at?: string
+          english: string
+          id?: string
+          language: string
+          session_id?: string | null
+          target: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          card_id?: string
+          correct?: boolean
+          created_at?: string
+          english?: string
+          id?: string
+          language?: string
+          session_id?: string | null
+          target?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_results_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "study_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      collection_entries: {
+        Row: {
+          alternatives: Json
+          collection_id: string
+          created_at: string
+          english: string
+          id: string
+          position: number
+          target: string
+          user_id: string
+        }
+        Insert: {
+          alternatives?: Json
+          collection_id: string
+          created_at?: string
+          english: string
+          id?: string
+          position?: number
+          target: string
+          user_id: string
+        }
+        Update: {
+          alternatives?: Json
+          collection_id?: string
+          created_at?: string
+          english?: string
+          id?: string
+          position?: number
+          target?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collection_entries_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "collections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      collections: {
+        Row: {
+          created_at: string
+          dialect: string | null
+          id: string
+          language: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dialect?: string | null
+          id?: string
+          language?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dialect?: string | null
+          id?: string
+          language?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      custom_cards: {
+        Row: {
+          alternatives: Json
+          created_at: string
+          english: string
+          id: string
+          level_id: string
+          position: number
+          target: string
+          user_id: string
+        }
+        Insert: {
+          alternatives?: Json
+          created_at?: string
+          english: string
+          id?: string
+          level_id: string
+          position?: number
+          target: string
+          user_id: string
+        }
+        Update: {
+          alternatives?: Json
+          created_at?: string
+          english?: string
+          id?: string
+          level_id?: string
+          position?: number
+          target?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_cards_level_id_fkey"
+            columns: ["level_id"]
+            isOneToOne: false
+            referencedRelation: "custom_levels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      custom_levels: {
+        Row: {
+          created_at: string
+          dialect: string | null
+          id: string
+          language: string
+          tab: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dialect?: string | null
+          id?: string
+          language?: string
+          tab: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dialect?: string | null
+          id?: string
+          language?: string
+          tab?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -31,6 +256,66 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      streaks: {
+        Row: {
+          current_streak: number
+          last_active_date: string | null
+          longest_streak: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          current_streak?: number
+          last_active_date?: string | null
+          longest_streak?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          current_streak?: number
+          last_active_date?: string | null
+          longest_streak?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      study_sessions: {
+        Row: {
+          correct_count: number
+          ended_at: string | null
+          id: string
+          language: string
+          source: string
+          source_id: string | null
+          started_at: string
+          total_cards: number
+          user_id: string
+        }
+        Insert: {
+          correct_count?: number
+          ended_at?: string | null
+          id?: string
+          language: string
+          source: string
+          source_id?: string | null
+          started_at?: string
+          total_cards?: number
+          user_id: string
+        }
+        Update: {
+          correct_count?: number
+          ended_at?: string | null
+          id?: string
+          language?: string
+          source?: string
+          source_id?: string | null
+          started_at?: string
+          total_cards?: number
           user_id?: string
         }
         Relationships: []
