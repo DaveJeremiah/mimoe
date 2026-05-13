@@ -975,12 +975,18 @@ export function FlashcardApp() {
             remaining={queue.length}
             onTranscriptRef={onTranscriptRef}
             isBookmarked={bookmarkedCards.includes(currentCard.id)}
-            onToggleBookmark={() => {
-              setBookmarkedCards(prev =>
-                prev.includes(currentCard.id)
-                  ? prev.filter(id => id !== currentCard.id)
-                  : [...prev, currentCard.id]
-              );
+            onToggleBookmark={async () => {
+              const cardId = currentCard.id;
+              const wasBookmarked = bookmarkedCards.includes(cardId);
+              // optimistic
+              setBookmarkedCards(prev => wasBookmarked ? prev.filter(id => id !== cardId) : [...prev, cardId]);
+              try {
+                await db.toggleBookmark(cardId, currentCard.english, currentCard.target ?? currentCard.french ?? "", activeLanguage, "level");
+              } catch (e) {
+                console.error("Failed to toggle bookmark", e);
+                // revert
+                setBookmarkedCards(prev => wasBookmarked ? [...prev, cardId] : prev.filter(id => id !== cardId));
+              }
             }}
             isMicOn={isMicEnabled}
             onToggleMic={() => setIsMicEnabled(prev => !prev)}
