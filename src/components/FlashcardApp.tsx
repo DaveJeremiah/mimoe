@@ -453,24 +453,52 @@ export function FlashcardApp() {
     });
   }, [history]);
 
+  const isCustomDbLevel = useCallback(
+    (id: string | null) => !!id && customLevelsList.some((l) => l.id === id),
+    [customLevelsList]
+  );
+
   const handleAddItem = useCallback(
-    (english: string, french: string, alternatives?: string[]) => {
+    async (english: string, french: string, alternatives?: string[]) => {
       if (!selectedLevelId) return;
-      const id = `custom-${Date.now()}`;
-      const newItem: FlashcardItem = { id, english, french, target: french, ...(alternatives && alternatives.length > 0 ? { alternatives } : {}) };
-      setCustomCards((prev) => ({
-        ...prev,
-        [selectedLevelId]: [...(prev[selectedLevelId] || []), newItem],
-      }));
-      setQueue((prev) => [...prev, id]);
+      if (isCustomDbLevel(selectedLevelId)) {
+        try {
+          const created = await db.createCustomCard({
+            levelId: selectedLevelId,
+            english,
+            target: french,
+            alternatives,
+            position: (customCards[selectedLevelId]?.length ?? 0),
+          });
+          setCustomCards((prev) => ({
+            ...prev,
+            [selectedLevelId]: [...(prev[selectedLevelId] || []), created],
+          }));
+          setQueue((prev) => [...prev, created.id]);
+        } catch (e) {
+          console.error("Failed to add card", e);
+        }
+      } else {
+        const id = `custom-${Date.now()}`;
+        const newItem: FlashcardItem = { id, english, french, target: french, ...(alternatives && alternatives.length > 0 ? { alternatives } : {}) };
+        setCustomCards((prev) => ({
+          ...prev,
+          [selectedLevelId]: [...(prev[selectedLevelId] || []), newItem],
+        }));
+        setQueue((prev) => [...prev, id]);
+      }
     },
-    [selectedLevelId, setCustomCards]
+    [selectedLevelId, setCustomCards, customCards, isCustomDbLevel]
   );
 
   const handleUpdateItem = useCallback(
-    (id: string, english: string, french: string, alternatives?: string[]) => {
+    async (id: string, english: string, french: string, alternatives?: string[]) => {
       if (!selectedLevelId) return;
       const updatedItem: FlashcardItem = { id, english, french, target: french, ...(alternatives && alternatives.length > 0 ? { alternatives } : {}) };
+      if (isCustomDbLevel(selectedLevelId)) {
+        try { await db.updateCustomCard(id, { english, target: french, alternatives }); }
+        catch (e) { console.error("Failed to update card", e); }
+      }
       setCustomCards((prev) => {
         const levelCards = prev[selectedLevelId] || [];
         const index = levelCards.findIndex((i) => i.id === id);
@@ -483,12 +511,15 @@ export function FlashcardApp() {
         }
       });
     },
-    [selectedLevelId, setCustomCards]
+    [selectedLevelId, setCustomCards, isCustomDbLevel]
   );
 
   const handleDeleteItem = useCallback(
-    (id: string) => {
+    async (id: string) => {
       if (!selectedLevelId) return;
+      if (isCustomDbLevel(selectedLevelId)) {
+        try { await db.deleteCustomCard(id); } catch (e) { console.error("Failed to delete card", e); }
+      }
       setCustomCards((prev) => ({
         ...prev,
         [selectedLevelId]: (prev[selectedLevelId] || []).filter((i) => i.id !== id),
@@ -496,23 +527,39 @@ export function FlashcardApp() {
       setQueue((prev) => prev.filter((i) => i !== id));
       setHistory((prev) => prev.filter((i) => i !== id));
     },
-    [selectedLevelId, setCustomCards]
+    [selectedLevelId, setCustomCards, isCustomDbLevel]
   );
 
   const handleBulkAdd = useCallback(
-    (entries: { english: string; french: string; alternatives?: string[] }[]) => {
+    async (entries: { english: string; french: string; alternatives?: string[] }[]) => {
       if (!selectedLevelId) return;
-      const newItems: FlashcardItem[] = entries.map((entry) => {
-        const id = `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        return { id, english: entry.english, french: entry.french, target: entry.french, ...(entry.alternatives && entry.alternatives.length > 0 ? { alternatives: entry.alternatives } : {}) };
-      });
-      setCustomCards((prev) => ({
-        ...prev,
-        [selectedLevelId]: [...(prev[selectedLevelId] || []), ...newItems],
-      }));
-      setQueue((prev) => [...prev, ...newItems.map((item) => item.id)]);
+      if (isCustomDbLevel(selectedLevelId)) {
+        try {
+          const created = await db.bulkCreateCustomCards(
+            selectedLevelId,
+            entries.map((e) => ({ english: e.english, target: e.french, alternatives: e.alternatives })),
+          );
+          setCustomCards((prev) => ({
+            ...prev,
+            [selectedLevelId]: [...(prev[selectedLevelId] || []), ...created],
+          }));
+          setQueue((prev) => [...prev, ...created.map((c) => c.id)]);
+        } catch (e) {
+          console.error("Failed to bulk add", e);
+        }
+      } else {
+        const newItems: FlashcardItem[] = entries.map((entry) => {
+          const id = `custom-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          return { id, english: entry.english, french: entry.french, target: entry.french, ...(entry.alternatives && entry.alternatives.length > 0 ? { alternatives: entry.alternatives } : {}) };
+        });
+        setCustomCards((prev) => ({
+          ...prev,
+          [selectedLevelId]: [...(prev[selectedLevelId] || []), ...newItems],
+        }));
+        setQueue((prev) => [...prev, ...newItems.map((item) => item.id)]);
+      }
     },
-    [selectedLevelId, setCustomCards]
+    [selectedLevelId, setCustomCards, isCustomDbLevel]
   );
 
   const handleReorder = useCallback((newOrderIds: string[]) => {
