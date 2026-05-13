@@ -302,10 +302,14 @@ export function FlashcardApp() {
     prefetchAudio(bookmarkedLevel.cards.slice(0, 3).map((c) => c.target ?? c.french ?? ""), langConfig);
   }, [bookmarkedLevel, langConfig]);
 
-  const handleAddLevel = useCallback((title: string, dialect?: string) => {
-    const newId = `custom-level-${Date.now()}`;
-    setCustomLevelsList((prev) => [...prev, { id: newId, title, ...(dialect ? { dialect } : {}) }]);
-  }, [setCustomLevelsList]);
+  const handleAddLevel = useCallback(async (title: string, dialect?: string) => {
+    try {
+      const row = await db.createCustomLevel({ title, tab: activeTab, language: activeLanguage, dialect });
+      setCustomLevelsList((prev) => [...prev, { id: row.id, title: row.title, ...(row.dialect ? { dialect: row.dialect } : {}) }]);
+    } catch (e) {
+      console.error("Failed to create level", e);
+    }
+  }, [activeTab, activeLanguage, setCustomLevelsList]);
 
   const currentCard = useMemo(() => {
     if (queue.length === 0) return null;
