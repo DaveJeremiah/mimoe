@@ -2,25 +2,43 @@ import type { CSSProperties } from "react";
 import type { Level } from "@/lib/flashcardData";
 import { Check, Heart, ArrowLeft, ChevronRight } from "lucide-react";
 
-// SVG feTurbulence grain tiled as a data-URI background — zero JS overhead,
-// tiling fractal noise gives a matte canvas / rough-paper feel.
-const GRAIN_URI =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E\")";
+// Coarse fractal noise — lower baseFrequency = bigger chunks = clearly visible roughness.
+// Two layers stacked: a fine layer + a coarse layer for depth.
+const GRAIN_FINE =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='gf'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23gf)'/%3E%3C/svg%3E\")";
+const GRAIN_COARSE =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='gc'%3E%3CfeTurbulence type='turbulence' baseFrequency='0.2' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23gc)'/%3E%3C/svg%3E\")";
 
-function GrainTexture({ opacity = 0.13, blend = "overlay" as CSSProperties["mixBlendMode"] }) {
+function GrainTexture() {
   return (
-    <div
-      aria-hidden="true"
-      className="absolute inset-0 pointer-events-none"
-      style={{
-        backgroundImage: GRAIN_URI,
-        backgroundRepeat: "repeat",
-        backgroundSize: "180px",
-        opacity,
-        mixBlendMode: blend,
-        borderRadius: "inherit",
-      }}
-    />
+    <>
+      {/* Fine grain layer */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: GRAIN_FINE,
+          backgroundRepeat: "repeat",
+          backgroundSize: "160px",
+          opacity: 0.28,
+          mixBlendMode: "soft-light",
+          borderRadius: "inherit",
+        }}
+      />
+      {/* Coarse chunky layer for the rugged/worn feel */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: GRAIN_COARSE,
+          backgroundRepeat: "repeat",
+          backgroundSize: "240px",
+          opacity: 0.18,
+          mixBlendMode: "multiply",
+          borderRadius: "inherit",
+        }}
+      />
+    </>
   );
 }
 
@@ -191,7 +209,7 @@ export function LevelSelect({
               <button
                 key={deck.id}
                 onClick={() => onSelectLevel(deck.id)}
-                className={`w-full flex items-center gap-3 p-4 rounded-2xl transition-all duration-200 text-left active:scale-[0.97] ${
+                className={`w-full flex items-center gap-3 p-4 rounded-3xl transition-all duration-200 text-left active:scale-[0.97] ${
                   isCompleted ? `${band.accentBorder} ${band.accentBg} border` : "bg-card hover:bg-muted"
                 }`}
                 style={!isCompleted ? { border: '1px solid rgba(255,255,255,0.07)' } : undefined}
@@ -231,7 +249,7 @@ export function LevelSelect({
                   <button
                     key={deck.id}
                     onClick={() => onSelectLevel(deck.id)}
-                    className={`w-full flex items-center gap-3 p-4 rounded-2xl transition-all duration-200 text-left active:scale-[0.97] ${
+                    className={`w-full flex items-center gap-3 p-4 rounded-3xl transition-all duration-200 text-left active:scale-[0.97] ${
                       isCompleted ? "border border-success/30 bg-success/10" : "bg-card hover:bg-muted"
                     }`}
                     style={!isCompleted ? { border: '1px solid rgba(255,255,255,0.07)' } : undefined}
@@ -265,9 +283,9 @@ export function LevelSelect({
   const BAND_CARDS = [
     {
       id: "A1" as const,
-      // Soft tangerine → hot pink → royal blue — warm & inviting, not harsh
-      bg: "linear-gradient(140deg, #FB923C 0%, #DB2777 55%, #1E40AF 100%)",
-      shadow: "#C45F00",
+      // Deep maroon → hot pink → royal blue
+      bg: "linear-gradient(140deg, #7B1C2E 0%, #DB2777 55%, #1E40AF 100%)",
+      shadow: "#4A0915",
       img3d: BAND_IMGS.A1,
       title: "Beginner",
       subtitle: "Greetings, numbers, core verbs",
@@ -323,7 +341,7 @@ export function LevelSelect({
             className="relative w-full overflow-hidden text-left active:scale-[0.97] transition-transform"
             style={{
               background: b.bg,
-              borderRadius: "28px",
+              borderRadius: "36px",
               boxShadow: `0 6px 0 ${b.shadow}, 0 12px 32px rgba(0,0,0,0.35)`,
               minHeight: "clamp(290px, 58vw, 380px)",
             }}
@@ -378,7 +396,7 @@ export function LevelSelect({
               className="relative overflow-hidden text-left active:scale-[0.97] transition-transform"
               style={{
                 background: b.bg,
-                borderRadius: "24px",
+                borderRadius: "30px",
                 boxShadow: `0 5px 0 ${b.shadow}, 0 10px 24px rgba(0,0,0,0.3)`,
                 minHeight: "clamp(150px, 32vw, 190px)",
               }}

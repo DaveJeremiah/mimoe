@@ -38,12 +38,12 @@ export function FlashcardApp() {
   // Band colors — gradient palettes matching the home cards (3 vivid stops each)
   const BAND_STYLES: Record<"A1"|"A2"|"B1", BandStyle> = {
     A1: {
-      cardBg:    "#FB923C",  // soft tangerine — warm but not harsh
-      ghost1:    "#FDBA74",  // lighter peach
-      ghost2:    "#F97316",  // deeper orange for depth
-      lines:     "rgba(80,30,0,0.08)",
-      bar:       "linear-gradient(90deg, #FB923C 0%, #DB2777 55%, #1E40AF 100%)",
-      curl:      "linear-gradient(140deg, #1E40AF 0%, #DB2777 50%, #FB923C 100%)",
+      cardBg:    "#7B1C2E",  // deep maroon
+      ghost1:    "#9B2840",  // mid burgundy
+      ghost2:    "#5C1020",  // darkest layer
+      lines:     "rgba(255,180,180,0.06)",
+      bar:       "linear-gradient(90deg, #9B2840 0%, #DB2777 55%, #1E40AF 100%)",
+      curl:      "linear-gradient(140deg, #1E40AF 0%, #DB2777 50%, #9B2840 100%)",
       textColor: "#FFFFFF",
     },
     A2: {
@@ -821,7 +821,7 @@ export function FlashcardApp() {
 
   // Band info for when selectedBand is set
   const selectedBandInfo = selectedBand ? {
-    A1: { hex: "linear-gradient(140deg, #FB923C 0%, #DB2777 55%, #1E40AF 100%)", img: BAND_IMGS.A1, title: "Your starting point", subtitle: "Greetings, numbers, core verbs, basics" },
+    A1: { hex: "linear-gradient(140deg, #7B1C2E 0%, #DB2777 55%, #1E40AF 100%)", img: BAND_IMGS.A1, title: "Your starting point", subtitle: "Greetings, numbers, core verbs, basics" },
     A2: { hex: "linear-gradient(140deg, #059669 0%, #0EA5E9 50%, #6366F1 100%)", img: BAND_IMGS.A2, title: "Daily life", subtitle: "Routines, travel, shopping, past tense" },
     B1: { hex: "linear-gradient(140deg, #4F46E5 0%, #7C3AED 50%, #C026D3 100%)", img: BAND_IMGS.B1, title: "Real conversation", subtitle: "Opinions, work, emotions, storytelling" },
   }[selectedBand] : null;
@@ -843,7 +843,7 @@ export function FlashcardApp() {
             background: selectedBandInfo.hex,
             minHeight: "240px",
             boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
-            borderRadius: "0 0 28px 28px",
+            borderRadius: "0 0 36px 36px",
             margin: "0 -15px",
             width: "calc(100% + 30px)",
             paddingTop: "calc(env(safe-area-inset-top, 0px) + 20px)",
@@ -1144,7 +1144,7 @@ export function FlashcardApp() {
       {/* ── Completion result panel (slides up from bottom) ── */}
       {isDeckComplete && selectedLevelId && (
         <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center">
-          <div className="w-full max-w-[480px] bg-[#0d2e00] border-t-2 border-[#58cc02]/30 px-5 pt-5 pb-8 animate-result-slide">
+          <div className="w-full max-w-[480px] bg-[#0d2e00] border-t-2 border-[#58cc02]/30 px-5 pt-5 pb-8 animate-result-slide rounded-t-[36px]">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <CheckCircle2 className="w-8 h-8 text-[#58cc02]" />

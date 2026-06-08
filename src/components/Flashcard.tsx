@@ -112,24 +112,25 @@ function PageCurl({ size, curl }: { size: number; curl: string }) {
   );
 }
 
-// Fractal noise grain — same tiling approach as the home band cards
-const GRAIN_URI =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E\")";
+const GRAIN_FINE =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='gf'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23gf)'/%3E%3C/svg%3E\")";
+const GRAIN_COARSE =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='gc'%3E%3CfeTurbulence type='turbulence' baseFrequency='0.2' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23gc)'/%3E%3C/svg%3E\")";
 
 function CardPattern() {
   return (
-    <div
-      aria-hidden="true"
-      className="absolute inset-0 pointer-events-none"
-      style={{
-        backgroundImage: GRAIN_URI,
-        backgroundRepeat: "repeat",
-        backgroundSize: "180px",
-        opacity: 0.14,
-        mixBlendMode: "overlay",
-        borderRadius: "inherit",
-      }}
-    />
+    <>
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 pointer-events-none"
+        style={{ backgroundImage: GRAIN_FINE, backgroundRepeat: "repeat", backgroundSize: "160px", opacity: 0.28, mixBlendMode: "soft-light", borderRadius: "inherit" }}
+      />
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 pointer-events-none"
+        style={{ backgroundImage: GRAIN_COARSE, backgroundRepeat: "repeat", backgroundSize: "240px", opacity: 0.18, mixBlendMode: "multiply", borderRadius: "inherit" }}
+      />
+    </>
   );
 }
 
@@ -328,16 +329,16 @@ export function Flashcard({
       <div className={`relative w-full max-w-[270px] ${exitAnim} ${cardAnim} animate-curl-breathe`}>
 
         {/* Ghost layers — peek out from the TOP */}
-        <div className="absolute inset-x-4 top-[-8px] bottom-3 rounded-[28px]"
+        <div className="absolute inset-x-4 top-[-8px] bottom-3 rounded-[36px]"
           style={{ background: bandStyle.ghost2, boxShadow: "0 -4px 16px rgba(0,0,0,0.2)" }} />
-        <div className="absolute inset-x-2 top-[-4px] bottom-1.5 rounded-[28px]"
+        <div className="absolute inset-x-2 top-[-4px] bottom-1.5 rounded-[36px]"
           style={{ background: bandStyle.ghost1, boxShadow: "0 -2px 10px rgba(0,0,0,0.15)" }} />
 
         {/* Front card — solid band colour */}
         <div
           className={`relative aspect-square overflow-hidden ${enterAnim}`}
           style={{
-            borderRadius: "28px",
+            borderRadius: "36px",
             background: bandStyle.cardBg,
             backgroundImage: `repeating-linear-gradient(transparent, transparent 29px, ${bandStyle.lines} 29px, ${bandStyle.lines} 30px)`,
             backgroundSize: "100% 30px",
