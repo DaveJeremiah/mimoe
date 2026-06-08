@@ -7,11 +7,11 @@ interface Options {
   onResult: (text: string) => void;
 }
 
-// iOS (including PWA) holds the audio session after <audio> playback for
-// ~500-700ms.  If the user taps the PTT button during that window,
-// rec.start() throws synchronously.  Since permission is already granted,
-// the retry doesn't need to happen inside the original gesture — a
-// setTimeout retry is sufficient.
+// iOS / PWA holds the AVAudioSession after <audio> playback for up to ~800ms.
+// During that window SpeechRecognition either:
+//   a) throws synchronously from rec.start(), OR
+//   b) fires onerror("audio-capture" | "aborted") → then onend with no text.
+// We handle both cases with an isHolding-gated retry loop (max 3 attempts).
 const _isIOS = typeof navigator !== "undefined" && (
   /iPad|iPhone|iPod/.test(navigator.userAgent) ||
   (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ||
@@ -20,28 +20,26 @@ const _isIOS = typeof navigator !== "undefined" && (
     window.matchMedia?.("(display-mode: standalone)").matches
   ))
 );
-// PWA mode needs a slightly longer delay than plain Safari.
-const IOS_RETRY_MS = _isIOS ? 750 : 0;
 
-/**
- * Push-to-talk speech recognition hook.
- *
- * Call `start()` on pointer-down and `stop()` on pointer-up / pointer-leave.
- * The recognition result is delivered via `onResult` once the recognition
- * session ends (i.e. after `stop()` triggers the final `onend` event).
- */
 export function usePushToTalkMic({ lang = "fr-FR", onResult }: Options) {
   const [status, setStatus] = useState<PTTStatus>("idle");
 
-  const recRef      = useRef<any>(null);
-  const latestRef   = useRef("");
-  const onResultRef = useRef(onResult);
+  const recRef       = useRef<any>(null);
+  const latestRef    = useRef("");
+  const isHoldingRef = useRef(false); // true while user holds the button
+  const onResultRef  = useRef(onResult);
+  const langRef      = useRef(lang);
 
   useEffect(() => { onResultRef.current = onResult; }, [onResult]);
+  useEffect(() => { langRef.current = lang; }, [lang]);
 
-  /** Begin recording — must be called from a user gesture (pointer/touch event). */
-  const start = useCallback(() => {
-    if (recRef.current) return; // already recording
+  /**
+   * Internal: create + start one SpeechRecognition attempt.
+   * `attempt` 0 = first try (from user gesture), 1-3 = iOS retries.
+   * Delay between retries: 800ms (attempt 0→1), 400ms (1→2), 400ms (2→3).
+   */
+  const doStart = useCallback((attempt: number) => {
+    if (!isHoldingRef.current) return; // user already released
 
     const SR =
       (window as any).SpeechRecognition ||
@@ -51,12 +49,14 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult }: Options) {
     latestRef.current = "";
 
     const rec = new SR();
-    rec.lang            = lang;
+    rec.lang            = langRef.current;
     rec.continuous      = true;
     rec.interimResults  = true;
     rec.maxAlternatives = 1;
 
-    rec.onstart = () => setStatus("listening");
+    rec.onstart = () => {
+      if (isHoldingRef.current) setStatus("listening");
+    };
 
     rec.onresult = (event: any) => {
       let text = "";
@@ -66,76 +66,92 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult }: Options) {
       latestRef.current = text.trim();
     };
 
+    // Track whether a permission-fatal error occurred.
+    let permissionDenied = false;
+
     rec.onerror = (event: any) => {
       if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        permissionDenied = true;
         setStatus("denied");
+        isHoldingRef.current = false;
+        recRef.current = null;
+        latestRef.current = "";
+        return;
+      }
+      // "audio-capture" / "aborted" / "network" etc. — onend will fire next;
+      // we handle the retry there so we only need one code path.
+    };
+
+    rec.onend = () => {
+      if (recRef.current === rec) recRef.current = null;
+      if (permissionDenied) { latestRef.current = ""; return; }
+
+      const text = latestRef.current.trim();
+      latestRef.current = "";
+
+      if (text) {
+        // Got a real result — deliver it.
+        setStatus("idle");
+        onResultRef.current(text);
+      } else if (_isIOS && isHoldingRef.current && attempt < 3) {
+        // iOS ended without a transcript and user is still holding.
+        // This is the audio-session conflict case — retry after a delay.
+        setStatus("idle");
+        const delay = attempt === 0 ? 800 : 400;
+        setTimeout(() => {
+          // eslint-disable-next-line @typescript-eslint/no-use-before-define
+          if (isHoldingRef.current) doStart(attempt + 1);
+        }, delay);
       } else {
         setStatus("idle");
       }
-      recRef.current    = null;
-      latestRef.current = "";
     };
 
-    // `onend` fires after `rec.stop()` finishes processing — deliver result here.
-    rec.onend = () => {
-      recRef.current = null;
-      setStatus("idle");
-      const text = latestRef.current.trim();
-      latestRef.current = "";
-      if (text) onResultRef.current(text);
-    };
-
-    // Assign BEFORE calling start so that stop/cancel can abort the iOS retry.
     recRef.current = rec;
 
-    const tryStart = () => {
-      // If the user released before the retry fired, bail out.
-      if (recRef.current !== rec) return;
-      try {
-        rec.start();
-      } catch {
-        // Initial attempt failed (iOS audio-session still held by TTS).
-        // Retry once after iOS_RETRY_MS — permission is already granted so
-        // the retry doesn't need to happen inside the original gesture.
-        if (IOS_RETRY_MS > 0 && recRef.current === rec) {
-          setTimeout(() => {
-            if (recRef.current !== rec) return; // user released — abort
-            try {
-              rec.start();
-            } catch {
-              recRef.current = null;
-              setStatus("idle");
-            }
-          }, IOS_RETRY_MS);
-        } else {
-          recRef.current = null;
-          setStatus("idle");
-        }
+    try {
+      rec.start();
+    } catch {
+      // Synchronous throw — also an iOS audio-session conflict.
+      recRef.current = null;
+      if (_isIOS && isHoldingRef.current && attempt < 3) {
+        const delay = attempt === 0 ? 800 : 400;
+        setTimeout(() => {
+          if (isHoldingRef.current) doStart(attempt + 1);
+        }, delay);
+      } else {
+        setStatus("idle");
       }
-    };
+    }
+  }, []); // deps: none — all mutable values accessed via refs
 
-    tryStart();
-  }, [lang]);
+  /** Call from onPointerDown — must be inside a user gesture. */
+  const start = useCallback(() => {
+    if (recRef.current) return;
+    isHoldingRef.current = true;
+    doStart(0);
+  }, [doStart]);
 
-  /** Stop recording gracefully — triggers `onend` which delivers the result. */
+  /** Call from onPointerUp / onPointerLeave — delivers the result. */
   const stop = useCallback(() => {
+    isHoldingRef.current = false; // block any pending retries
     const rec = recRef.current;
     if (!rec) return;
     try {
-      rec.stop();
+      rec.stop(); // triggers onend → delivers transcript
     } catch {
-      // rec.stop() throws if recognition hasn't started yet (e.g. still in
-      // the iOS retry window).  Clear the ref so the retry knows to abort.
+      // rec.stop() throws if recognition hasn't started yet (mid-retry gap).
       recRef.current = null;
       setStatus("idle");
     }
   }, []);
 
-  /** Abort without delivering a result (e.g. pointer cancelled mid-press). */
+  /** Call from onPointerCancel — discards the result. */
   const cancel = useCallback(() => {
+    isHoldingRef.current = false; // block any pending retries
     const rec = recRef.current;
     if (!rec) return;
-    recRef.current    = null; // clear first so retry aborts
+    recRef.current    = null;
     latestRef.current = "";
     try { rec.abort(); } catch { /* ignore */ }
     setStatus("idle");
@@ -144,6 +160,7 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult }: Options) {
   // Abort on unmount
   useEffect(() => {
     return () => {
+      isHoldingRef.current = false;
       const rec = recRef.current;
       if (rec) {
         recRef.current = null;
