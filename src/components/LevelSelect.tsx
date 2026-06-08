@@ -231,9 +231,30 @@ export function LevelSelect({
 
   // ── HOME VIEW — 3 big vivid band cards ───────────────────────────────
   const BAND_CARDS = [
-    { id: "A1" as const, bg: "#FF5F6D", shadow: "#c73040", img3d: BAND_IMGS.A1, title: "Beginner",     subtitle: "Greetings, numbers, core verbs" },
-    { id: "A2" as const, bg: "#06D6A0", shadow: "#04a87c", img3d: BAND_IMGS.A2, title: "Elementary",   subtitle: "Routines, travel, past tense" },
-    { id: "B1" as const, bg: "#7B61FF", shadow: "#5038cc", img3d: BAND_IMGS.B1, title: "Intermediate", subtitle: "Opinions, work, storytelling" },
+    {
+      id: "A1" as const,
+      bg: "linear-gradient(145deg, #FF5F6D 0%, #FF8444 42%, #FFA834 72%, #FFCC4A 100%)",
+      shadow: "#CC3344",
+      img3d: BAND_IMGS.A1,
+      title: "Beginner",
+      subtitle: "Greetings, numbers, core verbs",
+    },
+    {
+      id: "A2" as const,
+      bg: "linear-gradient(145deg, #00C896 0%, #00D4B0 40%, #2EEBD2 70%, #72F2E8 100%)",
+      shadow: "#009A78",
+      img3d: BAND_IMGS.A2,
+      title: "Elementary",
+      subtitle: "Routines, travel, past tense",
+    },
+    {
+      id: "B1" as const,
+      bg: "linear-gradient(145deg, #7B61FF 0%, #9B74FF 36%, #BF96FF 65%, #DDBCFF 100%)",
+      shadow: "#5540CC",
+      img3d: BAND_IMGS.B1,
+      title: "Intermediate",
+      subtitle: "Opinions, work, storytelling",
+    },
   ];
 
   return (
