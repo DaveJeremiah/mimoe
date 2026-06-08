@@ -15,9 +15,8 @@ import { db } from "@/lib/db";
 import { vocabularyLevels, phraseLevels, arabicVocabularyLevels, arabicPhraseLevels, type FlashcardItem } from "@/lib/flashcardData";
 import { type Collection, CollectionFormData } from "@/lib/collectionTypes";
 import { prefetchAudio, unlockAudio } from "@/lib/speechUtils";
-import { useContinuousMic } from "@/hooks/useContinuousMic";
 import { LANGUAGE_CONFIGS, ARABIC_DIALECTS, getArabicConfigForDialect, type Language } from "@/lib/languageConfig";
-import { ArrowLeft, Plus, MoreVertical, Shuffle, Bookmark, Home, User, X, Zap, CheckCircle2, Share2, BookOpen } from "lucide-react";
+import { ArrowLeft, Plus, MoreVertical, Shuffle, Bookmark, Home, User, X, Zap, CheckCircle2, Share2, BookOpen, PartyPopper } from "lucide-react";
 
 type Tab = "vocabulary" | "phrases";
 type AppView = "main" | "collection";
@@ -36,33 +35,33 @@ export function FlashcardApp() {
 
   const [selectedBand, setSelectedBand] = useState<"A1" | "A2" | "B1" | null>(null);
 
-  // Band colors — gradient palettes matching the home cards
+  // Band colors — gradient palettes matching the home cards (3 vivid stops each)
   const BAND_STYLES: Record<"A1"|"A2"|"B1", BandStyle> = {
     A1: {
-      cardBg:    "#F97316",  // blazing orange — the warm heart of the cocktail
-      ghost1:    "#FB923C",  // lighter tangerine
-      ghost2:    "#DB2777",  // hot pink — the violet-to-pink bridge
-      lines:     "rgba(80,20,80,0.08)",
-      bar:       "linear-gradient(90deg, #1D4ED8 0%, #7C3AED 28%, #DB2777 50%, #F97316 70%, #FBBF24 100%)",
-      curl:      "linear-gradient(140deg, #FEF9C3 0%, #FBBF24 28%, #F97316 52%, #DB2777 72%, #7C3AED 88%, #1D4ED8 100%)",
+      cardBg:    "#DB2777",  // hot pink — vivid midpoint of the cocktail
+      ghost1:    "#EC4899",  // lighter pink
+      ghost2:    "#1E40AF",  // royal blue anchor
+      lines:     "rgba(80,10,60,0.09)",
+      bar:       "linear-gradient(90deg, #1E40AF 0%, #DB2777 50%, #F97316 100%)",
+      curl:      "linear-gradient(140deg, #F97316 0%, #DB2777 50%, #1E40AF 100%)",
       textColor: "#FFFFFF",
     },
     A2: {
-      cardBg:    "#00C896",  // teal midpoint (solid for card face)
-      ghost1:    "#2EE0C0",  // lighter teal
-      ghost2:    "#009A78",  // deeper teal
-      lines:     "rgba(0,100,80,0.10)",
-      bar:       "linear-gradient(90deg, #00C896 0%, #2EEBD2 60%, #72F2E8 100%)",
-      curl:      "linear-gradient(140deg,#70F2E8 0%,#2EEBD2 40%,#00C896 70%,#009A78 100%)",
+      cardBg:    "#0EA5E9",  // sky blue midpoint
+      ghost1:    "#38BDF8",  // lighter sky
+      ghost2:    "#059669",  // deep emerald
+      lines:     "rgba(0,50,100,0.10)",
+      bar:       "linear-gradient(90deg, #059669 0%, #0EA5E9 50%, #6366F1 100%)",
+      curl:      "linear-gradient(140deg, #6366F1 0%, #0EA5E9 50%, #059669 100%)",
       textColor: "#FFFFFF",
     },
     B1: {
-      cardBg:    "#9B74FF",  // violet midpoint (solid for card face)
-      ghost1:    "#BF96FF",  // lighter violet
-      ghost2:    "#6A4FE0",  // deeper purple
-      lines:     "rgba(60,40,160,0.10)",
-      bar:       "linear-gradient(90deg, #7B61FF 0%, #BF96FF 60%, #DDBCFF 100%)",
-      curl:      "linear-gradient(140deg,#DDBCFF 0%,#BF96FF 40%,#9B74FF 70%,#6A4FE0 100%)",
+      cardBg:    "#7C3AED",  // rich violet midpoint
+      ghost1:    "#9B6FF4",  // lighter violet
+      ghost2:    "#4F46E5",  // deep indigo
+      lines:     "rgba(60,20,140,0.10)",
+      bar:       "linear-gradient(90deg, #4F46E5 0%, #7C3AED 50%, #C026D3 100%)",
+      curl:      "linear-gradient(140deg, #C026D3 0%, #7C3AED 50%, #4F46E5 100%)",
       textColor: "#FFFFFF",
     },
   };
@@ -105,16 +104,6 @@ export function FlashcardApp() {
   const [isWordBankOpen, setIsWordBankOpen] = useState(false);
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
 
-  const [isMicEnabled, setIsMicEnabled] = useState(true);
-  const [isVisible, setIsVisible] = useState(!document.hidden);
-
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      setIsVisible(!document.hidden);
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, []);
 
   const baseLevels = useMemo(() => {
     const vocabSource = activeLanguage === "arabic" ? arabicVocabularyLevels : vocabularyLevels;
@@ -215,15 +204,6 @@ export function FlashcardApp() {
   const langConfig = activeLanguage === "arabic"
     ? (sessionDialect ? getArabicConfigForDialect(sessionDialect) : LANGUAGE_CONFIGS.arabic)
     : LANGUAGE_CONFIGS.french;
-
-  // Persistent mic across cards/sessions
-  const onTranscriptRef = useRef<(text: string, isFinal: boolean) => void>(() => {});
-  const { status: micStatus, start: startMic, stop: stopMic, reset: resetMic } = useContinuousMic({
-    onTranscript: useCallback((text: string, isFinal: boolean) => {
-      onTranscriptRef.current(text, isFinal);
-    }, []),
-    sttLang: langConfig.sttLang,
-  });
 
   const animateAdvanceRef = useRef<((exitClass: string, opts: { failed: boolean; requeue: boolean }) => void) | null>(null);
 
@@ -390,42 +370,6 @@ export function FlashcardApp() {
     return collectionCards[index] || null;
   }, [collectionQueue, collectionCards, selectedCollection]);
 
-  // iOS Safari throttles repeated SpeechRecognition start/stop, so per-card
-  // restarts make the mic stop listening. On iOS we keep ONE continuous session;
-  // elsewhere (Android/desktop) we use a fresh session per card.
-  const isIOS = typeof navigator !== "undefined" && (
-    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
-  );
-
-  const activeCardId = currentCard?.id ?? currentCollectionCard?.id ?? null;
-  useEffect(() => {
-    if (!activeCardId || !isMicEnabled || !isVisible) {
-      void stopMic();
-      return;
-    }
-    unlockAudio();
-    if (isIOS) {
-      void startMic();   // guarded no-op if already listening → continuous session
-    } else {
-      void resetMic();   // fresh session per card
-    }
-  }, [activeCardId, isMicEnabled, isVisible, isIOS, resetMic, startMic, stopMic]);
-
-  // Stop the mic while TTS plays, then restart it afterwards. This is needed on
-  // BOTH platforms but for different reasons:
-  //  • Android: a live recording makes the speaker output scratchy (echo-cancel).
-  //  • iOS: playing audio interrupts the shared audio session and KILLS the mic
-  //    recognition, so it must be explicitly restarted once the audio is done.
-  // Stopping first also resets the hook's internal state so the restart actually
-  // takes effect (a plain start() would no-op if it thinks it's still running).
-  const pauseListening = useCallback(() => {
-    void stopMic();
-  }, [stopMic]);
-  const resumeListening = useCallback(() => {
-    unlockAudio();
-    void resetMic();
-  }, [resetMic]);
 
 
   const handleAdvance = useCallback(({ failed, requeue }: { failed: boolean; requeue: boolean }) => {
@@ -855,12 +799,6 @@ export function FlashcardApp() {
               onAdvance={handleCollectionAdvance}
               total={selectedCollection.entries.length}
               remaining={collectionQueue.length}
-              onTranscriptRef={onTranscriptRef}
-              isMicOn={isMicEnabled}
-              micStatus={micStatus}
-              onToggleMic={() => setIsMicEnabled(prev => !prev)}
-              onPauseListening={pauseListening}
-              onResumeListening={resumeListening}
               bandStyle={currentBandStyle}
               langConfig={
                 selectedCollection.language === "arabic"
@@ -876,9 +814,9 @@ export function FlashcardApp() {
 
   // Band info for when selectedBand is set
   const selectedBandInfo = selectedBand ? {
-    A1: { hex: "linear-gradient(140deg, #1D4ED8 0%, #7C3AED 26%, #DB2777 46%, #F97316 64%, #FBBF24 82%, #FEF9C3 100%)", img: BAND_IMGS.A1, title: "Your starting point", subtitle: "Greetings, numbers, core verbs, basics" },
-    A2: { hex: "linear-gradient(145deg, #00C896 0%, #00D4B0 40%, #2EEBD2 70%, #72F2E8 100%)", img: BAND_IMGS.A2, title: "Daily life", subtitle: "Routines, travel, shopping, past tense" },
-    B1: { hex: "linear-gradient(145deg, #7B61FF 0%, #9B74FF 36%, #BF96FF 65%, #DDBCFF 100%)", img: BAND_IMGS.B1, title: "Real conversation", subtitle: "Opinions, work, emotions, storytelling" },
+    A1: { hex: "linear-gradient(140deg, #1E40AF 0%, #DB2777 50%, #F97316 100%)", img: BAND_IMGS.A1, title: "Your starting point", subtitle: "Greetings, numbers, core verbs, basics" },
+    A2: { hex: "linear-gradient(140deg, #059669 0%, #0EA5E9 50%, #6366F1 100%)", img: BAND_IMGS.A2, title: "Daily life", subtitle: "Routines, travel, shopping, past tense" },
+    B1: { hex: "linear-gradient(140deg, #4F46E5 0%, #7C3AED 50%, #C026D3 100%)", img: BAND_IMGS.B1, title: "Real conversation", subtitle: "Opinions, work, emotions, storytelling" },
   }[selectedBand] : null;
 
   const decksInBand = selectedBand ? levels.filter(l => l.cefr === selectedBand) : [];
@@ -1175,7 +1113,6 @@ export function FlashcardApp() {
             onAdvance={handleAdvance}
             total={allCards.length}
             remaining={queue.length}
-            onTranscriptRef={onTranscriptRef}
             isBookmarked={bookmarkedCards.includes(currentCard.id)}
             onToggleBookmark={async () => {
               const cardId = currentCard.id;
@@ -1190,11 +1127,6 @@ export function FlashcardApp() {
                 setBookmarkedCards(prev => wasBookmarked ? [...prev, cardId] : prev.filter(id => id !== cardId));
               }
             }}
-            isMicOn={isMicEnabled}
-            micStatus={micStatus}
-            onToggleMic={() => setIsMicEnabled(prev => !prev)}
-            onPauseListening={pauseListening}
-            onResumeListening={resumeListening}
             onAnimateAdvance={(fn) => { animateAdvanceRef.current = fn; }}
             bandStyle={currentBandStyle}
             langConfig={langConfig}

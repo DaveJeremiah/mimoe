@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { speakFrench, prefetchAudio, isMatch, stopAudio } from "@/lib/speechUtils";
+import { speakFrench, prefetchAudio, isMatch, stopAudio, unlockAudio } from "@/lib/speechUtils";
 import type { FlashcardItem } from "@/lib/flashcardData";
 import type { LanguageConfig } from "@/lib/languageConfig";
 import { LANGUAGE_CONFIGS } from "@/lib/languageConfig";
-import type { MicStatus } from "@/hooks/useContinuousMic";
+import { usePushToTalkMic } from "@/hooks/usePushToTalkMic";
 import { RefreshCw } from "lucide-react";
 
 function vibrate(pattern: number | number[]) {
@@ -36,17 +36,12 @@ interface FlashcardProps {
   onAdvance: (opts: { failed: boolean; requeue: boolean }) => void;
   total: number;
   remaining: number;
-  onTranscriptRef: React.MutableRefObject<(text: string, isFinal: boolean) => void>;
   isBookmarked?: boolean;
   onToggleBookmark?: () => void;
   isMicOn?: boolean;
-  micStatus?: MicStatus;
-  onToggleMic?: () => void;
   onAnimateAdvance?: (fn: (exitClass: string, opts: { failed: boolean; requeue: boolean }) => void) => void;
   langConfig?: LanguageConfig;
   bandStyle?: BandStyle;
-  onPauseListening?: () => void;   // stop the mic while TTS plays (avoids scratch/echo)
-  onResumeListening?: () => void;  // resume the mic after TTS, for a retry
 }
 
 type CardState =
@@ -121,35 +116,13 @@ function CardPattern() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// iOS PWA has stricter audio-session rules — the mic session and the <audio>
-// playback session can't overlap, and each takes longer to release than on Android.
-const _isIOS = typeof navigator !== "undefined" && (
-  /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
-);
-// Running as a standalone PWA (added to home screen) is even more restrictive.
-const _isPWA = typeof window !== "undefined" &&
-  ((window.navigator as any).standalone === true ||
-   window.matchMedia?.("(display-mode: standalone)").matches);
-// Use generous delays on iOS/PWA; tight but sufficient on Android/Chrome.
-const PRE_TTS_MS  = (_isIOS || _isPWA) ? 550 : 300;  // mic teardown → audio start
-const POST_TTS_MS = (_isIOS || _isPWA) ? 750 : 350;  // audio end   → mic restart
-
 export function Flashcard({
-  card, onAdvance, total, remaining, onTranscriptRef,
-  isBookmarked, onToggleBookmark, isMicOn = true, micStatus = "idle", onToggleMic,
+  card, onAdvance, total, remaining,
+  isBookmarked, onToggleBookmark, isMicOn = true,
   onAnimateAdvance, langConfig, bandStyle = DEFAULT_BAND_STYLE,
-  onPauseListening, onResumeListening,
 }: FlashcardProps) {
   const lc = langConfig ?? LANGUAGE_CONFIGS.french;
   const targetWord = card.target ?? card.french ?? "";
-
-  // Keep latest pause/resume callbacks in refs (used inside stable speakGated)
-  const pauseListeningRef  = useRef(onPauseListening);
-  const resumeListeningRef = useRef(onResumeListening);
-  useEffect(() => { pauseListeningRef.current = onPauseListening; }, [onPauseListening]);
-  useEffect(() => { resumeListeningRef.current = onResumeListening; }, [onResumeListening]);
 
   const [state, setState]           = useState<CardState>("QUESTION");
   const [spokenText, setSpokenText] = useState("");
@@ -167,39 +140,47 @@ export function Flashcard({
   const lastProcessedRef  = useRef<string>("");
   const ttsGateRef        = useRef<boolean>(false);   // true while TTS is speaking
   const gateSafetyRef     = useRef<number | null>(null);
+  const processAnswerRef  = useRef<(answer: string) => void>();
 
-  // Speak the target word and FULLY block the mic until the audio finishes,
-  // so the spoken word isn't picked up by the recognizer as the user's answer.
-  // onDone (optional) runs AFTER the audio truly ends — used to advance the card
-  // only once playback is complete, so audio never bleeds into the next card.
+  // Track whether TTS is actively playing (used to disable the PTT button)
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  // ── Push-to-talk recognition ─────────────────────────────────────────────
+  const { status: pttStatus, start: startPTT, stop: stopPTT, cancel: cancelPTT } =
+    usePushToTalkMic({
+      lang: lc.sttLang,
+      onResult: useCallback((text: string) => {
+        if (ttsGateRef.current) return;                   // TTS playing — ignore
+        if (Date.now() < ignoreUntilRef.current) return;  // card just switched
+        if (text === lastProcessedRef.current) return;    // duplicate
+        setSpokenText(text);
+        lastProcessedRef.current = text;
+        processAnswerRef.current?.(text);
+      }, []),
+    });
+
+  // Speak the target word, fully blocking PTT until audio finishes.
+  // With PTT there's no continuous mic to pause — just gate the ttsRef and
+  // optionally advance when done.
   const speakGated = useCallback((text: string, onDone?: () => void) => {
+    setIsSpeaking(true);
     ttsGateRef.current = true;
-    // Stop recording first. A live recording makes Android route audio through
-    // its voice/echo-cancel path; tearing it down mid-playback switches the audio
-    // mode and glitches the word ("stops mid-word"). So we stop the mic, wait for
-    // it to fully release, THEN play — clean audio with no mid-word hitch.
-    pauseListeningRef.current?.();
     if (gateSafetyRef.current) window.clearTimeout(gateSafetyRef.current);
     let finished = false;
     const onFinish = () => {
       if (finished) return;
       finished = true;
       if (gateSafetyRef.current) { window.clearTimeout(gateSafetyRef.current); gateSafetyRef.current = null; }
-      // Small tail so the recognizer's trailing buffer is dropped, then either
-      // advance (onDone) or resume listening for the user's retry.
-      // iOS/PWA needs a longer tail — the audio session takes more time to vacate.
       window.setTimeout(() => {
+        setIsSpeaking(false);
         ttsGateRef.current = false;
         lastProcessedRef.current = "";
         if (onDone) onDone();
-        else resumeListeningRef.current?.();   // staying on card → listen again
-      }, POST_TTS_MS);
+      }, 200);
     };
-    // Safety: never stay gated more than 6.5s in case the audio end never fires
+    // Safety: never stay gated more than 6.5 s
     gateSafetyRef.current = window.setTimeout(onFinish, 6500);
-    // Let the mic fully release before playing, so the audio-session switch
-    // happens BEFORE playback rather than mid-word.  iOS/PWA needs longer here.
-    window.setTimeout(() => speakFrench(text, onFinish, lcRef.current), PRE_TTS_MS);
+    speakFrench(text, onFinish, lcRef.current);
   }, []);
 
   useEffect(() => { stateRef.current = state; },       [state]);
@@ -215,25 +196,6 @@ export function Flashcard({
     }
   }, [state]);
 
-  useEffect(() => {
-    onTranscriptRef.current = (transcript: string, isFinal: boolean) => {
-      const s = stateRef.current;
-      if (s !== "QUESTION" && s !== "WRONG_FIRST") return;
-      if (ttsGateRef.current) return;                       // TTS speaking — ignore its echo
-      if (Date.now() < ignoreUntilRef.current) return;
-      if (transcript === lastProcessedRef.current) return;
-      setSpokenText(transcript);
-      if (matchesCard(transcript, targetRef.current, card.alternatives)) {
-        lastProcessedRef.current = transcript;
-        processAnswerRef.current?.(transcript);
-      } else if (isFinal) {
-        lastProcessedRef.current = transcript;
-        processAnswerRef.current?.(transcript);
-      }
-    };
-  }, [onTranscriptRef, card.alternatives]);
-
-  const processAnswerRef = useRef<(answer: string) => void>();
 
   const animateAndAdvance = useCallback((
     exitClass: string, opts: { failed: boolean; requeue: boolean }
@@ -257,6 +219,7 @@ export function Flashcard({
   const processAnswer = useCallback((answer: string) => {
     const s = stateRef.current;
     if (s !== "QUESTION" && s !== "WRONG_FIRST") return;
+    if (!answer.trim()) return;
     const correct = matchesCard(answer, targetRef.current, card.alternatives);
 
     if (s === "QUESTION") {
@@ -423,26 +386,59 @@ export function Flashcard({
         </div>
       </div>
 
-      {/* Waveform + square buttons */}
+      {/* PTT mic + skip buttons */}
       <div className="flex gap-3 w-full max-w-[340px] mt-10">
+
+        {/* Push-to-talk: hold to speak, release to process */}
         <button
-          onClick={onToggleMic}
-          className={`flex-1 h-[60px] rounded-2xl flex items-center justify-center gap-[4px] select-none transition-all duration-200
-            ${isMicOn
-              ? "bg-[#1cb0f6] shadow-[0_5px_0_#1592cc] active:shadow-[0_2px_0_#1592cc] active:translate-y-[3px]"
-              : "bg-[#252f45] shadow-[0_5px_0_#171e30] active:shadow-[0_2px_0_#171e30] active:translate-y-[3px]"
-            }`}
+          onPointerDown={(e) => {
+            e.preventDefault();
+            if (!isMicOn || isSpeaking) return;
+            unlockAudio();
+            startPTT();
+          }}
+          onPointerUp={() => stopPTT()}
+          onPointerLeave={() => stopPTT()}
+          onPointerCancel={() => cancelPTT()}
+          onContextMenu={(e) => e.preventDefault()}
+          disabled={isSpeaking || !isMicOn}
+          className={[
+            "flex-1 h-[60px] rounded-2xl flex flex-col items-center justify-center gap-[3px]",
+            "select-none touch-none transition-all duration-150",
+            pttStatus === "listening"
+              ? "bg-[#1cb0f6] shadow-[0_5px_0_#1592cc] scale-[0.97]"
+              : isSpeaking || !isMicOn
+                ? "bg-[#252f45] opacity-30 cursor-not-allowed"
+                : "bg-[#252f45] shadow-[0_5px_0_#171e30] active:shadow-[0_2px_0_#171e30] active:translate-y-[3px]",
+          ].join(" ")}
+          style={{ WebkitUserSelect: "none", userSelect: "none", WebkitTouchCallout: "none" } as React.CSSProperties}
         >
-          {Array.from({ length: 8 }).map((_, i) => (
-            <span
-              key={i}
-              className="wave-dot"
-              data-active={micStatus === "listening" ? "true" : "false"}
-              style={{ "--dot-delay": `${i * 80}ms` } as React.CSSProperties}
-            />
-          ))}
+          {pttStatus === "listening" ? (
+            <div className="flex items-center gap-[4px]">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <span
+                  key={i}
+                  className="wave-dot"
+                  data-active="true"
+                  style={{ "--dot-delay": `${i * 80}ms` } as React.CSSProperties}
+                />
+              ))}
+            </div>
+          ) : (
+            <>
+              {/* Mic icon */}
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.50)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="2" width="6" height="12" rx="3" fill="rgba(255,255,255,0.50)" stroke="none" />
+                <path d="M5 10a7 7 0 0 0 14 0" />
+                <line x1="12" y1="17" x2="12" y2="21" />
+                <line x1="9" y1="21" x2="15" y2="21" />
+              </svg>
+              <span className="text-[8px] font-bold text-white/25 uppercase tracking-[0.12em] leading-none">Hold</span>
+            </>
+          )}
         </button>
 
+        {/* Replay / skip button */}
         <button
           onClick={() => {
             if (isAnswerVisible) speakFrench(targetWord, undefined, lc);

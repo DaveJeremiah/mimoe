@@ -233,8 +233,8 @@ export function LevelSelect({
   const BAND_CARDS = [
     {
       id: "A1" as const,
-      // Midnight blue → electric violet → blaze orange → amber gold → champagne
-      bg: "linear-gradient(140deg, #1D4ED8 0%, #7C3AED 26%, #DB2777 46%, #F97316 64%, #FBBF24 82%, #FEF9C3 100%)",
+      // Royal blue → hot pink → blaze orange — 3 vivid stops, no pale tail
+      bg: "linear-gradient(140deg, #1E40AF 0%, #DB2777 50%, #F97316 100%)",
       shadow: "#1E3A8A",
       img3d: BAND_IMGS.A1,
       title: "Beginner",
@@ -242,16 +242,18 @@ export function LevelSelect({
     },
     {
       id: "A2" as const,
-      bg: "linear-gradient(145deg, #00C896 0%, #00D4B0 40%, #2EEBD2 70%, #72F2E8 100%)",
-      shadow: "#009A78",
+      // Deep emerald → sky blue → vivid indigo — 3 distinct hues, all punchy
+      bg: "linear-gradient(140deg, #059669 0%, #0EA5E9 50%, #6366F1 100%)",
+      shadow: "#047857",
       img3d: BAND_IMGS.A2,
       title: "Elementary",
       subtitle: "Routines, travel, past tense",
     },
     {
       id: "B1" as const,
-      bg: "linear-gradient(145deg, #7B61FF 0%, #9B74FF 36%, #BF96FF 65%, #DDBCFF 100%)",
-      shadow: "#5540CC",
+      // Deep indigo → rich violet → electric magenta — 3 vivid stops
+      bg: "linear-gradient(140deg, #4F46E5 0%, #7C3AED 50%, #C026D3 100%)",
+      shadow: "#3730A3",
       img3d: BAND_IMGS.B1,
       title: "Intermediate",
       subtitle: "Opinions, work, storytelling",
