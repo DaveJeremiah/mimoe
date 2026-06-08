@@ -2,31 +2,26 @@ import type { Level } from "@/lib/flashcardData";
 import { Check, Heart, ArrowLeft, ChevronRight } from "lucide-react";
 
 // Concentric ripple rings — SVG circles expanding from a bottom-center origin.
-// Gives cards a water-drop / pulse feel instead of grain texture.
-export function RipplePattern({ cx = "50%", cy = "85%", color = "rgba(0,0,0,0.55)", maxRings = 10, spacing = 44, strokeWidth = 3 }:
-  { cx?: string; cy?: string; color?: string; maxRings?: number; spacing?: number; strokeWidth?: number }) {
+// Light-hit overlay — top-left highlight + bottom-right shadow gives cards
+// a tactile "held in light" feel. Pure CSS, works on any gradient.
+export function CardShine({ strong = false }: { strong?: boolean }) {
   return (
-    <svg
+    <div
       aria-hidden="true"
-      className="absolute inset-0 w-full h-full pointer-events-none"
-      viewBox="0 0 400 400"
-      preserveAspectRatio="xMidYMid slice"
-    >
-      {Array.from({ length: maxRings }, (_, i) => (
-        <circle
-          key={i}
-          cx={cx}
-          cy={cy}
-          r={(i + 1) * spacing}
-          fill="none"
-          stroke={color}
-          strokeWidth={strokeWidth}
-          opacity={Math.max(0.05, 0.55 - i * 0.048)}
-        />
-      ))}
-    </svg>
+      className="absolute inset-0 pointer-events-none"
+      style={{
+        borderRadius: "inherit",
+        background: [
+          `radial-gradient(ellipse at 18% 18%, rgba(255,255,255,${strong ? "0.30" : "0.22"}) 0%, transparent 58%)`,
+          `radial-gradient(ellipse at 82% 82%, rgba(0,0,0,${strong ? "0.22" : "0.16"}) 0%, transparent 52%)`,
+        ].join(", "),
+      }}
+    />
   );
 }
+
+// Keep name alias so Flashcard / CollectionCard imports don't break
+export const RipplePattern = CardShine;
 
 export function WavyLine({ className = "", colors = ["#e05070", "#e07030"] }: { className?: string; colors?: [string, string] }) {
   const id = `wg-${colors[0].replace("#","")}-${colors[1].replace("#","")}`;
@@ -341,7 +336,7 @@ export function LevelSelect({
                 style={{ opacity: 0.38, mixBlendMode: "overlay" }}
               />
             )}
-            <RipplePattern />
+            <CardShine strong />
             <div className="absolute inset-0 p-5 flex flex-col justify-between">
               <div className="flex items-start justify-between">
                 <img
@@ -387,7 +382,7 @@ export function LevelSelect({
                 minHeight: "clamp(150px, 32vw, 190px)",
               }}
             >
-              <RipplePattern cy="90%" maxRings={8} spacing={36} />
+              <CardShine />
               <div className="absolute inset-0 p-4 flex flex-col justify-between">
                 <div className="flex items-start justify-between">
                   <img
