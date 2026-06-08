@@ -39,12 +39,12 @@ export function FlashcardApp() {
   // Band colors — gradient palettes matching the home cards
   const BAND_STYLES: Record<"A1"|"A2"|"B1", BandStyle> = {
     A1: {
-      cardBg:    "#FF8200",  // blazing orange midpoint (solid for card face)
-      ghost1:    "#FFA030",  // lighter tangerine
-      ghost2:    "#C44A0A",  // deep burnt sienna
-      lines:     "rgba(120,45,0,0.10)",
-      bar:       "linear-gradient(90deg, #C44A0A 0%, #FF6800 30%, #FF9200 58%, #FFBE00 80%, #FFE566 100%)",
-      curl:      "linear-gradient(140deg,#FFE566 0%,#FFBE00 35%,#FF9200 60%,#FF6800 80%,#C44A0A 100%)",
+      cardBg:    "#F97316",  // blazing orange — the warm heart of the cocktail
+      ghost1:    "#FB923C",  // lighter tangerine
+      ghost2:    "#DB2777",  // hot pink — the violet-to-pink bridge
+      lines:     "rgba(80,20,80,0.08)",
+      bar:       "linear-gradient(90deg, #1D4ED8 0%, #7C3AED 28%, #DB2777 50%, #F97316 70%, #FBBF24 100%)",
+      curl:      "linear-gradient(140deg, #FEF9C3 0%, #FBBF24 28%, #F97316 52%, #DB2777 72%, #7C3AED 88%, #1D4ED8 100%)",
       textColor: "#FFFFFF",
     },
     A2: {
@@ -876,7 +876,7 @@ export function FlashcardApp() {
 
   // Band info for when selectedBand is set
   const selectedBandInfo = selectedBand ? {
-    A1: { hex: "linear-gradient(148deg, #C44A0A 0%, #FF6800 22%, #FF9200 48%, #FFBE00 72%, #FFE566 90%, #FFF8C0 100%)", img: BAND_IMGS.A1, title: "Your starting point", subtitle: "Greetings, numbers, core verbs, basics" },
+    A1: { hex: "linear-gradient(140deg, #1D4ED8 0%, #7C3AED 26%, #DB2777 46%, #F97316 64%, #FBBF24 82%, #FEF9C3 100%)", img: BAND_IMGS.A1, title: "Your starting point", subtitle: "Greetings, numbers, core verbs, basics" },
     A2: { hex: "linear-gradient(145deg, #00C896 0%, #00D4B0 40%, #2EEBD2 70%, #72F2E8 100%)", img: BAND_IMGS.A2, title: "Daily life", subtitle: "Routines, travel, shopping, past tense" },
     B1: { hex: "linear-gradient(145deg, #7B61FF 0%, #9B74FF 36%, #BF96FF 65%, #DDBCFF 100%)", img: BAND_IMGS.B1, title: "Real conversation", subtitle: "Opinions, work, emotions, storytelling" },
   }[selectedBand] : null;
@@ -901,7 +901,10 @@ export function FlashcardApp() {
             borderRadius: "0 0 28px 28px",
             margin: "0 -15px",
             width: "calc(100% + 30px)",
-            padding: "20px 24px 24px",
+            paddingTop: "calc(env(safe-area-inset-top, 0px) + 20px)",
+            paddingBottom: "24px",
+            paddingLeft: "24px",
+            paddingRight: "24px",
           }}
         >
           {/* Top: Back + Search + French pill */}
