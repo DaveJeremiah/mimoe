@@ -1,11 +1,35 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { speakFrench, unlockAudio, prefetchAudio, isMatch } from "@/lib/speechUtils";
+import { speakFrench, prefetchAudio, isMatch, stopAudio } from "@/lib/speechUtils";
 import type { FlashcardItem } from "@/lib/flashcardData";
 import type { LanguageConfig } from "@/lib/languageConfig";
 import { LANGUAGE_CONFIGS } from "@/lib/languageConfig";
-import { Check, Send, Mic, ArrowRight, Bookmark, Volume2, VolumeX, Heart, MoreVertical, MessageSquare, Activity } from "lucide-react";
+import type { MicStatus } from "@/hooks/useContinuousMic";
+import { RefreshCw } from "lucide-react";
 
-type MicStatus = "idle" | "listening" | "denied" | "unsupported" | "paused";
+function vibrate(pattern: number | number[]) {
+  try { navigator.vibrate?.(pattern) } catch { /* unsupported */ }
+}
+
+// ── Band style: colours that flow through the entire session ──────────────────
+export interface BandStyle {
+  cardBg:    string;  // solid card background (matches home card)
+  ghost1:    string;  // middle ghost layer
+  ghost2:    string;  // back ghost layer
+  lines:     string;  // ruled-line rgba
+  bar:       string;  // progress / accent colour
+  curl:      string;  // page-curl gradient
+  textColor: string;  // question text colour (white on vivid bg)
+}
+
+export const DEFAULT_BAND_STYLE: BandStyle = {
+  cardBg:    "#FFD000",
+  ghost1:    "#F0C400",
+  ghost2:    "#E5B800",
+  lines:     "rgba(0,0,0,0.07)",
+  bar:       "#FFD000",
+  curl:      "linear-gradient(140deg,#fffde0 0%,#f5ef90 40%,#e8d840 70%,#d4c020 100%)",
+  textColor: "#1a0e00",
+};
 
 interface FlashcardProps {
   card: FlashcardItem;
@@ -16,9 +40,13 @@ interface FlashcardProps {
   isBookmarked?: boolean;
   onToggleBookmark?: () => void;
   isMicOn?: boolean;
+  micStatus?: MicStatus;
   onToggleMic?: () => void;
   onAnimateAdvance?: (fn: (exitClass: string, opts: { failed: boolean; requeue: boolean }) => void) => void;
   langConfig?: LanguageConfig;
+  bandStyle?: BandStyle;
+  onPauseListening?: () => void;   // stop the mic while TTS plays (avoids scratch/echo)
+  onResumeListening?: () => void;  // resume the mic after TTS, for a retry
 }
 
 type CardState =
@@ -28,66 +56,158 @@ type CardState =
   | "WRONG_RETRY_CORRECT"
   | "WRONG_FINAL";
 
-const AUTO_ADVANCE_MS = 1500;
+const AUTO_ADVANCE_MS = 1600;
 
 function matchesCard(answer: string, target: string, alternatives?: string[]): boolean {
   if (isMatch(answer, target)) return true;
-  if (alternatives) {
-    return alternatives.some(alt => isMatch(answer, alt));
-  }
+  if (alternatives) return alternatives.some(alt => isMatch(answer, alt));
   return false;
 }
 
-export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, isBookmarked, onToggleBookmark, isMicOn = true, onToggleMic, onAnimateAdvance, langConfig }: FlashcardProps) {
+// ── Page curl — receives the gradient as a prop (no outer-scope refs) ────────
+function PageCurl({ size, curl }: { size: number; curl: string }) {
+  return (
+    <div
+      className="absolute bottom-0 right-0 pointer-events-none z-20"
+      style={{ width: size, height: size }}
+    >
+      {/* Shadow under the curl */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: "radial-gradient(ellipse at 100% 100%, rgba(0,0,0,0.22) 0%, transparent 65%)",
+          borderBottomRightRadius: "28px",
+        }}
+      />
+      {/* Curled flap */}
+      <div className="absolute inset-0 overflow-hidden" style={{ borderBottomRightRadius: "28px" }}>
+        <div
+          style={{
+            position: "absolute", bottom: 0, right: 0,
+            width: "100%", height: "100%",
+            clipPath: "polygon(100% 0, 100% 100%, 0 100%)",
+            background: curl,
+          }}
+        />
+      </div>
+      {/* Crease line */}
+      <div
+        style={{
+          position: "absolute", bottom: 0, left: 0,
+          width: "141%", height: "1.5px",
+          background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.85) 40%, rgba(255,255,255,0.3) 100%)",
+          transformOrigin: "bottom left",
+          transform: "rotate(-45deg)",
+          opacity: 0.8,
+        }}
+      />
+    </div>
+  );
+}
+
+// ── Subtle diagonal crack pattern (same as home cards) ────────────────────────
+function CardPattern() {
+  return (
+    <svg
+      className="absolute inset-0 w-full h-full pointer-events-none"
+      style={{ opacity: 0.1 }}
+      viewBox="0 0 200 200"
+      preserveAspectRatio="xMidYMid slice"
+    >
+      <line x1="60"  y1="0"   x2="120" y2="200" stroke="white" strokeWidth="1.2"/>
+      <line x1="140" y1="0"   x2="80"  y2="200" stroke="white" strokeWidth="0.6"/>
+      <line x1="0"   y1="70"  x2="200" y2="130" stroke="white" strokeWidth="0.6"/>
+    </svg>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+export function Flashcard({
+  card, onAdvance, total, remaining, onTranscriptRef,
+  isBookmarked, onToggleBookmark, isMicOn = true, micStatus = "idle", onToggleMic,
+  onAnimateAdvance, langConfig, bandStyle = DEFAULT_BAND_STYLE,
+  onPauseListening, onResumeListening,
+}: FlashcardProps) {
   const lc = langConfig ?? LANGUAGE_CONFIGS.french;
   const targetWord = card.target ?? card.french ?? "";
 
-  const [state, setState] = useState<CardState>("QUESTION");
-  const [textInput, setTextInput] = useState("");
+  // Keep latest pause/resume callbacks in refs (used inside stable speakGated)
+  const pauseListeningRef  = useRef(onPauseListening);
+  const resumeListeningRef = useRef(onResumeListening);
+  useEffect(() => { pauseListeningRef.current = onPauseListening; }, [onPauseListening]);
+  useEffect(() => { resumeListeningRef.current = onResumeListening; }, [onResumeListening]);
+
+  const [state, setState]           = useState<CardState>("QUESTION");
   const [spokenText, setSpokenText] = useState("");
-  const [cardColorIndex, setCardColorIndex] = useState(0);
-  const [isFirstCard, setIsFirstCard] = useState(true);
-  const cardColors = ["bg-indigo-400", "bg-green-400", "bg-yellow-400"];
+  const [exitAnim, setExitAnim]     = useState<string>("");
+  const [enterAnim, setEnterAnim]   = useState<string>("animate-enter-right");
+  const [cardAnim, setCardAnim]     = useState<string>("");
+  const [isExiting, setIsExiting]   = useState(false);
+  const [showSparkle, setShowSparkle] = useState(false);
 
-  const [exitAnim, setExitAnim] = useState<string>("");
-  const [enterAnim, setEnterAnim] = useState<string>("animate-enter-right");
-  const [cardAnim, setCardAnim] = useState<string>("");
-  const [isExiting, setIsExiting] = useState(false);
+  const stateRef      = useRef<CardState>("QUESTION");
+  const targetRef     = useRef(targetWord);
+  const lcRef         = useRef(lc);
+  const advanceTimerRef   = useRef<number | null>(null);
+  const ignoreUntilRef    = useRef<number>(0);
+  const lastProcessedRef  = useRef<string>("");
+  const ttsGateRef        = useRef<boolean>(false);   // true while TTS is speaking
+  const gateSafetyRef     = useRef<number | null>(null);
 
-  const [showInput, setShowInput] = useState(false);
-  const [bookmarkedCards, setBookmarkedCards] = useState<Set<string>>(new Set());
-  const bookmarked = bookmarkedCards.has(card.id);
-  const toggleBookmark = (id: string) => {
-    setBookmarkedCards(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
+  // Speak the target word and FULLY block the mic until the audio finishes,
+  // so the spoken word isn't picked up by the recognizer as the user's answer.
+  // onDone (optional) runs AFTER the audio truly ends — used to advance the card
+  // only once playback is complete, so audio never bleeds into the next card.
+  const speakGated = useCallback((text: string, onDone?: () => void) => {
+    ttsGateRef.current = true;
+    // Stop recording first. A live recording makes Android route audio through
+    // its voice/echo-cancel path; tearing it down mid-playback switches the audio
+    // mode and glitches the word ("stops mid-word"). So we stop the mic, wait for
+    // it to fully release, THEN play — clean audio with no mid-word hitch.
+    pauseListeningRef.current?.();
+    if (gateSafetyRef.current) window.clearTimeout(gateSafetyRef.current);
+    let finished = false;
+    const onFinish = () => {
+      if (finished) return;
+      finished = true;
+      if (gateSafetyRef.current) { window.clearTimeout(gateSafetyRef.current); gateSafetyRef.current = null; }
+      // Small tail so the recognizer's trailing buffer is dropped, then either
+      // advance (onDone) or resume listening for the user's retry.
+      window.setTimeout(() => {
+        ttsGateRef.current = false;
+        lastProcessedRef.current = "";
+        if (onDone) onDone();
+        else resumeListeningRef.current?.();   // staying on card → listen again
+      }, 350);
+    };
+    // Safety: never stay gated more than 6.5s in case the audio end never fires
+    gateSafetyRef.current = window.setTimeout(onFinish, 6500);
+    // Let the mic fully release (~300ms) before playing, so the audio-session
+    // switch happens BEFORE playback rather than mid-word.
+    window.setTimeout(() => speakFrench(text, onFinish, lcRef.current), 300);
+  }, []);
 
-  const stateRef = useRef<CardState>("QUESTION");
-  const targetRef = useRef(targetWord);
-  const lcRef = useRef(lc);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const advanceTimerRef = useRef<number | null>(null);
-  const ignoreUntilRef = useRef<number>(0);
-  const lastProcessedRef = useRef<string>("");
-
-  useEffect(() => { stateRef.current = state; }, [state]);
+  useEffect(() => { stateRef.current = state; },       [state]);
   useEffect(() => { targetRef.current = targetWord; }, [targetWord]);
-  useEffect(() => { lcRef.current = lc; }, [lc]);
+  useEffect(() => { lcRef.current = lc; },             [lc]);
+
+  // Sparkle on correct
+  useEffect(() => {
+    if (state === "CORRECT_REVEAL" || state === "WRONG_RETRY_CORRECT") {
+      setShowSparkle(true);
+      const t = setTimeout(() => setShowSparkle(false), 800);
+      return () => clearTimeout(t);
+    }
+  }, [state]);
 
   useEffect(() => {
     onTranscriptRef.current = (transcript: string, isFinal: boolean) => {
       const s = stateRef.current;
       if (s !== "QUESTION" && s !== "WRONG_FIRST") return;
-      // Ignore stale transcripts that arrived from speech before this card mounted
+      if (ttsGateRef.current) return;                       // TTS speaking — ignore its echo
       if (Date.now() < ignoreUntilRef.current) return;
-      // Avoid re-processing the same transcript twice (partial then final)
       if (transcript === lastProcessedRef.current) return;
-
       setSpokenText(transcript);
-
       if (matchesCard(transcript, targetRef.current, card.alternatives)) {
         lastProcessedRef.current = transcript;
         processAnswerRef.current?.(transcript);
@@ -101,271 +221,230 @@ export function Flashcard({ card, onAdvance, total, remaining, onTranscriptRef, 
   const processAnswerRef = useRef<(answer: string) => void>();
 
   const animateAndAdvance = useCallback((
-    exitClass: string,
-    opts: { failed: boolean; requeue: boolean }
+    exitClass: string, opts: { failed: boolean; requeue: boolean }
   ) => {
     if (isExiting) return;
     setIsExiting(true);
     setExitAnim(exitClass);
-    if (advanceTimerRef.current) {
-      window.clearTimeout(advanceTimerRef.current);
-      advanceTimerRef.current = null;
-    }
-    setTimeout(() => {
-      setIsExiting(false);
-      setExitAnim("");
-      onAdvance(opts);
-    }, 420);
+    if (advanceTimerRef.current) { window.clearTimeout(advanceTimerRef.current); advanceTimerRef.current = null; }
+    setTimeout(() => { setIsExiting(false); setExitAnim(""); onAdvance(opts); }, 420);
   }, [isExiting, onAdvance]);
 
-  useEffect(() => {
-    if (onAnimateAdvance) {
-      onAnimateAdvance(animateAndAdvance);
-    }
-  }, [onAnimateAdvance, animateAndAdvance]);
+  useEffect(() => { if (onAnimateAdvance) onAnimateAdvance(animateAndAdvance); }, [onAnimateAdvance, animateAndAdvance]);
 
   const scheduleAutoAdvance = useCallback((failed: boolean) => {
     if (advanceTimerRef.current) window.clearTimeout(advanceTimerRef.current);
     advanceTimerRef.current = window.setTimeout(() => {
-      animateAndAdvance("animate-swipe-right", { failed, requeue: false });
+      animateAndAdvance("animate-slide-up", { failed, requeue: failed });
     }, AUTO_ADVANCE_MS);
   }, [animateAndAdvance]);
 
   const processAnswer = useCallback((answer: string) => {
     const s = stateRef.current;
     if (s !== "QUESTION" && s !== "WRONG_FIRST") return;
-
     const correct = matchesCard(answer, targetRef.current, card.alternatives);
 
     if (s === "QUESTION") {
       if (correct) {
+        // ✓ Correct 1st try → no TTS, just advance
+        vibrate(40);
         setState("CORRECT_REVEAL");
-        setCardAnim("animate-glow-green");
-        speakFrench(targetRef.current, undefined, lcRef.current);
         scheduleAutoAdvance(false);
       } else {
+        // ✗ Wrong 1st try → speak the word as a clue, HOLD for retry (no advance)
+        vibrate([60, 40, 60]);
         setState("WRONG_FIRST");
-        setCardAnim("animate-glow-red");
-        speakFrench(targetRef.current, () => {
-          setTimeout(() => inputRef.current?.focus(), 50);
-        }, lcRef.current);
-        setTextInput("");
+        speakGated(targetRef.current);
+        // no auto-advance — mic reopens after TTS so the user can try again
       }
-    } else {
+    } else if (s === "WRONG_FIRST") {
       if (correct) {
+        // ✓ Correct 2nd try → no TTS, just advance
+        vibrate(40);
         setState("WRONG_RETRY_CORRECT");
-        setCardAnim("animate-glow-green");
-        speakFrench(targetRef.current, undefined, lcRef.current);
         scheduleAutoAdvance(true);
       } else {
+        // ✗ Wrong 2nd try → speak the word, then advance ONCE audio finishes
+        vibrate([60, 40, 60]);
         setState("WRONG_FINAL");
-        setCardAnim("animate-flip-reveal");
-        setTimeout(() => setCardAnim(""), 500);
-        speakFrench(targetRef.current, undefined, lcRef.current);
+        speakGated(targetRef.current, () => {
+          animateAndAdvance("animate-slide-up", { failed: true, requeue: true });
+        });
       }
     }
-  }, [scheduleAutoAdvance, card.alternatives]);
+  }, [scheduleAutoAdvance, card.alternatives, speakGated, animateAndAdvance]);
 
   useEffect(() => { processAnswerRef.current = processAnswer; }, [processAnswer]);
 
   useEffect(() => {
-    if (advanceTimerRef.current) {
-      window.clearTimeout(advanceTimerRef.current);
-      advanceTimerRef.current = null;
-    }
+    if (advanceTimerRef.current) { window.clearTimeout(advanceTimerRef.current); advanceTimerRef.current = null; }
+    if (gateSafetyRef.current) { window.clearTimeout(gateSafetyRef.current); gateSafetyRef.current = null; }
+    stopAudio();                 // cut any audio from the previous card so it can't bleed in
+    ttsGateRef.current = false;
     setState("QUESTION");
-    setTextInput("");
     setSpokenText("");
-    // Suppress any in-flight transcript from the previous card for ~800ms
-    ignoreUntilRef.current = Date.now() + 800;
+    setShowSparkle(false);
+    // Brief suppress so the tail of the previous card's audio isn't misheard
+    ignoreUntilRef.current = Date.now() + 600;
     lastProcessedRef.current = "";
-
-    if (!isFirstCard) {
-      setCardColorIndex((prev) => (prev + 1) % cardColors.length);
-    }
-    setIsFirstCard(false);
-
     setEnterAnim("animate-enter-right");
     setTimeout(() => setEnterAnim(""), 400);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    // No auto-speak on card appear — TTS only fires after the user speaks
   }, [card.id]);
 
-  useEffect(() => {
-    prefetchAudio([targetWord], lc);
-  }, [targetWord, lc]);
-
-  useEffect(() => {
-    return () => {
-      if (advanceTimerRef.current) window.clearTimeout(advanceTimerRef.current);
-    };
-  }, []);
-
-  const handleTextSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const value = textInput.trim();
-    if (!value) return;
-    setSpokenText(value);
-    processAnswer(value);
-  };
+  useEffect(() => { prefetchAudio([targetWord], lc); }, [targetWord, lc]);
+  useEffect(() => { return () => { if (advanceTimerRef.current) window.clearTimeout(advanceTimerRef.current); }; }, []);
 
   const handleDontKnow = () => {
+    if (isExiting) return;
     if (stateRef.current !== "QUESTION" && stateRef.current !== "WRONG_FIRST") return;
-    setCardAnim("animate-shake");
-    setTimeout(() => {
-      setCardAnim("");
-      setState("WRONG_FINAL");
-      speakFrench(targetRef.current, undefined, lcRef.current);
-    }, 500);
+    // Speak the word first (so the user hears it), then move the card to the
+    // back of the queue once the audio finishes.
+    vibrate(40);
+    setState("WRONG_FINAL");
+    speakGated(targetRef.current, () => {
+      animateAndAdvance("animate-slide-up", { failed: false, requeue: true });
+    });
   };
 
-  const handleContinueAfterFinal = () => {
-    animateAndAdvance("animate-swipe-left", { failed: true, requeue: true });
-  };
+  const handleKnewItAfterFinal = () => animateAndAdvance("animate-slide-up", { failed: true, requeue: false });
 
-  const handleKnewItAfterFinal = () => {
-    animateAndAdvance("animate-swipe-right", { failed: true, requeue: false });
-  };
+  // ── Derived ────────────────────────────────────────────────────────────
+  const isQuestion      = state === "QUESTION";
+  const isWrongFirst    = state === "WRONG_FIRST";
+  const isReveal        = state === "CORRECT_REVEAL" || state === "WRONG_RETRY_CORRECT";
+  const isWrongFinal    = state === "WRONG_FINAL";
+  const isAnswerVisible = isReveal || isWrongFinal || isWrongFirst;
+  const isGreenState    = state === "CORRECT_REVEAL" || state === "WRONG_RETRY_CORRECT";
 
-  const isWrongFinal = state === "WRONG_FINAL";
-  const isWrongFirst = state === "WRONG_FIRST";
-  const isReveal = state === "CORRECT_REVEAL" || state === "WRONG_RETRY_CORRECT";
-  const isQuestion = state === "QUESTION";
+  const answerColor = isGreenState ? "rgba(255,255,255,1)" : "rgba(255,255,255,0.75)";
+  const targetDir   = lc.rtl ? "rtl" : "ltr";
+  const targetFontClass = lc.fontClass ?? "";
 
-  const ringColor = isWrongFinal
-    ? "ring-red-500/60 shadow-[0_0_30px_-4px_rgba(239,68,68,0.4)]"
-    : isWrongFirst
-    ? "ring-warning/35 shadow-[0_0_20px_-4px_hsl(var(--warning)/0.25)]"
-    : "ring-success/30 shadow-[0_0_24px_-4px_hsl(var(--success)/0.35)]";
-
-  const cardSurface = isWrongFinal ? "bg-red-500" : cardColors[cardColorIndex];
-  const targetDir = lc.rtl ? "rtl" : "ltr";
-  const targetFontClass = lc.fontClass;
-
+  // ── Render ─────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col items-center gap-5 w-full animate-card-enter">
-      <div className="relative w-full max-w-[300px]">
-        <div className="absolute inset-x-4 top-3 h-full rounded-[2rem] bg-muted/40 border border-border/30" />
-        <div className="absolute inset-x-2 top-1.5 h-full rounded-[2rem] bg-muted/70 border border-border/50" />
+    <div className="flex flex-col items-center w-full">
 
-        <div className={`relative w-full h-full card-perspective ${exitAnim} ${cardAnim}`}>
-          <div className={`relative aspect-square rounded-[2rem] ring-2 ${ringColor} ${enterAnim} transition-all duration-300 card-shadow-lg`}>
-            <div className={`relative w-full h-full flex flex-col items-center justify-center p-6 transition-colors duration-300 border-secondary rounded-[1.85rem] ${cardSurface}`}>
-              <button
-                onClick={() => toggleBookmark(card.id)}
-                className="absolute top-3 left-3 z-10 p-1.5 rounded-full bg-black/20 backdrop-blur-sm transition-colors"
+      {/* Card stack */}
+      <div className={`relative w-full max-w-[270px] ${exitAnim} ${cardAnim} animate-curl-breathe`}>
+
+        {/* Ghost layers — peek out from the TOP */}
+        <div className="absolute inset-x-4 top-[-8px] bottom-3 rounded-[28px]"
+          style={{ background: bandStyle.ghost2, boxShadow: "0 -4px 16px rgba(0,0,0,0.2)" }} />
+        <div className="absolute inset-x-2 top-[-4px] bottom-1.5 rounded-[28px]"
+          style={{ background: bandStyle.ghost1, boxShadow: "0 -2px 10px rgba(0,0,0,0.15)" }} />
+
+        {/* Front card — solid band colour */}
+        <div
+          className={`relative aspect-square overflow-hidden ${enterAnim}`}
+          style={{
+            borderRadius: "28px",
+            background: bandStyle.cardBg,
+            backgroundImage: `repeating-linear-gradient(transparent, transparent 29px, ${bandStyle.lines} 29px, ${bandStyle.lines} 30px)`,
+            backgroundSize: "100% 30px",
+            backgroundPositionY: "48px",
+            boxShadow: "0 14px 40px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.2)",
+          }}
+        >
+          {/* Same diagonal crack pattern as home cards */}
+          <CardPattern />
+
+          {/* Sparkle stars */}
+          {showSparkle && (
+            <>
+              <span className="absolute top-7 right-9 text-white/90 leading-none pointer-events-none select-none animate-sparkle" style={{ fontSize: "22px" }}>✦</span>
+              <span className="absolute bottom-10 left-9 text-white/65 leading-none pointer-events-none select-none animate-sparkle" style={{ fontSize: "14px", animationDelay: "90ms" }}>✦</span>
+            </>
+          )}
+
+          {/* Card content */}
+          <div className="relative w-full h-full flex flex-col items-center justify-center p-8 z-10">
+
+            {/* QUESTION */}
+            {isQuestion && (
+              <h2
+                className="font-black text-[2.4rem] text-center leading-tight tracking-tight"
+                style={{ color: bandStyle.textColor, textShadow: "0 1px 6px rgba(0,0,0,0.18)" }}
               >
-                <Heart className={`w-4 h-4 transition-colors ${bookmarked ? "fill-red-400 text-red-400" : "text-white/70"}`} />
-              </button>
+                {card.english}
+              </h2>
+            )}
 
-              {(isQuestion || isWrongFirst) && (
-                <>
-                  <span className={`text-[10px] font-semibold uppercase tracking-widest mb-3 ${isWrongFirst ? "text-warning" : "text-sidebar"}`}>
-                    {isWrongFirst ? "Try again" : `Translate to ${lc.label}`}
-                  </span>
-                  <h2 className="font-display text-5xl font-black text-center leading-snug text-slate-900">
-                    {card.english}
-                  </h2>
-                  {spokenText && (
-                    <p className="mt-3 text-sm text-gray-700 italic" dir={targetDir}>"{spokenText}"</p>
-                  )}
-                </>
-              )}
+            {/* WRONG_FIRST — reveal in white */}
+            {isWrongFirst && (
+              <div className="flex flex-col items-center gap-2 animate-pop-in">
+                <h2 dir={targetDir} className={`font-bold text-[2rem] text-center leading-tight lowercase ${targetFontClass}`}
+                  style={{ color: answerColor }}>
+                  {targetWord}
+                </h2>
+                {spokenText && <p className="text-white/45 text-sm italic">"{spokenText}"</p>}
+              </div>
+            )}
 
-              {isReveal && (
-                <>
-                  <span className={`text-xs font-semibold uppercase tracking-widest mb-3 ${state === "CORRECT_REVEAL" ? "text-success" : "text-warning"}`}>
-                    {state === "CORRECT_REVEAL" ? "Correct!" : "Got it on retry"}
-                  </span>
-                  <h2 dir={targetDir} className={`font-display text-3xl font-black text-black text-center leading-snug animate-pop-in ${targetFontClass}`}>
-                    {targetWord}
-                  </h2>
-                  <p className="mt-2 text-sm text-gray-800">{card.english}</p>
-                  <div className="mt-4 flex items-center gap-2 text-success animate-bounce-in">
-                    <Check className="w-6 h-6" />
-                  </div>
-                </>
-              )}
-
-              {isWrongFinal && (
-                <>
-                  <span className="text-xs font-semibold uppercase tracking-widest text-destructive-foreground/60 mb-3">
-                    Answer
-                  </span>
-                  <h2 dir={targetDir} className={`font-display text-3xl font-black text-black text-center leading-snug animate-pop-in ${targetFontClass}`}>
-                    {targetWord}
-                  </h2>
-                  <p className="mt-1 text-sm text-gray-800">{card.english}</p>
-                  {spokenText && (
-                    <p className="mt-2 text-xs text-gray-700 italic" dir={targetDir}>You said: "{spokenText}"</p>
-                  )}
+            {/* CORRECT or WRONG_FINAL */}
+            {(isReveal || isWrongFinal) && (
+              <div className="flex flex-col items-center gap-3 animate-pop-in">
+                <h2 dir={targetDir} className={`font-bold text-[2rem] text-center leading-tight lowercase ${targetFontClass}`}
+                  style={{ color: answerColor }}>
+                  {targetWord}
+                </h2>
+                <p className="text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>{card.english}</p>
+                {isWrongFinal && (
                   <button
-                    onClick={() => speakFrench(targetWord, undefined, lc)}
-                    className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/30 text-black text-xs font-medium hover:bg-white/50 transition-colors"
+                    onClick={handleKnewItAfterFinal}
+                    className="mt-1 text-[11px] font-semibold px-4 py-1.5 rounded-full transition-colors"
+                    style={{ color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.2)" }}
                   >
-                    <Mic className="w-3.5 h-3.5" /> Hear it again
+                    I knew it
                   </button>
-                  <div className="mt-5 flex gap-3 animate-bounce-in">
-                    <button
-                      onClick={handleContinueAfterFinal}
-                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-card text-foreground font-semibold text-sm hover:opacity-90 transition-opacity"
-                    >
-                      Continue <ArrowRight className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={handleKnewItAfterFinal}
-                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-success text-success-foreground font-semibold text-sm hover:opacity-90 transition-opacity"
-                    >
-                      <Check className="w-4 h-4" /> I knew it
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
+
+          {/* Page curl — pass gradient as prop, no scope issue */}
+          <PageCurl size={108} curl={bandStyle.curl} />
         </div>
       </div>
 
-      <div className="flex justify-center mt-6 w-full max-w-[300px]">
-        <div className="flex items-center gap-3 w-full">
-          <button
-            onClick={() => setShowInput(!showInput)}
-            className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full border font-semibold text-sm transition-all ${
-              showInput
-                ? "bg-muted border-border text-foreground"
-                : "bg-card border-border text-foreground"
+      {/* Waveform + square buttons */}
+      <div className="flex gap-3 w-full max-w-[340px] mt-10">
+        <button
+          onClick={onToggleMic}
+          className={`flex-1 h-[60px] rounded-2xl flex items-center justify-center gap-[4px] select-none transition-all duration-200
+            ${isMicOn
+              ? "bg-[#1cb0f6] shadow-[0_5px_0_#1592cc] active:shadow-[0_2px_0_#1592cc] active:translate-y-[3px]"
+              : "bg-[#252f45] shadow-[0_5px_0_#171e30] active:shadow-[0_2px_0_#171e30] active:translate-y-[3px]"
             }`}
-          >
-            <MessageSquare className="w-4 h-4" />
-            Write
-          </button>
-          <button
-            onClick={handleDontKnow}
-            disabled={!(isQuestion || isWrongFirst)}
-            className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full bg-secondary/80 text-white font-semibold text-sm transition-all hover:bg-secondary disabled:opacity-50"
-          >
-            <VolumeX className="w-4 h-4" />
-            Not sure
-          </button>
-        </div>
+        >
+          {Array.from({ length: 8 }).map((_, i) => (
+            <span
+              key={i}
+              className="wave-dot"
+              data-active={micStatus === "listening" ? "true" : "false"}
+              style={{ "--dot-delay": `${i * 80}ms` } as React.CSSProperties}
+            />
+          ))}
+        </button>
+
+        <button
+          onClick={() => {
+            if (isAnswerVisible) speakFrench(targetWord, undefined, lc);
+            else handleDontKnow();
+          }}
+          className="w-[60px] h-[60px] rounded-2xl bg-[#252f45] flex items-center justify-center shadow-[0_5px_0_#171e30] active:shadow-[0_2px_0_#171e30] active:translate-y-[3px] transition-all"
+        >
+          <RefreshCw className="w-5 h-5 text-white/45" />
+        </button>
       </div>
 
-      {showInput && (isQuestion || isWrongFirst) && (
-        <form onSubmit={handleTextSubmit} className="flex w-full max-w-[300px] gap-2 animate-fade-in mt-4">
-          <input
-            ref={inputRef}
-            type="text"
-            value={textInput}
-            onChange={(e) => setTextInput(e.target.value)}
-            placeholder={isWrongFirst ? `Try again in ${lc.label}...` : `Type in ${lc.label}...`}
-            dir={targetDir}
-            className={`flex-1 rounded-full border border-border bg-muted px-5 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary ${targetFontClass}`}
-            autoFocus
-          />
-          <button type="submit" className="w-11 h-11 rounded-full bg-primary text-white flex items-center justify-center flex-shrink-0">
-            <Send className="w-4 h-4" />
-          </button>
-        </form>
-      )}
+      <button
+        onClick={handleDontKnow}
+        className="mt-5 text-[10px] uppercase tracking-[0.18em] text-white/25 font-medium hover:text-white/45 transition-colors"
+      >
+        Can't speak now
+      </button>
     </div>
   );
 }

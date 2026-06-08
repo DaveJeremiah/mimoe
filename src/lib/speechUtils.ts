@@ -144,11 +144,66 @@ function getAudio(): HTMLAudioElement {
   return sharedAudio
 }
 
+// Immediately stop any TTS currently playing (both the audio-file element and
+// browser speechSynthesis), so audio never bleeds into the next card.
+export function stopAudio(): void {
+  try {
+    window.speechSynthesis?.cancel()
+  } catch { /* ignore */ }
+  if (sharedAudio) {
+    try {
+      sharedAudio.onended = null
+      sharedAudio.onerror = null
+      sharedAudio.pause()
+      sharedAudio.currentTime = 0
+    } catch { /* ignore */ }
+  }
+}
+
+// ── Voice cache ──────────────────────────────────────────────────────────────
+// getVoices() is empty on first call in Chrome until voices load asynchronously.
+// We cache them and refresh on the voiceschanged event so browserSpeak always
+// has a real French voice to choose (otherwise it reads French in an English voice).
+let cachedVoices: SpeechSynthesisVoice[] = []
+function refreshVoices(): void {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return
+  const v = window.speechSynthesis.getVoices()
+  if (v.length) cachedVoices = v
+}
+if (typeof window !== 'undefined' && window.speechSynthesis) {
+  refreshVoices()
+  // onvoiceschanged fires once voices are ready (Chrome / Android)
+  window.speechSynthesis.addEventListener?.('voiceschanged', refreshVoices)
+}
+
+function pickVoice(ttsLang: string): SpeechSynthesisVoice | undefined {
+  const voices = cachedVoices.length ? cachedVoices : (window.speechSynthesis?.getVoices() ?? [])
+  if (voices.length && !cachedVoices.length) cachedVoices = voices
+  const base = ttsLang.split('-')[0]   // e.g. 'fr'
+  // Exact lang match first, then any voice in the same language family
+  return voices.find(v => v.lang === ttsLang)
+    || voices.find(v => v.lang.replace('_', '-') === ttsLang)
+    || voices.find(v => v.lang.toLowerCase().startsWith(base))
+}
+
+let speechWarmed = false
 export function unlockAudio(): void {
   const audio = getAudio()
   audio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAA' +
     'EAAQARAAIAIgACABAAEABkYXRhAgAAAAEA'
   audio.play().catch(() => {})
+
+  // Warm up speechSynthesis inside this user gesture so iOS Safari will allow
+  // later programmatic speak() calls (iOS blocks speech started outside a gesture).
+  if (!speechWarmed && typeof window !== 'undefined' && window.speechSynthesis) {
+    try {
+      refreshVoices()
+      const u = new SpeechSynthesisUtterance(' ')
+      u.volume = 0
+      window.speechSynthesis.speak(u)
+      speechWarmed = true
+    } catch { /* ignore */ }
+  }
 }
 
 function getCached(key: string): string | null {
@@ -167,6 +222,41 @@ function blobToBase64(blob: Blob): Promise<string> {
     reader.onerror = reject
     reader.readAsDataURL(blob)
   })
+}
+
+// Native-accent TTS via our public proxy (Supabase edge function that relays
+// Google Translate TTS). Returns an MP3 we play through the unlocked <audio>
+// element — this is the path that actually works on iOS Safari, and it gives a
+// proper French/Arabic accent regardless of the device's installed voices.
+const TTS_PROXY_URL = 'https://ovunaubwudiyodywsdfz.supabase.co/functions/v1/tts'
+const TTS_PROXY_KEY = 'sb_publishable_wtThLbWFuenbMjGhJPtO9A_GrMInBNm'
+
+async function fetchProxyTTS(text: string, langConfig: LanguageConfig = DEFAULT_LANG): Promise<string | null> {
+  const key = langConfig.cachePrefix + text.trim().toLowerCase()
+  const cached = getCached(key)
+  if (cached) return cached
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return null
+
+  const lang = langConfig.ttsLang.split('-')[0]   // 'fr' | 'ar'
+  try {
+    const url = `${TTS_PROXY_URL}?lang=${encodeURIComponent(lang)}&text=${encodeURIComponent(text.slice(0, 200))}`
+    const res = await fetch(url, { headers: { apikey: TTS_PROXY_KEY } })
+    if (!res.ok) return null
+    const blob = await res.blob()
+    const dataUri = await blobToBase64(blob)
+    try { localStorage.setItem(key, dataUri) } catch { /* quota */ }
+    memCache.set(key, dataUri)
+    return dataUri
+  } catch {
+    return null
+  }
+}
+
+// Combined remote TTS: our proxy first, Azure as a fallback if it's configured.
+async function fetchRemoteTTS(text: string, langConfig: LanguageConfig = DEFAULT_LANG): Promise<string | null> {
+  const proxied = await fetchProxyTTS(text, langConfig)
+  if (proxied) return proxied
+  return fetchAzureTTS(text, langConfig)
 }
 
 async function fetchAzureTTS(text: string, langConfig: LanguageConfig = DEFAULT_LANG): Promise<string | null> {
@@ -208,34 +298,55 @@ function browserSpeak(text: string, langConfig: LanguageConfig = DEFAULT_LANG, o
   const utter = new SpeechSynthesisUtterance(text)
   utter.lang = langConfig.ttsLang
   utter.rate = 0.85
-  if (onEnd) utter.onend = onEnd
-  const voices = window.speechSynthesis.getVoices()
-  const voice = voices.find(v => v.lang === langConfig.ttsLang)
-    || voices.find(v => v.lang.startsWith(langConfig.ttsLang.split('-')[0]))
+  if (onEnd) { utter.onend = onEnd; utter.onerror = onEnd }
+  const voice = pickVoice(langConfig.ttsLang)
   if (voice) utter.voice = voice
   window.speechSynthesis.speak(utter)
 }
 
 function playDataUri(uri: string, onEnd?: () => void): void {
   const audio = getAudio()
-  audio.onended = () => onEnd?.()
-  audio.onerror = () => onEnd?.()
+  let ended = false
+  const done = () => {
+    if (ended) return
+    ended = true
+    audio.onended = null
+    audio.onerror = null
+    // Release the element so iOS frees the shared audio session — otherwise the
+    // session stays occupied and the microphone can't reacquire it afterwards.
+    try { audio.pause(); audio.removeAttribute('src'); audio.load() } catch { /* ignore */ }
+    onEnd?.()
+  }
+  audio.onended = done
+  audio.onerror = done
   audio.src = uri
-  audio.play().catch(() => { onEnd?.() })
+  audio.play().catch(done)
 }
 
 export function primeFrenchSpeech(): void {}
 
 export async function prefetchAudio(texts: string[], langConfig: LanguageConfig = DEFAULT_LANG): Promise<void> {
-  await Promise.allSettled(texts.map(t => fetchAzureTTS(t, langConfig)))
+  await Promise.allSettled(texts.map(t => fetchRemoteTTS(t, langConfig)))
 }
 
 export function speakFrench(text: string, onEnd?: () => void, langConfig: LanguageConfig = DEFAULT_LANG): void {
   if (!text.trim()) { onEnd?.(); return }
-  fetchAzureTTS(text, langConfig).then(uri => {
-    if (uri) playDataUri(uri, onEnd)
-    else browserSpeak(text, langConfig, onEnd)
-  })
+
+  // Kill anything currently playing so two clips never overlap.
+  stopAudio()
+
+  let done = false
+  const finish = () => { if (done) return; done = true; onEnd?.() }
+
+  // Play EXACTLY ONE source. Prefer the native-accent MP3 (works on iOS, proper
+  // accent); it's normally already cached via prefetch so it resolves instantly.
+  // Only if the file is unavailable do we fall back to the browser voice — this
+  // prevents the "two voices at once" problem on Android.
+  fetchRemoteTTS(text, langConfig).then(uri => {
+    if (done) return
+    if (uri) playDataUri(uri, finish)
+    else browserSpeak(text, langConfig, finish)
+  }).catch(() => { if (!done) browserSpeak(text, langConfig, finish) })
 }
 
 export function speakCorrect(text: string, onEnd?: () => void, langConfig: LanguageConfig = DEFAULT_LANG): void {

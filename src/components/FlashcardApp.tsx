@@ -1,8 +1,9 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Flashcard } from "./Flashcard";
+import logoLight from "@/assets/logo-light.png";
+import { Flashcard, type BandStyle } from "./Flashcard";
 import { WordBank } from "./WordBank";
-import { LevelSelect } from "./LevelSelect";
+import { LevelSelect, BAND_IMGS } from "./LevelSelect";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { PersonalSpaceDivider } from "./PersonalSpaceDivider";
 import { CollectionCard } from "./CollectionCard";
@@ -16,7 +17,7 @@ import { type Collection, CollectionFormData } from "@/lib/collectionTypes";
 import { prefetchAudio, unlockAudio } from "@/lib/speechUtils";
 import { useContinuousMic } from "@/hooks/useContinuousMic";
 import { LANGUAGE_CONFIGS, ARABIC_DIALECTS, getArabicConfigForDialect, type Language } from "@/lib/languageConfig";
-import { PartyPopper, ArrowLeft, Plus, LogOut, MoreVertical, Shuffle, Bookmark, Home, User, ChevronLeft, ChevronRight, Mic, Activity } from "lucide-react";
+import { ArrowLeft, Plus, MoreVertical, Shuffle, Bookmark, Home, User, X, Zap, CheckCircle2, Share2, BookOpen } from "lucide-react";
 
 type Tab = "vocabulary" | "phrases";
 type AppView = "main" | "collection";
@@ -33,6 +34,47 @@ export function FlashcardApp() {
   const [completedVocab, setCompletedVocab] = useLocalStorage<string[]>("mimoe-completed-vocab", []);
   const [completedPhrases, setCompletedPhrases] = useLocalStorage<string[]>("mimoe-completed-phrases", []);
 
+  const [selectedBand, setSelectedBand] = useState<"A1" | "A2" | "B1" | null>(null);
+
+  // Band colors — solid vivid colours matching home cards exactly
+  const BAND_STYLES: Record<"A1"|"A2"|"B1", BandStyle> = {
+    A1: {
+      cardBg:    "#FF5F6D",  // solid coral (matches home hero)
+      ghost1:    "#FF8A95",  // lighter coral
+      ghost2:    "#E63D52",  // darker coral
+      lines:     "rgba(150,30,50,0.1)",
+      bar:       "#FF5F6D",
+      curl:      "linear-gradient(140deg,#FF8A95 0%,#FF7485 40%,#FF5F6D 70%,#E63D52 100%)",
+      textColor: "#FFFFFF",
+    },
+    A2: {
+      cardBg:    "#06D6A0",  // solid emerald (matches home side)
+      ghost1:    "#2FE0B4",  // lighter emerald
+      ghost2:    "#04A878",  // darker emerald
+      lines:     "rgba(0,120,90,0.1)",
+      bar:       "#06D6A0",
+      curl:      "linear-gradient(140deg,#2FE0B4 0%,#1ADAA8 40%,#06D6A0 70%,#04A878 100%)",
+      textColor: "#FFFFFF",
+    },
+    B1: {
+      cardBg:    "#7B61FF",  // solid purple (matches home side)
+      ghost1:    "#9B85FF",  // lighter purple
+      ghost2:    "#6A4FF0",  // darker purple
+      lines:     "rgba(80,60,180,0.1)",
+      bar:       "#7B61FF",
+      curl:      "linear-gradient(140deg,#9B85FF 0%,#8B75FF 40%,#7B61FF 70%,#6A4FF0 100%)",
+      textColor: "#FFFFFF",
+    },
+  };
+  const DEFAULT_BAND_STYLE: BandStyle = {
+    cardBg:    "#FFD000",
+    ghost1:    "#F0C400",
+    ghost2:    "#E5B800",
+    lines:     "rgba(0,0,0,0.07)",
+    bar:       "#FFD000",
+    curl:      "linear-gradient(140deg,#fffde0 0%,#f5ef90 40%,#e8d840 70%,#d4c020 100%)",
+    textColor: "#1a0e00",
+  };
   // Personal Space state
   const [appView, setAppView] = useState<AppView>("main");
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -52,6 +94,7 @@ export function FlashcardApp() {
   // Track which cards were answered correctly on FIRST attempt in current session
   const [firstAttemptCorrect, setFirstAttemptCorrect] = useState<Set<string>>(new Set());
   const [failedCards, setFailedCards] = useState<Set<string>>(new Set());
+  const [comboCount, setComboCount] = useState(0);
   const [bookmarkedCards, setBookmarkedCards] = useState<string[]>([]);
 
   // Special "bookmarked" study session — synthetic level
@@ -59,6 +102,8 @@ export function FlashcardApp() {
 
   const [customOrder, setCustomOrder] = useLocalStorage<Record<string, string[]>>("mimoe-custom-order", {});
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isWordBankOpen, setIsWordBankOpen] = useState(false);
+  const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
 
   const [isMicEnabled, setIsMicEnabled] = useState(true);
   const [isVisible, setIsVisible] = useState(!document.hidden);
@@ -113,6 +158,16 @@ export function FlashcardApp() {
     if (allItems.length === 0) return null;
     return { id: "__bookmarked__", title: "Favorites", cards: allItems };
   }, [bookmarkedCards, levels, customCards]);
+
+  // Derive band style — placed here so both `levels` and `selectedLevelId` are defined
+  const currentBandStyle: BandStyle = (() => {
+    if (selectedLevelId) {
+      const lvl = levels.find(l => l.id === selectedLevelId);
+      if (lvl?.cefr && BAND_STYLES[lvl.cefr]) return BAND_STYLES[lvl.cefr];
+    }
+    if (selectedBand && BAND_STYLES[selectedBand]) return BAND_STYLES[selectedBand];
+    return DEFAULT_BAND_STYLE;
+  })();
 
   // selectedLevel resolves to a normal level OR the synthetic bookmarked one
   const selectedLevel = useMemo(() => {
@@ -285,6 +340,7 @@ export function FlashcardApp() {
     setSelectedLevelId(levelId);
     setFirstAttemptCorrect(new Set());
     setFailedCards(new Set());
+    setComboCount(0);
     setHistory([]);
     // Pre-warm TTS cache for first 3 cards
     prefetchAudio(allItems.slice(0, 3).map((c) => c.target ?? c.french ?? ""), langConfig);
@@ -334,34 +390,54 @@ export function FlashcardApp() {
     return collectionCards[index] || null;
   }, [collectionQueue, collectionCards, selectedCollection]);
 
-  // Start mic once when first card appears, stop it if not on a card
-  useEffect(() => {
-    const activeCard = currentCard || currentCollectionCard;
-    const shouldListen = activeCard && isMicEnabled && isVisible;
+  // iOS Safari throttles repeated SpeechRecognition start/stop, so per-card
+  // restarts make the mic stop listening. On iOS we keep ONE continuous session;
+  // elsewhere (Android/desktop) we use a fresh session per card.
+  const isIOS = typeof navigator !== "undefined" && (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
 
-    if (shouldListen && micStatus === "idle") {
-      unlockAudio();
-      startMic();
-    } else if (!shouldListen && micStatus !== "idle") {
-      stopMic();
+  const activeCardId = currentCard?.id ?? currentCollectionCard?.id ?? null;
+  useEffect(() => {
+    if (!activeCardId || !isMicEnabled || !isVisible) {
+      void stopMic();
+      return;
     }
-  }, [currentCard?.id, currentCollectionCard?.id, isVisible, isMicEnabled, micStatus, startMic, stopMic]);
+    unlockAudio();
+    if (isIOS) {
+      void startMic();   // guarded no-op if already listening → continuous session
+    } else {
+      void resetMic();   // fresh session per card
+    }
+  }, [activeCardId, isMicEnabled, isVisible, isIOS, resetMic, startMic, stopMic]);
 
-  useEffect(() => {
-    const activeCardId = currentCollectionCard?.id ?? currentCard?.id;
-    if (!activeCardId || !isMicEnabled || !isVisible || micStatus === "idle") return;
+  // Stop the mic while TTS plays, then restart it afterwards. This is needed on
+  // BOTH platforms but for different reasons:
+  //  • Android: a live recording makes the speaker output scratchy (echo-cancel).
+  //  • iOS: playing audio interrupts the shared audio session and KILLS the mic
+  //    recognition, so it must be explicitly restarted once the audio is done.
+  // Stopping first also resets the hook's internal state so the restart actually
+  // takes effect (a plain start() would no-op if it thinks it's still running).
+  const pauseListening = useCallback(() => {
+    void stopMic();
+  }, [stopMic]);
+  const resumeListening = useCallback(() => {
+    unlockAudio();
     void resetMic();
-  }, [currentCard?.id, currentCollectionCard?.id, isMicEnabled, isVisible, micStatus, resetMic]);
+  }, [resetMic]);
+
 
   const handleAdvance = useCallback(({ failed, requeue }: { failed: boolean; requeue: boolean }) => {
     const cardId = queue[0];
     if (!cardId) return;
     if (failed) {
       setFailedCards(prev => new Set(prev).add(cardId));
+      setComboCount(0);
     } else {
       setFirstAttemptCorrect(prev => new Set(prev).add(cardId));
+      setComboCount(prev => prev + 1);
     }
-    // Add to history unless requeuing
     if (!requeue) {
       setHistory(prev => [...prev, cardId]);
     }
@@ -421,13 +497,18 @@ export function FlashcardApp() {
   }, [nextLevel, startLevel]);
 
   const handleBack = useCallback(() => {
-    setIsBookmarkedSession(false);
-    setSelectedLevelId(null);
-    setQueue([]);
-    setFirstAttemptCorrect(new Set());
-    setFailedCards(new Set());
-    setHistory([]);
-  }, []);
+    if (selectedLevelId) {
+      setIsBookmarkedSession(false);
+      setSelectedLevelId(null);
+      setSavedQueue([]);
+      setQueue([]);
+      setFirstAttemptCorrect(new Set());
+      setFailedCards(new Set());
+      setHistory([]);
+    } else if (selectedBand) {
+      setSelectedBand(null);
+    }
+  }, [selectedLevelId, selectedBand]);
 
   // Swipe handlers for regular cards
   const handleSwipeForward = useCallback(() => {
@@ -776,7 +857,11 @@ export function FlashcardApp() {
               remaining={collectionQueue.length}
               onTranscriptRef={onTranscriptRef}
               isMicOn={isMicEnabled}
+              micStatus={micStatus}
               onToggleMic={() => setIsMicEnabled(prev => !prev)}
+              onPauseListening={pauseListening}
+              onResumeListening={resumeListening}
+              bandStyle={currentBandStyle}
               langConfig={
                 selectedCollection.language === "arabic"
                   ? (selectedCollection.dialect ? getArabicConfigForDialect(selectedCollection.dialect) : LANGUAGE_CONFIGS.arabic)
@@ -789,132 +874,256 @@ export function FlashcardApp() {
     );
   }
 
+  // Band info for when selectedBand is set
+  const selectedBandInfo = selectedBand ? {
+    A1: { hex: "#FF5F6D", img: BAND_IMGS.A1, title: "Your starting point", subtitle: "Greetings, numbers, core verbs, basics" },
+    A2: { hex: "#06D6A0", img: BAND_IMGS.A2, title: "Daily life", subtitle: "Routines, travel, shopping, past tense" },
+    B1: { hex: "#7B61FF", img: BAND_IMGS.B1, title: "Real conversation", subtitle: "Opinions, work, emotions, storytelling" },
+  }[selectedBand] : null;
+
+  const decksInBand = selectedBand ? levels.filter(l => l.cefr === selectedBand) : [];
+  const completedInBand = decksInBand.filter(d => completedIds.includes(d.id)).length;
+
   return (
-    <div 
-      className={`min-h-screen flex flex-col items-center max-w-[480px] mx-auto px-[15px] pt-[61px] ${selectedLevelId ? 'pb-36' : 'pb-24'}`}
+    <div
+      className={`min-h-screen flex flex-col items-center max-w-[480px] mx-auto ${selectedLevelId ? 'pt-[61px]' : 'pt-0'} px-[15px] ${selectedLevelId ? 'pb-36' : 'pb-24'}`}
       onTouchStart={handleSessionTouchStart}
       onTouchEnd={handleSessionTouchEnd}
     >
-      {/* Header */}
-      <header className="text-center mb-6 w-full">
-        {selectedLevelId ? (
-          <div className="w-full flex items-center gap-3">
+      {/* Band header — edge-to-edge at top, only in deck list */}
+      {selectedBand && selectedBandInfo && !selectedLevelId && (
+        <div
+          className="w-full mb-6 flex flex-col justify-between"
+          style={{
+            background: selectedBandInfo.hex,
+            minHeight: "240px",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
+            borderRadius: "0 0 28px 28px",
+            margin: "0 -15px",
+            width: "calc(100% + 30px)",
+            padding: "20px 24px 24px",
+          }}
+        >
+          {/* Top: Back + Search + French pill */}
+          <div className="flex items-center justify-between mb-4">
             <button
-              onClick={handleBack}
-              className="p-2 -ml-2 rounded-xl hover:bg-muted transition-colors"
+              onClick={() => setSelectedBand(null)}
+              className="p-2 rounded-lg hover:bg-white/20 transition-colors"
             >
-              <ArrowLeft className="w-5 h-5 text-foreground" />
+              <ArrowLeft className="w-5 h-5 text-white/70" />
             </button>
-            <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-              <div
-                className="h-full rounded-full bg-primary transition-all duration-500"
-                style={{ width: `${allCards.length > 0 ? ((allCards.length - queue.length) / allCards.length) * 100 : 0}%` }}
-              />
-            </div>
-            <span className="text-sm text-muted-foreground font-medium min-w-[40px] text-right">
-              {allCards.length - queue.length}/{allCards.length}
-            </span>
-            {activeLanguage === "arabic" && sessionDialect && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                {ARABIC_DIALECTS.find(d => d.code === sessionDialect)?.flag ?? "🇸🇦"}
-              </span>
-            )}
-            <div className="relative">
-              <button
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="p-2 mr-[-8px] rounded-xl hover:bg-muted transition-colors"
-                title="Options"
-              >
-                <MoreVertical className="w-5 h-5 text-foreground" />
+            <div className="flex items-center gap-2">
+              <button className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.15)' }}>
+                <svg className="w-4 h-4 text-white/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/>
+                </svg>
               </button>
-              {isMenuOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)} />
-                  <div className="absolute right-0 top-full mt-2 w-48 rounded-xl bg-card border border-border shadow-lg z-50 overflow-hidden animate-fade-in">
-                    <button
-                      onClick={handleShuffleDeck}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors"
-                    >
-                      <Shuffle className="w-4 h-4" />
-                      Shuffle Cards
-                    </button>
-                    <button
-                      onClick={() => {
-                        setIsMenuOpen(false);
-                        // Filter view to only show bookmarked cards in the queue
-                        if (bookmarkedCards.length > 0) {
-                          const validBookmarked = allCards.filter(c => bookmarkedCards.includes(c.id)).map(c => c.id);
-                          if (validBookmarked.length > 0) {
-                            setQueue(validBookmarked);
-                            setSavedQueue(validBookmarked);
-                            setHistory([]);
-                          }
-                        }
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors border-t border-border"
-                    >
-                      <Bookmark className="w-4 h-4" />
-                      Study Bookmarked
-                    </button>
-                  </div>
-                </>
-              )}
+              <span className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-white text-black">
+                <span>{LANGUAGE_CONFIGS[activeLanguage].flag}</span>
+                <span>{LANGUAGE_CONFIGS[activeLanguage].label}</span>
+              </span>
             </div>
           </div>
-        ) : (
-          <div className="w-full flex items-center justify-between">
-            <div className="text-left">
-              <p className="text-sm text-muted-foreground">Welcome back 👋</p>
-              <h1 className="font-display text-2xl font-bold text-foreground">Mimoe</h1>
+
+          {/* Bottom: Band info */}
+          <div>
+            <div className="flex items-start gap-3 mb-3">
+              <img
+                src={selectedBandInfo.img}
+                alt=""
+                className="w-16 h-16 object-contain flex-shrink-0"
+                style={{ filter: "drop-shadow(0 6px 14px rgba(0,0,0,0.4))" }}
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "0"; }}
+              />
+              <div className="flex-1">
+                <span className="text-white/70 text-xs font-bold px-2 py-0.5 rounded-full bg-white/15 inline-block">
+                  {selectedBand} · {completedInBand}/{decksInBand.length}
+                </span>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5 bg-muted rounded-full p-1">
-              {(["french", "arabic"] as Language[]).map((lang) => {
-                const cfg = LANGUAGE_CONFIGS[lang];
-                return (
-                  <button
-                    key={lang}
-                    onClick={() => {
-                      setActiveLanguage(lang);
-                      handleBack();
+            <h2 className="text-white font-black text-2xl leading-tight mb-1">{selectedBandInfo.title}</h2>
+            <p className="text-white/70 text-xs mb-3">{selectedBandInfo.subtitle}</p>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-1.5 bg-white/20 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    background: "rgba(255,255,255,0.9)",
+                    width: decksInBand.length > 0 ? `${(completedInBand / decksInBand.length) * 100}%` : "0%",
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Header — extends corner-to-corner at top */}
+      <header
+        className="text-center mb-6 flex w-full px-5"
+        style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 14px)', paddingBottom: '12px' }}
+      >
+        {selectedLevelId ? (
+          <div className="w-full flex flex-col gap-3">
+            {/* Top row: X + progress bar + streak icons */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleBack}
+                className="flex-shrink-0 w-8 h-8 flex items-center justify-center hover:opacity-60 transition-opacity"
+              >
+                <X className="w-5 h-5 text-white/50" />
+              </button>
+
+              {/* Progress bar with optional combo badge */}
+              <div className="flex-1 relative">
+                {comboCount >= 2 && (
+                  <span className="absolute -top-5 left-1/2 text-[#77dd00] text-[9px] font-black uppercase tracking-widest whitespace-nowrap animate-combo-pop">
+                    COMBO ×{comboCount}
+                  </span>
+                )}
+                <div className="h-[14px] rounded-full bg-[#252f45] overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500 ease-out"
+                    style={{
+                      background: currentBandStyle.bar,
+                      width: `${allCards.length > 0 ? ((allCards.length - queue.length) / allCards.length) * 100 : 0}%`,
                     }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                      activeLanguage === lang
-                        ? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* Options */}
+              <div className="flex-shrink-0 flex items-center gap-2">
+                <div className="relative">
+                  <button
+                    onClick={() => setIsMenuOpen(!isMenuOpen)}
+                    className="p-1 rounded-lg hover:bg-white/5 transition-colors"
                   >
-                    <span>{cfg.flag}</span>
-                    <span>{cfg.label}</span>
+                    <MoreVertical className="w-4 h-4 text-white/30" />
                   </button>
-                );
-              })}
+                  {isMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)} />
+                      <div className="absolute right-0 top-full mt-2 w-48 rounded-xl bg-card border border-border shadow-lg z-50 overflow-hidden animate-slide-up-in">
+                        <button
+                          onClick={handleShuffleDeck}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                        >
+                          <Shuffle className="w-4 h-4" />
+                          Shuffle Cards
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsMenuOpen(false);
+                            if (bookmarkedCards.length > 0) {
+                              const validBookmarked = allCards.filter(c => bookmarkedCards.includes(c.id)).map(c => c.id);
+                              if (validBookmarked.length > 0) {
+                                setQueue(validBookmarked);
+                                setSavedQueue(validBookmarked);
+                                setHistory([]);
+                              }
+                            }
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors border-t border-border"
+                        >
+                          <Bookmark className="w-4 h-4" />
+                          Study Bookmarked
+                        </button>
+                        <button
+                          onClick={() => { setIsMenuOpen(false); setIsWordBankOpen(true); }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors border-t border-border"
+                        >
+                          <BookOpen className="w-4 h-4" />
+                          Word Bank
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Instruction label */}
+            <h2 className="text-white font-black text-[1.3rem] leading-tight text-left">
+              Translate the words
+            </h2>
+          </div>
+        ) : !selectedBand ? (
+          /* ── Home header: logo + search + language + notification ── */
+          <div className="w-full flex items-center justify-between">
+            {/* Logo + search */}
+            <div className="flex items-center gap-3">
+              <img src={logoLight} alt="Mimoe" className="h-9 w-auto flex-shrink-0" />
+              <button className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                <svg className="w-4 h-4 text-white/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+              </button>
+            </div>
+
+            {/* Language pill (single, with dropdown) + notification */}
+            <div className="flex items-center gap-2">
+              {/* Single language pill */}
+              <div className="relative">
+                <button
+                  onClick={() => setIsLangDropdownOpen(v => !v)}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-bold text-white transition-all active:scale-95"
+                  style={{ background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.10)' }}
+                >
+                  <span className="text-base leading-none">{LANGUAGE_CONFIGS[activeLanguage].flag}</span>
+                  <span>{LANGUAGE_CONFIGS[activeLanguage].label}</span>
+                  {/* chevron down */}
+                  <svg className="w-3 h-3 text-white/50 -mr-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m6 9 6 6 6-6"/></svg>
+                </button>
+                {isLangDropdownOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsLangDropdownOpen(false)} />
+                    <div
+                      className="absolute top-full right-0 mt-2 rounded-2xl overflow-hidden z-50 shadow-2xl min-w-[150px]"
+                      style={{ background: '#1c2138', border: '1px solid rgba(255,255,255,0.10)' }}
+                    >
+                      {(["french", "arabic"] as Language[]).map((lang) => {
+                        const cfg = LANGUAGE_CONFIGS[lang];
+                        return (
+                          <button
+                            key={lang}
+                            onClick={() => { setActiveLanguage(lang); setIsLangDropdownOpen(false); handleBack(); }}
+                            className={`w-full flex items-center gap-2.5 px-4 py-3 text-sm font-semibold transition-colors text-left ${
+                              activeLanguage === lang ? "bg-white/10 text-white" : "text-white/55 hover:bg-white/5 hover:text-white"
+                            }`}
+                          >
+                            <span className="text-base">{cfg.flag}</span>
+                            <span className="flex-1">{cfg.label}</span>
+                            {activeLanguage === lang && (
+                              <svg className="w-3.5 h-3.5 text-white/60 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6 9 17l-5-5"/></svg>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Notification bell */}
+              <div className="relative">
+                <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                  <svg className="w-4 h-4 text-white/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/>
+                  </svg>
+                </div>
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[9px] font-black text-black flex items-center justify-center" style={{ background: '#a855f7' }}>9</span>
+              </div>
             </div>
           </div>
-        )}
+        ) : null /* deck list — band card above serves as header */}
       </header>
 
-      {/* Tabs */}
-      {!selectedLevelId && (
-        <>
-          <div className="flex w-full bg-muted rounded-2xl p-1 mb-6">
-            {(["vocabulary", "phrases"] as Tab[]).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => handleTabSwitch(tab)}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold capitalize transition-all duration-200 ${
-                  activeTab === tab
-                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center justify-between w-full mb-4">
-            <h2 className="font-display text-xl font-bold text-foreground">Levels</h2>
-          </div>
-        </>
+      {/* Levels label — only show on home, not in deck list */}
+      {!selectedLevelId && !selectedBand && (
+        <div className="flex items-center justify-between w-full mb-3">
+          <h2 className="font-black text-white text-xl">Levels</h2>
+        </div>
       )}
 
       {/* Content */}
@@ -923,10 +1132,13 @@ export function FlashcardApp() {
           <LevelSelect
             levels={levels}
             completedLevelIds={completedIds}
-            onSelectLevel={startLevel}
+            onSelectLevel={(levelId) => startLevel(levelId)}
             onAddLevel={() => setIsNewLevelModalOpen(true)}
             bookmarkedCount={bookmarkedLevel?.cards.length ?? 0}
             onStudyBookmarked={startBookmarkedSession}
+            selectedBand={selectedBand}
+            onSelectBand={setSelectedBand}
+            onBack={() => setSelectedBand(null)}
           />
         ) : allCards.length === 0 ? (
           <div className="flex flex-col items-center gap-3 text-center animate-fade-in py-8">
@@ -939,32 +1151,19 @@ export function FlashcardApp() {
             </p>
           </div>
         ) : isDeckComplete ? (
-          <div className="flex flex-col items-center gap-4 text-center animate-fade-in">
-            <PartyPopper className="w-16 h-16 text-secondary" />
-            <h2 className="font-display text-2xl font-bold text-foreground">
-              {allCorrectThisSession ? "Perfect! 🎉" : "Level finished!"}
-            </h2>
-            <p className="text-muted-foreground">
-              {allCorrectThisSession
-                ? "You got every card right on the first try!"
-                : `You missed ${failedCards.size} card${failedCards.size !== 1 ? "s" : ""}. Try again for a perfect score!`}
-            </p>
-            <div className="flex gap-3 mt-4">
-              <button
-                onClick={resetDeck}
-                className="px-5 py-3 rounded-xl bg-card border border-border text-foreground font-semibold hover:bg-accent/50 transition-colors"
+          <div className="w-full flex flex-wrap gap-2 justify-center animate-slide-up-in pb-4">
+            {allCards.map(card => (
+              <span
+                key={card.id}
+                className={`px-4 py-2.5 rounded-2xl border-2 font-semibold text-sm ${
+                  failedCards.has(card.id)
+                    ? "border-[#ffc800]/40 text-[#ffc800] bg-[#ffc800]/10"
+                    : "border-[#58cc02]/40 text-[#58cc02] bg-[#58cc02]/10"
+                }`}
               >
-                Practice again
-              </button>
-              {nextLevel && (
-                <button
-                  onClick={handleNextLevel}
-                  className="px-5 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 transition-opacity"
-                >
-                  Next Level
-                </button>
-              )}
-            </div>
+                {card.target ?? card.french ?? card.english}
+              </span>
+            ))}
           </div>
         ) : currentCard ? (
           <Flashcard
@@ -989,25 +1188,94 @@ export function FlashcardApp() {
               }
             }}
             isMicOn={isMicEnabled}
+            micStatus={micStatus}
             onToggleMic={() => setIsMicEnabled(prev => !prev)}
+            onPauseListening={pauseListening}
+            onResumeListening={resumeListening}
             onAnimateAdvance={(fn) => { animateAdvanceRef.current = fn; }}
+            bandStyle={currentBandStyle}
             langConfig={langConfig}
           />
         ) : null}
       </div>
 
-      {/* Word bank — shown for any selected level (including empty new ones) */}
-      {selectedLevelId && !isBookmarkedSession && (allCards.length === 0 || !isDeckComplete) && (
-        <div className="mt-6 w-full flex justify-center">
-          <WordBank
-            items={allCards}
-            onAdd={handleAddItem}
-            onUpdate={handleUpdateItem}
-            onDelete={handleDeleteItem}
-            onBulkAdd={handleBulkAdd}
-            onReorder={handleReorder}
-            label={activeTab === "vocabulary" ? "Vocabulary" : "Phrases"}
-          />
+      {/* ── Completion result panel (slides up from bottom) ── */}
+      {isDeckComplete && selectedLevelId && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center">
+          <div className="w-full max-w-[480px] bg-[#0d2e00] border-t-2 border-[#58cc02]/30 px-5 pt-5 pb-8 animate-result-slide">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="w-8 h-8 text-[#58cc02]" />
+                <div>
+                  <p className="text-[#58cc02] font-black text-xl leading-tight">
+                    {allCorrectThisSession ? "Perfect!" : "Level done!"}
+                  </p>
+                  <p className="text-[#58cc02]/50 text-xs font-medium">
+                    {allCorrectThisSession
+                      ? "Flawless run"
+                      : `${failedCards.size} card${failedCards.size !== 1 ? "s" : ""} to review`}
+                  </p>
+                </div>
+              </div>
+              <button className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center">
+                <Share2 className="w-4 h-4 text-white/30" />
+              </button>
+            </div>
+            <button
+              onClick={nextLevel ? handleNextLevel : resetDeck}
+              className="w-full h-[52px] rounded-2xl bg-[#58cc02] text-white font-black text-sm tracking-widest uppercase shadow-[0_4px_0_#3e9200] active:shadow-none active:translate-y-1 transition-all"
+            >
+              {nextLevel ? "Next Level" : "Practice Again"}
+            </button>
+            {nextLevel && (
+              <button
+                onClick={resetDeck}
+                className="w-full mt-3 py-1.5 text-[#58cc02]/50 text-sm font-semibold"
+              >
+                Practice again
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Word bank — opened from 3-dot menu */}
+      {selectedLevelId && !isBookmarkedSession && isWordBankOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setIsWordBankOpen(false)}
+        >
+          <div
+            className="w-full max-w-[480px] rounded-t-3xl overflow-hidden animate-slide-up-in"
+            style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', maxHeight: '80vh' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-10 h-1 rounded-full bg-white/20" />
+            </div>
+            <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+              <h3 className="font-bold text-base text-foreground flex items-center gap-2">
+                <BookOpen className="w-4 h-4" />
+                Word Bank
+              </h3>
+              <button onClick={() => setIsWordBankOpen(false)} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+                <X className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="overflow-y-auto" style={{ maxHeight: 'calc(80vh - 80px)' }}>
+              <div className="p-4">
+                <WordBank
+                  items={allCards}
+                  onAdd={handleAddItem}
+                  onUpdate={handleUpdateItem}
+                  onDelete={handleDeleteItem}
+                  onBulkAdd={handleBulkAdd}
+                  onReorder={handleReorder}
+                  label={activeTab === "vocabulary" ? "Vocabulary" : "Phrases"}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1056,66 +1324,49 @@ export function FlashcardApp() {
         </>
       )}
 
-      {/* Navigation Bars */}
+      {/* ── Home bottom nav ── */}
       {!selectedLevelId && appView === "main" && (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-end justify-center pb-safe">
-          <div className="w-full max-w-[480px] flex items-center justify-around bg-card/90 backdrop-blur-xl border-t border-border py-[36px] px-[16px] rounded-full">
-            <button className="flex flex-col items-center gap-1 text-primary">
-              <Home className="w-5 h-5" />
-              <span className="text-[10px] font-medium">Home</span>
-            </button>
+        <nav className="fixed bottom-0 left-0 right-0 z-50">
+          <div
+            className="w-full flex items-center px-5 gap-3"
+            style={{
+              background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.7) 30%, rgba(0,0,0,0.96) 70%)',
+              paddingTop: '28px',
+              paddingBottom: '20px',
+            }}
+          >
+            {/* + button */}
             <button
               onClick={handleCreateCollection}
-              className="w-14 h-14 rounded-full flex items-center justify-center shadow-lg shadow-secondary/30 active:scale-95 transition-transform bg-fuchsia-950 mx-0 mt-0 border-stone-800"
+              className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 active:scale-95 transition-transform"
+              style={{ background: '#000', border: '1.5px solid rgba(168,85,247,0.6)', boxShadow: '0 0 14px rgba(168,85,247,0.35)' }}
             >
-              <Plus className="w-6 h-6 text-white" />
+              <Plus className="w-5 h-5 text-white" />
             </button>
-            <button className="flex flex-col items-center gap-1 text-muted-foreground">
-              <User className="w-5 h-5" />
-              <span className="text-[10px] font-medium">Profile</span>
+
+            {/* Vocabulary / Phrases tabs */}
+            <div className="flex items-center gap-5 flex-1 pl-1">
+              {(["vocabulary", "phrases"] as Tab[]).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => handleTabSwitch(tab)}
+                  className={`text-sm font-bold capitalize transition-colors ${
+                    activeTab === tab ? "text-white" : "text-white/35"
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            {/* User avatar / profile */}
+            <button className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,255,255,0.1)' }}>
+              <User className="w-4 h-4 text-white/60" />
             </button>
           </div>
         </nav>
       )}
 
-      {selectedLevelId && !isDeckComplete && (
-        <div className="fixed bottom-0 left-0 right-0 z-50">
-          <div className="w-full bg-card/40 backdrop-blur-xl border-t border-white/10 px-6 py-3 rounded-t-[2.5rem] shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.3)]">
-            <div className="flex items-center justify-between w-full">
-              <button
-                onClick={() => {
-                  if (history.length > 0) {
-                    handleSwipeBackward();
-                  }
-                }}
-                className="p-4 rounded-2xl hover:bg-white/5 transition-colors"
-              >
-                <ChevronLeft className="w-6 h-6 text-foreground" />
-              </button>
-              
-              <button 
-                onClick={() => setIsMicEnabled(!isMicEnabled)}
-                className={`p-4 rounded-full transition-all duration-300 ${
-                  isMicEnabled 
-                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30" 
-                    : "bg-white/10 text-muted-foreground"
-                }`}
-              >
-                {isMicEnabled ? <Activity className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
-              </button>
-
-              <button
-                onClick={() => {
-                  animateAdvanceRef.current?.("animate-swipe-right", { failed: false, requeue: false });
-                }}
-                className="p-4 rounded-2xl hover:bg-white/5 transition-colors"
-              >
-                <ChevronRight className="w-6 h-6 text-foreground" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <NewLevelModal
         isOpen={isNewLevelModalOpen}

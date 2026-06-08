@@ -13,18 +13,16 @@ interface NewCollectionModalProps {
 }
 
 export function NewCollectionModal({ isOpen, onClose, onSave, editingCollection, activeLanguage }: NewCollectionModalProps) {
-  const [title, setTitle] = useState(editingCollection?.title || "");
-  const [importText, setImportText] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState("");
+  const [title, setTitle]               = useState(editingCollection?.title || "");
+  const [importText, setImportText]     = useState("");
+  const [isSaving, setIsSaving]         = useState(false);
+  const [error, setError]               = useState("");
   const [selectedDialect, setSelectedDialect] = useState(editingCollection?.dialect ?? "ar-SA");
 
   useEffect(() => {
     if (editingCollection && isOpen) {
       const existingEntries = editingCollection.entries.map(entry => {
-        const alts = entry.alternatives && entry.alternatives.length > 0
-          ? ` | ${entry.alternatives.join(' | ')}`
-          : '';
+        const alts = entry.alternatives?.length ? ` | ${entry.alternatives.join(' | ')}` : '';
         return `${entry.english} | ${entry.french}${alts}`;
       }).join('\n');
       setImportText(existingEntries);
@@ -34,197 +32,168 @@ export function NewCollectionModal({ isOpen, onClose, onSave, editingCollection,
   }, [editingCollection, isOpen]);
 
   useEffect(() => {
-    if (isOpen) {
-      setSelectedDialect(editingCollection?.dialect ?? "ar-SA");
-    }
+    if (isOpen) setSelectedDialect(editingCollection?.dialect ?? "ar-SA");
   }, [isOpen, editingCollection]);
 
   const parseImportText = (text: string): CollectionEntry[] => {
     const entries: CollectionEntry[] = [];
-    const lines = text.split('\n').filter(line => line.trim() !== '');
-
-    for (const line of lines) {
-      let english = '';
-      let french = '';
-      let alternatives: string[] = [];
-
-      if (line.includes('|')) {
-        const parts = line.split('|').map(p => p.trim()).filter(Boolean);
-        if (parts.length >= 2) {
-          english = parts[0];
-          french = parts[1];
-          alternatives = parts.slice(2);
-        }
-      } else if (line.includes('\t')) {
-        const parts = line.split('\t').map(p => p.trim()).filter(Boolean);
-        if (parts.length >= 2) {
-          english = parts[0];
-          french = parts[1];
-          alternatives = parts.slice(2);
-        }
-      }
-
-      if (english && french) {
-        const frenchParts = french.split(/[\/]/).map(p => p.trim()).filter(Boolean);
-        const mainFrench = frenchParts[0] || french;
-        const moreAlts = frenchParts.slice(1);
-
-        const entry: CollectionEntry = { english, french: mainFrench, target: mainFrench };
-        const combinedAlts = [...alternatives, ...moreAlts];
-        if (combinedAlts.length > 0) entry.alternatives = combinedAlts;
-        entries.push(entry);
-      }
+    for (const line of text.split('\n').filter(l => l.trim())) {
+      const sep = line.includes('|') ? '|' : line.includes('\t') ? '\t' : null;
+      if (!sep) continue;
+      const parts = line.split(sep).map(p => p.trim()).filter(Boolean);
+      if (parts.length < 2) continue;
+      const [english, rawFrench, ...alts] = parts;
+      const frenchParts = rawFrench.split('/').map(p => p.trim()).filter(Boolean);
+      const french = frenchParts[0];
+      const entry: CollectionEntry = { english, french, target: french };
+      const combined = [...alts, ...frenchParts.slice(1)];
+      if (combined.length) entry.alternatives = combined;
+      entries.push(entry);
     }
-
     return entries;
   };
 
   const handleSave = () => {
     setError("");
-
-    if (!title.trim()) {
-      setError("Please enter a collection title");
+    if (!title.trim()) { setError("Please enter a collection title"); return; }
+    const entries = importText.trim() ? parseImportText(importText) : [];
+    if (!importText.trim() && !editingCollection) {
+      setError("Add at least one entry (English | Target)");
       return;
     }
-
-    let entries: CollectionEntry[] = [];
-
-    if (importText.trim()) {
-      entries = parseImportText(importText);
-      if (entries.length === 0) {
-        setError("Please add at least one valid entry (English | French)");
-        return;
-      }
-    } else if (!editingCollection) {
-      setError("Please add at least one entry or import existing entries");
+    if (importText.trim() && entries.length === 0) {
+      setError("No valid entries found — use: English | French");
       return;
     }
-
     setIsSaving(true);
-
-    const collectionData: CollectionFormData = {
+    onSave({
       title: title.trim(),
       language: activeLanguage ?? "french",
       dialect: activeLanguage === "arabic" ? selectedDialect : undefined,
-      entries: editingCollection ? entries : entries,
-    };
-
-    onSave(collectionData);
-
-    setTimeout(() => {
-      setIsSaving(false);
-      handleClose();
-    }, 500);
+      entries,
+    });
+    setTimeout(() => { setIsSaving(false); handleClose(); }, 500);
   };
 
   const handleClose = () => {
-    setTitle("");
-    setImportText("");
-    setError("");
-    setIsSaving(false);
-    onClose();
+    setTitle(""); setImportText(""); setError(""); setIsSaving(false); onClose();
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-amber-50 rounded-2xl shadow-xl max-w-lg w-full max-h-[80vh] overflow-hidden">
-        <div className="flex items-center justify-between p-6 border-b border-amber-200">
-          <h3 className="text-lg font-semibold text-gray-900">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
+      {/* Sheet slides up from bottom */}
+      <div
+        className="w-full max-w-[480px] rounded-t-3xl shadow-2xl overflow-hidden animate-slide-up-in"
+        style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', maxHeight: '88vh' }}
+      >
+        {/* Handle */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full bg-white/20" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+          <h3 className="font-display text-lg font-bold text-foreground">
             {editingCollection ? "Edit Collection" : "New Collection"}
           </h3>
-          <button onClick={handleClose} className="p-2 rounded-lg hover:bg-amber-100 transition-colors">
-            <X className="w-5 h-5 text-gray-700" />
+          <button onClick={handleClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+            <X className="w-4 h-4 text-muted-foreground" />
           </button>
         </div>
 
-        <div className="p-6 space-y-4 overflow-y-auto max-h-[calc(80vh-80px)]">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Collection Title</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., La Vie en Rose, Stromae - Papaoutai"
-              className="w-full p-3 border border-amber-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={isSaving}
-            />
-          </div>
+        {/* Scrollable body */}
+        <div className="overflow-y-auto" style={{ maxHeight: 'calc(88vh - 120px)' }}>
+          <div className="p-5 space-y-4">
 
-          {activeLanguage === "arabic" && (
+            {/* Title */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Arabic Dialect</label>
-              <div className="grid grid-cols-2 gap-2">
-                {ARABIC_DIALECTS.map((dialect) => (
-                  <button
-                    key={dialect.code}
-                    type="button"
-                    onClick={() => setSelectedDialect(dialect.code)}
-                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-medium transition-all text-left ${
-                      selectedDialect === dialect.code
-                        ? "border-orange-500 bg-orange-100 text-orange-900"
-                        : "border-amber-300 bg-white text-gray-700 hover:bg-amber-50"
-                    }`}
-                  >
-                    <span>{dialect.flag}</span>
-                    <span>{dialect.label}</span>
-                  </button>
-                ))}
+              <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                Collection title
+              </label>
+              <input
+                type="text"
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                placeholder="e.g. La Vie en Rose, Weekend phrases…"
+                className="w-full rounded-xl border border-border bg-muted px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                autoFocus
+                disabled={isSaving}
+              />
+            </div>
+
+            {/* Arabic dialect selector */}
+            {activeLanguage === "arabic" && (
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                  Arabic Dialect
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {ARABIC_DIALECTS.map(d => (
+                    <button
+                      key={d.code}
+                      type="button"
+                      onClick={() => setSelectedDialect(d.code)}
+                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-medium transition-all text-left ${
+                        selectedDialect === d.code
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-muted text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <span>{d.flag}</span><span>{d.label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
+            )}
+
+            {/* Entries textarea */}
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                {editingCollection ? "Edit entries" : "Import entries"}
+              </label>
+              <textarea
+                value={importText}
+                onChange={e => setImportText(e.target.value)}
+                placeholder={"One pair per line:\nHello | Bonjour\nGoodbye | Au revoir\nThank you | Merci / Merci beaucoup"}
+                className="w-full h-44 rounded-xl border border-border bg-muted px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground font-mono resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                disabled={isSaving}
+              />
+              <p className="text-xs text-muted-foreground mt-1.5">
+                Format: <span className="text-primary font-mono">English | Target | Alt2</span>
+              </p>
             </div>
-          )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              {editingCollection ? "Edit Entries" : "Import Entries"}
-            </label>
-            <textarea
-              value={importText}
-              onChange={(e) => setImportText(e.target.value)}
-              placeholder={`One pair per line — tab, pipe, or slash separates alternatives:\nHello | Bonjour / Salut\nGoodbye | Au revoir\nThank you | Merci / Merci beaucoup`}
-              spellCheck={true}
-              autoCorrect="on"
-              className="w-full h-48 p-3 border border-gray-600 rounded-lg font-mono text-sm bg-gray-900 text-green-300 placeholder:text-gray-500 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={isSaving}
-            />
-          </div>
+            {/* Error */}
+            {error && (
+              <div className="px-4 py-3 rounded-xl bg-destructive/10 border border-destructive/30">
+                <p className="text-destructive text-sm">{error}</p>
+              </div>
+            )}
 
-          <div className="text-xs text-gray-400">
-            Format: <span className="text-green-400 font-mono">English | Target | Alt2 | Alt3</span>
-          </div>
-
-          {error && (
-            <div className="p-3 rounded-lg bg-red-100 border border-red-300">
-              <span className="text-red-800 text-sm">{error}</span>
+            {/* Actions */}
+            <div className="flex gap-2 pt-1 pb-2">
+              <button
+                type="button"
+                onClick={handleClose}
+                disabled={isSaving}
+                className="flex-1 px-4 py-3 rounded-xl bg-muted text-foreground font-semibold text-sm hover:bg-muted/70 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={isSaving}
+                className="flex-1 px-4 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isSaving
+                  ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Saving…</>
+                  : <><Plus className="w-4 h-4" />{editingCollection ? "Update" : "Create"}</>
+                }
+              </button>
             </div>
-          )}
-
-          <div className="flex gap-3 pt-2">
-            <button
-              onClick={handleClose}
-              disabled={isSaving}
-              className="flex-1 px-4 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="flex-1 px-4 py-2 rounded-lg bg-orange-500 text-white font-medium hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {isSaving ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4" />
-                  {editingCollection ? "Update" : "Create"} Collection
-                </>
-              )}
-            </button>
           </div>
         </div>
       </div>
