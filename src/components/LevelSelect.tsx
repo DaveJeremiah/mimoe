@@ -1,13 +1,20 @@
 import type { Level } from "@/lib/flashcardData";
 import { Check, Heart, ArrowLeft, ChevronRight } from "lucide-react";
 
-function BgPattern() {
+export function WavyLine({ className = "", colors = ["#e05070", "#e07030"] }: { className?: string; colors?: [string, string] }) {
+  const id = `wg-${colors[0].replace("#","")}-${colors[1].replace("#","")}`;
   return (
-    <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: 0.1 }}
-      viewBox="0 0 200 200" preserveAspectRatio="xMidYMid slice">
-      <line x1="60" y1="0" x2="120" y2="200" stroke="white" strokeWidth="1.2"/>
-      <line x1="140" y1="0" x2="80" y2="200" stroke="white" strokeWidth="0.6"/>
-      <line x1="0" y1="70" x2="200" y2="130" stroke="white" strokeWidth="0.6"/>
+    <svg viewBox="0 0 320 28" fill="none" className={`w-full ${className}`} preserveAspectRatio="none" style={{ height: 22 }}>
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor={colors[0]} />
+          <stop offset="100%" stopColor={colors[1]} />
+        </linearGradient>
+      </defs>
+      <path
+        d="M0 18 C40 5, 80 26, 120 18 C160 9, 200 26, 240 18 C270 10, 300 22, 320 14"
+        stroke={`url(#${id})`} strokeWidth="2.5" strokeLinecap="round" fill="none"
+      />
     </svg>
   );
 }
@@ -295,10 +302,9 @@ export function LevelSelect({
               background: b.bg,
               borderRadius: "28px",
               boxShadow: `0 6px 0 ${b.shadow}, 0 12px 32px rgba(0,0,0,0.35)`,
-              minHeight: "clamp(220px, 46vw, 290px)",
+              minHeight: "clamp(290px, 58vw, 380px)",
             }}
           >
-            <BgPattern />
             {b.id === "A1" && (
               <img
                 src="/images/a1-bg.jpg"
@@ -353,7 +359,6 @@ export function LevelSelect({
                 minHeight: "clamp(150px, 32vw, 190px)",
               }}
             >
-              <BgPattern />
               <div className="absolute inset-0 p-4 flex flex-col justify-between">
                 <div className="flex items-start justify-between">
                   <img

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import logoLight from "@/assets/logo-light.png";
 import { Flashcard, type BandStyle } from "./Flashcard";
 import { WordBank } from "./WordBank";
-import { LevelSelect, BAND_IMGS } from "./LevelSelect";
+import { LevelSelect, BAND_IMGS, WavyLine } from "./LevelSelect";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { PersonalSpaceDivider } from "./PersonalSpaceDivider";
 import { CollectionCard } from "./CollectionCard";
@@ -890,7 +890,8 @@ export function FlashcardApp() {
               </div>
             </div>
             <h2 className="text-white font-black text-2xl leading-tight mb-1">{selectedBandInfo.title}</h2>
-            <p className="text-white/70 text-xs mb-3">{selectedBandInfo.subtitle}</p>
+            <WavyLine className="max-w-[140px] mb-2" colors={["rgba(255,255,255,0.6)", "rgba(255,255,255,0.25)"]} />
+            <p className="text-white/60 text-xs mb-3">{selectedBandInfo.subtitle}</p>
             <div className="flex items-center gap-2">
               <div className="flex-1 h-1.5 bg-white/20 rounded-full overflow-hidden">
                 <div
@@ -997,42 +998,34 @@ export function FlashcardApp() {
             </div>
 
             {/* Instruction label */}
-            <h2 className="text-white font-black text-[1.3rem] leading-tight text-left">
-              Translate the words
-            </h2>
+            <div>
+              <h2 className="text-white font-black text-[1.3rem] leading-tight">Translate the words</h2>
+              <WavyLine className="mt-1 max-w-[120px]" />
+            </div>
           </div>
         ) : !selectedBand ? (
-          /* ── Home header: logo + search + language + notification ── */
-          <div className="w-full flex items-center justify-between">
-            {/* Logo + search */}
-            <div className="flex items-center gap-3">
-              <img src={logoLight} alt="Mimoe" className="h-9 w-auto flex-shrink-0" />
-              <button className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.08)' }}>
-                <svg className="w-4 h-4 text-white/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/>
-                </svg>
-              </button>
-            </div>
+          /* ── Home header: logo | centered lang pill | notification ── */
+          <div className="w-full flex items-center relative">
+            {/* Left: logo */}
+            <img src={logoLight} alt="Mimoe" className="h-8 w-auto flex-shrink-0" />
 
-            {/* Language pill (single, with dropdown) + notification */}
-            <div className="flex items-center gap-2">
-              {/* Single language pill */}
+            {/* Center: language pill — absolutely positioned */}
+            <div className="absolute left-1/2 -translate-x-1/2">
               <div className="relative">
                 <button
                   onClick={() => setIsLangDropdownOpen(v => !v)}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-bold text-white transition-all active:scale-95"
-                  style={{ background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.10)' }}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold text-white/80 transition-all active:scale-95"
+                  style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.10)' }}
                 >
-                  <span className="text-base leading-none">{LANGUAGE_CONFIGS[activeLanguage].flag}</span>
+                  <span className="text-sm leading-none">{LANGUAGE_CONFIGS[activeLanguage].flag}</span>
                   <span>{LANGUAGE_CONFIGS[activeLanguage].label}</span>
-                  {/* chevron down */}
-                  <svg className="w-3 h-3 text-white/50 -mr-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m6 9 6 6 6-6"/></svg>
+                  <svg className="w-2.5 h-2.5 text-white/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m6 9 6 6 6-6"/></svg>
                 </button>
                 {isLangDropdownOpen && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setIsLangDropdownOpen(false)} />
                     <div
-                      className="absolute top-full right-0 mt-2 rounded-2xl overflow-hidden z-50 min-w-[150px]"
+                      className="absolute top-full left-1/2 -translate-x-1/2 mt-2 rounded-2xl overflow-hidden z-50 min-w-[150px]"
                       style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 16px 40px rgba(0,0,0,0.6)' }}
                     >
                       {(["french", "arabic"] as Language[]).map((lang) => {
@@ -1057,16 +1050,16 @@ export function FlashcardApp() {
                   </>
                 )}
               </div>
+            </div>
 
-              {/* Notification bell */}
-              <div className="relative">
-                <div className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.08)' }}>
-                  <svg className="w-4 h-4 text-white/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/>
-                  </svg>
-                </div>
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[9px] font-black text-black flex items-center justify-center" style={{ background: '#a855f7' }}>9</span>
+            {/* Right: notification bell */}
+            <div className="relative ml-auto">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                <svg className="w-4 h-4 text-white/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
               </div>
+              <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full text-[8px] font-black text-black flex items-center justify-center" style={{ background: '#a855f7' }}>9</span>
             </div>
           </div>
         ) : null /* deck list — band card above serves as header */}
@@ -1074,8 +1067,9 @@ export function FlashcardApp() {
 
       {/* Levels label — only show on home, not in deck list */}
       {!selectedLevelId && !selectedBand && (
-        <div className="flex items-center justify-between w-full mb-3">
-          <h2 className="font-black text-white text-xl">Levels</h2>
+        <div className="flex flex-col w-full mb-4">
+          <h2 className="font-black text-white text-[2.6rem] leading-none tracking-tight">Levels</h2>
+          <WavyLine className="mt-2 max-w-[200px]" />
         </div>
       )}
 
