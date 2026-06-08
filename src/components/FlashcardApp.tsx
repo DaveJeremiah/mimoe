@@ -38,12 +38,12 @@ export function FlashcardApp() {
   // Band colors — gradient palettes matching the home cards (3 vivid stops each)
   const BAND_STYLES: Record<"A1"|"A2"|"B1", BandStyle> = {
     A1: {
-      cardBg:    "#DB2777",  // hot pink — vivid midpoint of the cocktail
-      ghost1:    "#EC4899",  // lighter pink
-      ghost2:    "#1E40AF",  // royal blue anchor
-      lines:     "rgba(80,10,60,0.09)",
-      bar:       "linear-gradient(90deg, #1E40AF 0%, #DB2777 50%, #F97316 100%)",
-      curl:      "linear-gradient(140deg, #F97316 0%, #DB2777 50%, #1E40AF 100%)",
+      cardBg:    "#F97316",  // blaze orange — dominant colour
+      ghost1:    "#FB923C",  // lighter tangerine
+      ghost2:    "#E56010",  // deeper burnt orange (gives depth to ghost stack)
+      lines:     "rgba(80,30,0,0.09)",
+      bar:       "linear-gradient(90deg, #F97316 0%, #DB2777 55%, #1E40AF 100%)",
+      curl:      "linear-gradient(140deg, #1E40AF 0%, #DB2777 50%, #F97316 100%)",
       textColor: "#FFFFFF",
     },
     A2: {
@@ -814,7 +814,7 @@ export function FlashcardApp() {
 
   // Band info for when selectedBand is set
   const selectedBandInfo = selectedBand ? {
-    A1: { hex: "linear-gradient(140deg, #1E40AF 0%, #DB2777 50%, #F97316 100%)", img: BAND_IMGS.A1, title: "Your starting point", subtitle: "Greetings, numbers, core verbs, basics" },
+    A1: { hex: "linear-gradient(140deg, #F97316 0%, #DB2777 55%, #1E40AF 100%)", img: BAND_IMGS.A1, title: "Your starting point", subtitle: "Greetings, numbers, core verbs, basics" },
     A2: { hex: "linear-gradient(140deg, #059669 0%, #0EA5E9 50%, #6366F1 100%)", img: BAND_IMGS.A2, title: "Daily life", subtitle: "Routines, travel, shopping, past tense" },
     B1: { hex: "linear-gradient(140deg, #4F46E5 0%, #7C3AED 50%, #C026D3 100%)", img: BAND_IMGS.B1, title: "Real conversation", subtitle: "Opinions, work, emotions, storytelling" },
   }[selectedBand] : null;

@@ -386,76 +386,92 @@ export function Flashcard({
         </div>
       </div>
 
-      {/* PTT mic + skip buttons */}
-      <div className="flex gap-3 w-full max-w-[340px] mt-10">
+      {/* Bottom controls */}
+      <div className="flex flex-col items-center w-full mt-10 gap-5">
 
-        {/* Push-to-talk: hold to speak, release to process */}
-        <button
-          onPointerDown={(e) => {
-            e.preventDefault();
-            if (!isMicOn || isSpeaking) return;
-            unlockAudio();
-            startPTT();
-          }}
-          onPointerUp={() => stopPTT()}
-          onPointerLeave={() => stopPTT()}
-          onPointerCancel={() => cancelPTT()}
-          onContextMenu={(e) => e.preventDefault()}
-          disabled={isSpeaking || !isMicOn}
-          className={[
-            "flex-1 h-[60px] rounded-2xl flex flex-col items-center justify-center gap-[3px]",
-            "select-none touch-none transition-all duration-150",
-            pttStatus === "listening"
-              ? "bg-[#1cb0f6] shadow-[0_5px_0_#1592cc] scale-[0.97]"
-              : isSpeaking || !isMicOn
-                ? "bg-[#252f45] opacity-30 cursor-not-allowed"
-                : "bg-[#252f45] shadow-[0_5px_0_#171e30] active:shadow-[0_2px_0_#171e30] active:translate-y-[3px]",
-          ].join(" ")}
-          style={{ WebkitUserSelect: "none", userSelect: "none", WebkitTouchCallout: "none" } as React.CSSProperties}
-        >
-          {pttStatus === "listening" ? (
-            <div className="flex items-center gap-[4px]">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <span
-                  key={i}
-                  className="wave-dot"
-                  data-active="true"
-                  style={{ "--dot-delay": `${i * 80}ms` } as React.CSSProperties}
-                />
-              ))}
-            </div>
-          ) : (
-            <>
-              {/* Mic icon */}
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.50)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="9" y="2" width="6" height="12" rx="3" fill="rgba(255,255,255,0.50)" stroke="none" />
-                <path d="M5 10a7 7 0 0 0 14 0" />
-                <line x1="12" y1="17" x2="12" y2="21" />
-                <line x1="9" y1="21" x2="15" y2="21" />
-              </svg>
-              <span className="text-[8px] font-bold text-white/25 uppercase tracking-[0.12em] leading-none">Hold</span>
-            </>
-          )}
-        </button>
+        {/* Row: replay ── PTT circle ── spacer (balanced) */}
+        <div className="flex items-center justify-center gap-7">
 
-        {/* Replay / skip button */}
+          {/* Replay / reveal button */}
+          <button
+            onClick={() => {
+              if (isAnswerVisible) speakFrench(targetWord, undefined, lc);
+              else handleDontKnow();
+            }}
+            className="w-[50px] h-[50px] rounded-full bg-[#252f45] flex items-center justify-center shadow-[0_4px_0_#171e30] active:shadow-[0_2px_0_#171e30] active:translate-y-[2px] transition-all flex-shrink-0"
+          >
+            <RefreshCw className="w-4 h-4 text-white/40" />
+          </button>
+
+          {/* Circular PTT with expanding ripple rings */}
+          <div className="relative flex items-center justify-center flex-shrink-0">
+            {/* Ripple rings — staggered animate-ping, overflow beyond container (no clip) */}
+            {pttStatus === "listening" && (
+              <>
+                <div className="absolute w-[76px] h-[76px] rounded-full bg-[#1cb0f6]/55 animate-ping" style={{ animationDuration: "1.1s" }} />
+                <div className="absolute w-[76px] h-[76px] rounded-full bg-[#1cb0f6]/35 animate-ping" style={{ animationDuration: "1.1s", animationDelay: "280ms" }} />
+                <div className="absolute w-[76px] h-[76px] rounded-full bg-[#1cb0f6]/18 animate-ping" style={{ animationDuration: "1.1s", animationDelay: "560ms" }} />
+              </>
+            )}
+            <button
+              onPointerDown={(e) => {
+                e.preventDefault();
+                if (!isMicOn) return;
+                unlockAudio();
+                startPTT();
+              }}
+              onPointerUp={() => stopPTT()}
+              onPointerLeave={() => stopPTT()}
+              onPointerCancel={() => cancelPTT()}
+              onContextMenu={(e) => e.preventDefault()}
+              className={[
+                "relative z-10 w-[76px] h-[76px] rounded-full",
+                "flex flex-col items-center justify-center gap-[3px]",
+                "select-none touch-none transition-all duration-150",
+                pttStatus === "listening"
+                  ? "bg-[#1cb0f6] shadow-[0_5px_0_#1592cc,0_0_22px_rgba(28,176,246,0.45)] scale-[0.92]"
+                  : isMicOn
+                    ? "bg-[#252f45] shadow-[0_5px_0_#171e30] active:scale-[0.92] active:shadow-[0_2px_0_#171e30]"
+                    : "bg-[#252f45] opacity-30",
+              ].join(" ")}
+              style={{ WebkitUserSelect: "none", userSelect: "none", WebkitTouchCallout: "none" } as React.CSSProperties}
+            >
+              {pttStatus === "listening" ? (
+                <div className="flex items-center gap-[3px]">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <span
+                      key={i}
+                      className="wave-dot"
+                      data-active="true"
+                      style={{ "--dot-delay": `${i * 80}ms` } as React.CSSProperties}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="2" width="6" height="12" rx="3" fill="rgba(255,255,255,0.55)" />
+                    <path d="M5 10a7 7 0 0 0 14 0" stroke="rgba(255,255,255,0.55)" strokeWidth="2" />
+                    <line x1="12" y1="17" x2="12" y2="21" stroke="rgba(255,255,255,0.55)" strokeWidth="2" />
+                    <line x1="9" y1="21" x2="15" y2="21" stroke="rgba(255,255,255,0.55)" strokeWidth="2" />
+                  </svg>
+                  <span className="text-[8px] font-bold text-white/25 uppercase tracking-[0.12em] leading-none">Hold</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Spacer — mirrors the replay button for visual balance */}
+          <div className="w-[50px] h-[50px] flex-shrink-0" />
+        </div>
+
         <button
-          onClick={() => {
-            if (isAnswerVisible) speakFrench(targetWord, undefined, lc);
-            else handleDontKnow();
-          }}
-          className="w-[60px] h-[60px] rounded-2xl bg-[#252f45] flex items-center justify-center shadow-[0_5px_0_#171e30] active:shadow-[0_2px_0_#171e30] active:translate-y-[3px] transition-all"
+          onClick={handleDontKnow}
+          className="text-[10px] uppercase tracking-[0.18em] text-white/25 font-medium hover:text-white/45 transition-colors"
         >
-          <RefreshCw className="w-5 h-5 text-white/45" />
+          Can't speak now
         </button>
       </div>
-
-      <button
-        onClick={handleDontKnow}
-        className="mt-5 text-[10px] uppercase tracking-[0.18em] text-white/25 font-medium hover:text-white/45 transition-colors"
-      >
-        Can't speak now
-      </button>
     </div>
   );
 }
