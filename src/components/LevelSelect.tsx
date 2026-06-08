@@ -3,7 +3,7 @@ import { Check, Heart, ArrowLeft, ChevronRight } from "lucide-react";
 
 // Concentric ripple rings — SVG circles expanding from a bottom-center origin.
 // Gives cards a water-drop / pulse feel instead of grain texture.
-export function RipplePattern({ cx = "50%", cy = "85%", color = "white", maxRings = 10, spacing = 44, strokeWidth = 1.2 }:
+export function RipplePattern({ cx = "50%", cy = "85%", color = "rgba(0,0,0,0.55)", maxRings = 10, spacing = 44, strokeWidth = 3 }:
   { cx?: string; cy?: string; color?: string; maxRings?: number; spacing?: number; strokeWidth?: number }) {
   return (
     <svg
@@ -21,7 +21,7 @@ export function RipplePattern({ cx = "50%", cy = "85%", color = "white", maxRing
           fill="none"
           stroke={color}
           strokeWidth={strokeWidth}
-          opacity={Math.max(0.03, 0.32 - i * 0.028)}
+          opacity={Math.max(0.05, 0.55 - i * 0.048)}
         />
       ))}
     </svg>
@@ -270,7 +270,7 @@ export function LevelSelect({
     {
       id: "A1" as const,
       // Coral → blush → mint — the three requested hues
-      bg: "linear-gradient(140deg, #EB5E55 0%, #ECBEB4 55%, #DBF9B8 100%)",
+      bg: "linear-gradient(140deg, #EB5E55 0%, #ECBEB4 55%, #519E8A 100%)",
       shadow: "#B83A32",
       img3d: BAND_IMGS.A1,
       title: "Beginner",
@@ -387,7 +387,7 @@ export function LevelSelect({
                 minHeight: "clamp(150px, 32vw, 190px)",
               }}
             >
-              <RipplePattern cy="90%" maxRings={8} spacing={36} strokeWidth={1} />
+              <RipplePattern cy="90%" maxRings={8} spacing={36} />
               <div className="absolute inset-0 p-4 flex flex-col justify-between">
                 <div className="flex items-start justify-between">
                   <img

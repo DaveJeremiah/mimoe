@@ -31,7 +31,7 @@ export function CollectionCard({ collection, onStudy, onEdit, onDelete }: Collec
 
   return (
     <div className="relative overflow-hidden bg-card rounded-3xl border border-border p-5 card-shadow">
-      <RipplePattern cy="90%" maxRings={7} spacing={38} strokeWidth={0.8} color="rgba(255,255,255,0.5)" />
+      <RipplePattern cy="90%" maxRings={7} spacing={38} color="rgba(255,255,255,0.4)" />
       <div className="flex items-start justify-between mb-4">
         <div className="w-10 h-10 rounded-xl bg-secondary/20 flex items-center justify-center">
           <span className="text-xl">🎵</span>

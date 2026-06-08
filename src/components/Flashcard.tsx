@@ -114,7 +114,7 @@ function PageCurl({ size, curl }: { size: number; curl: string }) {
 }
 
 function CardPattern() {
-  return <RipplePattern cy="80%" maxRings={9} spacing={40} strokeWidth={1.2} />;
+  return <RipplePattern cy="80%" maxRings={9} spacing={40} />;
 }
 
 export function Flashcard({
