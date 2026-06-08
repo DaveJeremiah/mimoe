@@ -333,7 +333,7 @@ export function LevelSelect({
                 alt=""
                 aria-hidden="true"
                 className="absolute bottom-0 left-0 w-full pointer-events-none"
-                style={{ opacity: 1, mixBlendMode: "normal" }}
+                style={{ opacity: 1, mixBlendMode: "normal", transform: "translateY(22%)" }}
               />
             )}
             <CardShine strong />
