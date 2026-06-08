@@ -954,10 +954,11 @@ export function FlashcardApp() {
                   {isMenuOpen && (
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)} />
-                      <div className="absolute right-0 top-full mt-2 w-48 rounded-xl bg-card border border-border shadow-lg z-50 overflow-hidden animate-slide-up-in">
+                      <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl overflow-hidden z-50 animate-slide-up-in"
+                        style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 16px 40px rgba(0,0,0,0.6)' }}>
                         <button
                           onClick={handleShuffleDeck}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                          className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-white/80 hover:text-white hover:bg-white/5 transition-colors"
                         >
                           <Shuffle className="w-4 h-4" />
                           Shuffle Cards
@@ -974,14 +975,16 @@ export function FlashcardApp() {
                               }
                             }
                           }}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors border-t border-border"
+                          className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-white/80 hover:text-white hover:bg-white/5 transition-colors"
+                          style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
                         >
                           <Bookmark className="w-4 h-4" />
                           Study Bookmarked
                         </button>
                         <button
                           onClick={() => { setIsMenuOpen(false); setIsWordBankOpen(true); }}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors border-t border-border"
+                          className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-white/80 hover:text-white hover:bg-white/5 transition-colors"
+                          style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
                         >
                           <BookOpen className="w-4 h-4" />
                           Word Bank
@@ -1029,8 +1032,8 @@ export function FlashcardApp() {
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setIsLangDropdownOpen(false)} />
                     <div
-                      className="absolute top-full right-0 mt-2 rounded-2xl overflow-hidden z-50 shadow-2xl min-w-[150px]"
-                      style={{ background: '#1c2138', border: '1px solid rgba(255,255,255,0.10)' }}
+                      className="absolute top-full right-0 mt-2 rounded-2xl overflow-hidden z-50 min-w-[150px]"
+                      style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 16px 40px rgba(0,0,0,0.6)' }}
                     >
                       {(["french", "arabic"] as Language[]).map((lang) => {
                         const cfg = LANGUAGE_CONFIGS[lang];

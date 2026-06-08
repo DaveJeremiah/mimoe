@@ -97,7 +97,7 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult }: Options) {
         // iOS ended without a transcript and user is still holding.
         // This is the audio-session conflict case — retry after a delay.
         setStatus("idle");
-        const delay = attempt === 0 ? 800 : 400;
+        const delay = attempt === 0 ? 1000 : 600;
         setTimeout(() => {
           // eslint-disable-next-line @typescript-eslint/no-use-before-define
           if (isHoldingRef.current) doStart(attempt + 1);
@@ -115,7 +115,7 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult }: Options) {
       // Synchronous throw — also an iOS audio-session conflict.
       recRef.current = null;
       if (_isIOS && isHoldingRef.current && attempt < 3) {
-        const delay = attempt === 0 ? 800 : 400;
+        const delay = attempt === 0 ? 1000 : 600;
         setTimeout(() => {
           if (isHoldingRef.current) doStart(attempt + 1);
         }, delay);

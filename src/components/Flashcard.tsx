@@ -183,9 +183,9 @@ export function Flashcard({
       if (finished) return;
       finished = true;
       if (gateSafetyRef.current) { window.clearTimeout(gateSafetyRef.current); gateSafetyRef.current = null; }
-      // iOS needs ~1 s after TTS for the audio session to fully release
-      // so SpeechRecognition doesn't immediately fail with audio-capture.
-      const postDelay = _isIOS ? 1100 : 200;
+      // iOS holds the AVAudioSession for up to ~1.2 s after audio ends.
+      // 1500 ms gives a comfortable margin before SpeechRecognition starts.
+      const postDelay = _isIOS ? 1500 : 200;
       window.setTimeout(() => {
         setIsSpeaking(false);
         ttsGateRef.current = false;

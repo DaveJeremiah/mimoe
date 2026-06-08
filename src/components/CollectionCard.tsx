@@ -49,17 +49,19 @@ export function CollectionCard({ collection, onStudy, onEdit, onDelete }: Collec
 
       {/* Dropdown Menu */}
       {showMenu && (
-        <div className="absolute right-4 top-14 mt-1 w-32 bg-card rounded-lg shadow-lg border border-border z-10">
+        <div className="absolute right-4 top-14 mt-1 w-32 rounded-xl overflow-hidden z-10"
+          style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 12px 32px rgba(0,0,0,0.6)' }}>
           <button
             onClick={handleEdit}
-            className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-muted transition-colors flex items-center gap-2"
+            className="w-full px-3 py-2.5 text-left text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors flex items-center gap-2"
           >
             <Edit className="w-3 h-3" />
             Edit
           </button>
           <button
             onClick={handleDelete}
-            className="w-full px-3 py-2 text-left text-sm hover:bg-muted text-red-500 transition-colors flex items-center gap-2"
+            className="w-full px-3 py-2.5 text-left text-sm text-red-400 hover:bg-white/5 transition-colors flex items-center gap-2"
+            style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
           >
             <Trash2 className="w-3 h-3" />
             Delete

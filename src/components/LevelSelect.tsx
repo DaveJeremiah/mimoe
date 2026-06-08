@@ -161,9 +161,10 @@ export function LevelSelect({
               <button
                 key={deck.id}
                 onClick={() => onSelectLevel(deck.id)}
-                className={`w-full flex items-center gap-3 p-3.5 rounded-xl border transition-all duration-200 text-left active:scale-[0.98] ${
-                  isCompleted ? `${band.accentBorder} ${band.accentBg}` : "border-border bg-card hover:bg-muted"
+                className={`w-full flex items-center gap-3 p-4 rounded-2xl transition-all duration-200 text-left active:scale-[0.97] ${
+                  isCompleted ? `${band.accentBorder} ${band.accentBg} border` : "bg-card hover:bg-muted"
                 }`}
+                style={!isCompleted ? { border: '1px solid rgba(255,255,255,0.07)' } : undefined}
               >
                 <span className={`text-xs font-bold w-5 text-center flex-shrink-0 ${isCompleted ? band.accentText : "text-muted-foreground"}`}>
                   {i + 1}
@@ -200,9 +201,10 @@ export function LevelSelect({
                   <button
                     key={deck.id}
                     onClick={() => onSelectLevel(deck.id)}
-                    className={`w-full flex items-center gap-3 p-3.5 rounded-xl border transition-all duration-200 text-left active:scale-[0.98] ${
-                      isCompleted ? "border-success/30 bg-success/10" : "border-border bg-card hover:bg-muted"
+                    className={`w-full flex items-center gap-3 p-4 rounded-2xl transition-all duration-200 text-left active:scale-[0.97] ${
+                      isCompleted ? "border border-success/30 bg-success/10" : "bg-card hover:bg-muted"
                     }`}
+                    style={!isCompleted ? { border: '1px solid rgba(255,255,255,0.07)' } : undefined}
                   >
                     <span className="text-xs font-bold w-5 text-center flex-shrink-0 text-muted-foreground">{i + 1}</span>
                     <img
@@ -303,7 +305,7 @@ export function LevelSelect({
                 alt=""
                 aria-hidden="true"
                 className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none"
-                style={{ opacity: 0.2, mixBlendMode: "soft-light" }}
+                style={{ opacity: 0.38, mixBlendMode: "overlay" }}
               />
             )}
             <div className="absolute inset-0 p-5 flex flex-col justify-between">

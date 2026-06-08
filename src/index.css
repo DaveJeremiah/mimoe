@@ -6,44 +6,45 @@
 
 @layer base {
   :root {
-    --background: 220 20% 8%;
-    --foreground: 210 20% 90%;
+    /* Pure-black base — matches the sign-in page aesthetic */
+    --background: 0 0% 4%;        /* #0a0a0a */
+    --foreground: 0 0% 90%;
 
-    --card: 220 18% 12%;
-    --card-foreground: 210 20% 90%;
+    --card: 0 0% 7%;              /* #111111 */
+    --card-foreground: 0 0% 90%;
 
-    --popover: 225 20% 16%;
-    --popover-foreground: 210 20% 90%;
+    --popover: 0 0% 9%;           /* #171717 */
+    --popover-foreground: 0 0% 90%;
 
-    --primary: 226 71% 60%;
+    --primary: 270 60% 60%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 14 78% 57%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 220 15% 16%;
-    --muted-foreground: 220 10% 55%;
+    --muted: 0 0% 11%;            /* #1c1c1c */
+    --muted-foreground: 0 0% 48%;
 
-    --accent: 226 71% 55%;
+    --accent: 270 60% 55%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 15% 20%;
-    --input: 220 15% 20%;
-    --ring: 226 71% 55%;
+    --border: 0 0% 14%;           /* #242424 — matches rgba(255,255,255,0.08) on black */
+    --input: 0 0% 11%;
+    --ring: 270 60% 55%;
 
     --radius: 1rem;
 
-    --sidebar-background: 225 20% 14%;
-    --sidebar-foreground: 210 20% 85%;
-    --sidebar-primary: 210 20% 90%;
-    --sidebar-primary-foreground: 225 20% 14%;
-    --sidebar-accent: 225 15% 20%;
-    --sidebar-accent-foreground: 210 20% 85%;
-    --sidebar-border: 225 15% 22%;
-    --sidebar-ring: 226 71% 55%;
+    --sidebar-background: 0 0% 8%;
+    --sidebar-foreground: 0 0% 85%;
+    --sidebar-primary: 0 0% 90%;
+    --sidebar-primary-foreground: 0 0% 8%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 0 0% 85%;
+    --sidebar-border: 0 0% 14%;
+    --sidebar-ring: 270 60% 55%;
 
     --success: 145 63% 42%;
     --success-foreground: 0 0% 100%;
@@ -58,9 +59,15 @@
     @apply border-border;
   }
 
+  html {
+    background: #0a0a0a;
+  }
+
   body {
     @apply bg-background text-foreground font-sans;
     font-family: 'DM Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
