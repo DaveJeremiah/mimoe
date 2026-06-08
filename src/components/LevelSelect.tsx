@@ -156,7 +156,6 @@ export function LevelSelect({
         <div className="flex flex-col gap-2">
           {decks.map((deck, i) => {
             const isCompleted = completedLevelIds.includes(deck.id);
-            const emoji = DECK_EMOJIS[deck.id] ?? "📖";
             const title = stripCefrPrefix(deck.title);
             return (
               <button
