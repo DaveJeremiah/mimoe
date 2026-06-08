@@ -265,8 +265,8 @@ export function LevelSelect({
     {
       id: "A1" as const,
       // Coral → blush → mint — the three requested hues
-      bg: "linear-gradient(140deg, #EB5E55 0%, #ECBEB4 55%, #519E8A 100%)",
-      shadow: "#B83A32",
+      bg: "linear-gradient(140deg, #E8D5B0 0%, #ECBEB4 55%, #519E8A 100%)",
+      shadow: "#B8956A",
       img3d: BAND_IMGS.A1,
       title: "Beginner",
       subtitle: "Greetings, numbers, core verbs",
@@ -292,7 +292,7 @@ export function LevelSelect({
   ];
 
   return (
-    <div className="w-full flex flex-col gap-3">
+    <div className="w-full flex flex-col gap-5">
 
       {/* Bookmarked row */}
       {bookmarkedCount > 0 && onStudyBookmarked && (
@@ -333,7 +333,7 @@ export function LevelSelect({
                 alt=""
                 aria-hidden="true"
                 className="absolute bottom-0 left-0 w-full pointer-events-none"
-                style={{ opacity: 1, mixBlendMode: "normal", transform: "translateY(22%)" }}
+                style={{ opacity: 1, mixBlendMode: "normal", transform: "translateY(calc(22% - 4px))" }}
               />
             )}
             <CardShine strong />
@@ -365,7 +365,7 @@ export function LevelSelect({
       })}
 
       {/* A2 + B1 side by side */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-4">
         {BAND_CARDS.slice(1).map((b) => {
           const decks = grouped[b.id] ?? [];
           const completed = decks.filter(d => completedLevelIds.includes(d.id)).length;
