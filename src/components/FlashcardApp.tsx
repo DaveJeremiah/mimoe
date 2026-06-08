@@ -377,9 +377,16 @@ export function FlashcardApp() {
     if (!cardId) return;
     if (failed) {
       setFailedCards(prev => new Set(prev).add(cardId));
-      setComboCount(0);
     } else {
       setFirstAttemptCorrect(prev => new Set(prev).add(cardId));
+    }
+    // Streak logic:
+    //  • WRONG_FINAL (failed + requeued)  → reset streak
+    //  • Card completed (not requeued)    → increment (covers correct 1st try AND correct on retry)
+    //  • "Can't speak now" (!failed + requeued) → neutral, streak holds
+    if (failed && requeue) {
+      setComboCount(0);
+    } else if (!requeue) {
       setComboCount(prev => prev + 1);
     }
     if (!requeue) {
@@ -915,12 +922,14 @@ export function FlashcardApp() {
                 <X className="w-5 h-5 text-white/50" />
               </button>
 
-              {/* Progress bar with optional combo badge */}
+              {/* Progress bar with streak badge */}
               <div className="flex-1 relative">
                 {comboCount >= 2 && (
-                  <span className="absolute -top-5 left-1/2 text-[#77dd00] text-[9px] font-black uppercase tracking-widest whitespace-nowrap animate-combo-pop">
-                    COMBO ×{comboCount}
-                  </span>
+                  <div className="absolute -top-[22px] left-1/2 -translate-x-1/2 flex items-center gap-1 px-2 py-0.5 rounded-full animate-combo-pop"
+                    style={{ background: "rgba(249,115,22,0.18)", border: "1px solid rgba(249,115,22,0.35)" }}>
+                    <span className="text-[11px] leading-none">🔥</span>
+                    <span className="text-[9px] font-black text-orange-400 whitespace-nowrap">{comboCount} in a row</span>
+                  </div>
                 )}
                 <div className="h-[14px] rounded-full bg-[#252f45] overflow-hidden">
                   <div
@@ -1113,6 +1122,7 @@ export function FlashcardApp() {
             onAdvance={handleAdvance}
             total={allCards.length}
             remaining={queue.length}
+            streak={comboCount}
             isBookmarked={bookmarkedCards.includes(currentCard.id)}
             onToggleBookmark={async () => {
               const cardId = currentCard.id;

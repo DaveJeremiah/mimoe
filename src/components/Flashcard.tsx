@@ -36,6 +36,7 @@ interface FlashcardProps {
   onAdvance: (opts: { failed: boolean; requeue: boolean }) => void;
   total: number;
   remaining: number;
+  streak?: number;
   isBookmarked?: boolean;
   onToggleBookmark?: () => void;
   isMicOn?: boolean;
@@ -117,7 +118,7 @@ function CardPattern() {
 }
 
 export function Flashcard({
-  card, onAdvance, total, remaining,
+  card, onAdvance, total, remaining, streak = 0,
   isBookmarked, onToggleBookmark, isMicOn = true,
   onAnimateAdvance, langConfig, bandStyle = DEFAULT_BAND_STYLE,
 }: FlashcardProps) {
@@ -327,6 +328,15 @@ export function Flashcard({
         >
           {/* Same diagonal crack pattern as home cards */}
           <CardPattern />
+
+          {/* Streak fire badge — top-right corner of card */}
+          {streak >= 2 && (
+            <div className="absolute top-3 right-3 z-20 flex items-center gap-0.5 px-2 py-1 rounded-full"
+              style={{ background: "rgba(0,0,0,0.25)", backdropFilter: "blur(4px)" }}>
+              <span className="text-[13px] leading-none">🔥</span>
+              <span className="text-[11px] font-black text-white/90 leading-none">{streak}</span>
+            </div>
+          )}
 
           {/* Sparkle stars */}
           {showSparkle && (
