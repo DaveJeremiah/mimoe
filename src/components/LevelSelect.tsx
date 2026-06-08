@@ -1,5 +1,28 @@
+import type { CSSProperties } from "react";
 import type { Level } from "@/lib/flashcardData";
 import { Check, Heart, ArrowLeft, ChevronRight } from "lucide-react";
+
+// SVG feTurbulence grain tiled as a data-URI background — zero JS overhead,
+// tiling fractal noise gives a matte canvas / rough-paper feel.
+const GRAIN_URI =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E\")";
+
+function GrainTexture({ opacity = 0.13, blend = "overlay" as CSSProperties["mixBlendMode"] }) {
+  return (
+    <div
+      aria-hidden="true"
+      className="absolute inset-0 pointer-events-none"
+      style={{
+        backgroundImage: GRAIN_URI,
+        backgroundRepeat: "repeat",
+        backgroundSize: "180px",
+        opacity,
+        mixBlendMode: blend,
+        borderRadius: "inherit",
+      }}
+    />
+  );
+}
 
 export function WavyLine({ className = "", colors = ["#e05070", "#e07030"] }: { className?: string; colors?: [string, string] }) {
   const id = `wg-${colors[0].replace("#","")}-${colors[1].replace("#","")}`;
@@ -314,6 +337,7 @@ export function LevelSelect({
                 style={{ opacity: 0.38, mixBlendMode: "overlay" }}
               />
             )}
+            <GrainTexture opacity={0.15} />
             <div className="absolute inset-0 p-5 flex flex-col justify-between">
               <div className="flex items-start justify-between">
                 <img
@@ -359,6 +383,7 @@ export function LevelSelect({
                 minHeight: "clamp(150px, 32vw, 190px)",
               }}
             >
+              <GrainTexture opacity={0.13} />
               <div className="absolute inset-0 p-4 flex flex-col justify-between">
                 <div className="flex items-start justify-between">
                   <img

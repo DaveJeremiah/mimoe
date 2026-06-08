@@ -112,19 +112,24 @@ function PageCurl({ size, curl }: { size: number; curl: string }) {
   );
 }
 
-// ── Subtle diagonal crack pattern (same as home cards) ────────────────────────
+// Fractal noise grain — same tiling approach as the home band cards
+const GRAIN_URI =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E\")";
+
 function CardPattern() {
   return (
-    <svg
-      className="absolute inset-0 w-full h-full pointer-events-none"
-      style={{ opacity: 0.1 }}
-      viewBox="0 0 200 200"
-      preserveAspectRatio="xMidYMid slice"
-    >
-      <line x1="60"  y1="0"   x2="120" y2="200" stroke="white" strokeWidth="1.2"/>
-      <line x1="140" y1="0"   x2="80"  y2="200" stroke="white" strokeWidth="0.6"/>
-      <line x1="0"   y1="70"  x2="200" y2="130" stroke="white" strokeWidth="0.6"/>
-    </svg>
+    <div
+      aria-hidden="true"
+      className="absolute inset-0 pointer-events-none"
+      style={{
+        backgroundImage: GRAIN_URI,
+        backgroundRepeat: "repeat",
+        backgroundSize: "180px",
+        opacity: 0.14,
+        mixBlendMode: "overlay",
+        borderRadius: "inherit",
+      }}
+    />
   );
 }
 
