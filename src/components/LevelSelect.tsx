@@ -329,11 +329,11 @@ export function LevelSelect({
           >
             {b.id === "A1" && (
               <img
-                src="/images/a1-bg.jpg"
+                src="/images/a1-bg.png"
                 alt=""
                 aria-hidden="true"
-                className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none"
-                style={{ opacity: 0.38, mixBlendMode: "overlay" }}
+                className="absolute inset-0 w-full h-full object-contain object-bottom pointer-events-none"
+                style={{ opacity: 1, mixBlendMode: "normal", transform: "translateX(18%) scale(1.05)" }}
               />
             )}
             <CardShine strong />
