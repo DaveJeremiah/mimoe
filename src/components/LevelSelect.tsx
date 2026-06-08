@@ -332,8 +332,8 @@ export function LevelSelect({
                 src="/images/a1-bg.png"
                 alt=""
                 aria-hidden="true"
-                className="absolute inset-0 w-full h-full object-contain object-bottom pointer-events-none"
-                style={{ opacity: 1, mixBlendMode: "normal", transform: "translateX(18%) scale(1.05)" }}
+                className="absolute bottom-0 left-0 w-full pointer-events-none"
+                style={{ opacity: 1, mixBlendMode: "normal" }}
               />
             )}
             <CardShine strong />
