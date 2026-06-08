@@ -10,6 +10,17 @@ function vibrate(pattern: number | number[]) {
   try { navigator.vibrate?.(pattern) } catch { /* unsupported */ }
 }
 
+// iOS holds its AVAudioSession after <audio> playback; SpeechRecognition
+// needs ~1 s after TTS finishes before the audio session is free.
+const _isIOS = typeof navigator !== "undefined" && (
+  /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ||
+  (typeof window !== "undefined" && (
+    (window.navigator as any).standalone === true ||
+    window.matchMedia?.("(display-mode: standalone)").matches
+  ))
+);
+
 // ── Band style: colours that flow through the entire session ──────────────────
 export interface BandStyle {
   cardBg:    string;  // solid card background (matches home card)
@@ -172,12 +183,15 @@ export function Flashcard({
       if (finished) return;
       finished = true;
       if (gateSafetyRef.current) { window.clearTimeout(gateSafetyRef.current); gateSafetyRef.current = null; }
+      // iOS needs ~1 s after TTS for the audio session to fully release
+      // so SpeechRecognition doesn't immediately fail with audio-capture.
+      const postDelay = _isIOS ? 1100 : 200;
       window.setTimeout(() => {
         setIsSpeaking(false);
         ttsGateRef.current = false;
         lastProcessedRef.current = "";
         if (onDone) onDone();
-      }, 200);
+      }, postDelay);
     };
     // Safety: never stay gated more than 6.5 s
     gateSafetyRef.current = window.setTimeout(onFinish, 6500);
@@ -426,7 +440,7 @@ export function Flashcard({
             <button
               onPointerDown={(e) => {
                 e.preventDefault();
-                if (!isMicOn) return;
+                if (!isMicOn || isSpeaking) return;
                 unlockAudio();
                 startPTT();
               }}
@@ -440,9 +454,11 @@ export function Flashcard({
                 "select-none touch-none transition-all duration-150",
                 pttStatus === "listening"
                   ? "bg-[#1cb0f6] shadow-[0_5px_0_#1592cc,0_0_22px_rgba(28,176,246,0.45)] scale-[0.92]"
-                  : isMicOn
-                    ? "bg-[#252f45] shadow-[0_5px_0_#171e30] active:scale-[0.92] active:shadow-[0_2px_0_#171e30]"
-                    : "bg-[#252f45] opacity-30",
+                  : isSpeaking
+                    ? "bg-[#252f45] opacity-60 cursor-default"
+                    : isMicOn
+                      ? "bg-[#252f45] shadow-[0_5px_0_#171e30] active:scale-[0.92] active:shadow-[0_2px_0_#171e30]"
+                      : "bg-[#252f45] opacity-30",
               ].join(" ")}
               style={{ WebkitUserSelect: "none", userSelect: "none", WebkitTouchCallout: "none" } as React.CSSProperties}
             >
@@ -457,6 +473,16 @@ export function Flashcard({
                     />
                   ))}
                 </div>
+              ) : isSpeaking ? (
+                /* TTS playing — show speaker pulse so user knows to wait */
+                <>
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="rgba(255,255,255,0.45)" />
+                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="rgba(255,255,255,0.55)" strokeWidth="2" />
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14" stroke="rgba(255,255,255,0.3)" strokeWidth="2" />
+                  </svg>
+                  <span className="text-[8px] font-bold text-white/30 uppercase tracking-[0.12em] leading-none">Wait…</span>
+                </>
               ) : (
                 <>
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">

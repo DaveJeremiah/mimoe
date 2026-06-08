@@ -233,8 +233,8 @@ export function LevelSelect({
   const BAND_CARDS = [
     {
       id: "A1" as const,
-      // Blaze orange → hot pink → royal blue — orange leads, blue accent corner
-      bg: "linear-gradient(140deg, #F97316 0%, #DB2777 55%, #1E40AF 100%)",
+      // Soft tangerine → hot pink → royal blue — warm & inviting, not harsh
+      bg: "linear-gradient(140deg, #FB923C 0%, #DB2777 55%, #1E40AF 100%)",
       shadow: "#C45F00",
       img3d: BAND_IMGS.A1,
       title: "Beginner",
@@ -297,6 +297,15 @@ export function LevelSelect({
             }}
           >
             <BgPattern />
+            {b.id === "A1" && (
+              <img
+                src="/images/a1-bg.jpg"
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none"
+                style={{ opacity: 0.2, mixBlendMode: "soft-light" }}
+              />
+            )}
             <div className="absolute inset-0 p-5 flex flex-col justify-between">
               <div className="flex items-start justify-between">
                 <img
