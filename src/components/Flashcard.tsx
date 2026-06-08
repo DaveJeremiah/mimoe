@@ -122,6 +122,20 @@ function CardPattern() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// iOS PWA has stricter audio-session rules — the mic session and the <audio>
+// playback session can't overlap, and each takes longer to release than on Android.
+const _isIOS = typeof navigator !== "undefined" && (
+  /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+);
+// Running as a standalone PWA (added to home screen) is even more restrictive.
+const _isPWA = typeof window !== "undefined" &&
+  ((window.navigator as any).standalone === true ||
+   window.matchMedia?.("(display-mode: standalone)").matches);
+// Use generous delays on iOS/PWA; tight but sufficient on Android/Chrome.
+const PRE_TTS_MS  = (_isIOS || _isPWA) ? 550 : 300;  // mic teardown → audio start
+const POST_TTS_MS = (_isIOS || _isPWA) ? 750 : 350;  // audio end   → mic restart
+
 export function Flashcard({
   card, onAdvance, total, remaining, onTranscriptRef,
   isBookmarked, onToggleBookmark, isMicOn = true, micStatus = "idle", onToggleMic,
@@ -173,18 +187,19 @@ export function Flashcard({
       if (gateSafetyRef.current) { window.clearTimeout(gateSafetyRef.current); gateSafetyRef.current = null; }
       // Small tail so the recognizer's trailing buffer is dropped, then either
       // advance (onDone) or resume listening for the user's retry.
+      // iOS/PWA needs a longer tail — the audio session takes more time to vacate.
       window.setTimeout(() => {
         ttsGateRef.current = false;
         lastProcessedRef.current = "";
         if (onDone) onDone();
         else resumeListeningRef.current?.();   // staying on card → listen again
-      }, 350);
+      }, POST_TTS_MS);
     };
     // Safety: never stay gated more than 6.5s in case the audio end never fires
     gateSafetyRef.current = window.setTimeout(onFinish, 6500);
-    // Let the mic fully release (~300ms) before playing, so the audio-session
-    // switch happens BEFORE playback rather than mid-word.
-    window.setTimeout(() => speakFrench(text, onFinish, lcRef.current), 300);
+    // Let the mic fully release before playing, so the audio-session switch
+    // happens BEFORE playback rather than mid-word.  iOS/PWA needs longer here.
+    window.setTimeout(() => speakFrench(text, onFinish, lcRef.current), PRE_TTS_MS);
   }, []);
 
   useEffect(() => { stateRef.current = state; },       [state]);

@@ -1,5 +1,5 @@
 import type { Level } from "@/lib/flashcardData";
-import { Check, Plus, Heart, ArrowLeft, ChevronRight } from "lucide-react";
+import { Check, Heart, ArrowLeft, ChevronRight } from "lucide-react";
 
 function BgPattern() {
   return (
@@ -366,14 +366,6 @@ export function LevelSelect({
         })}
       </div>
 
-      {/* Add custom level */}
-      <button
-        onClick={onAddLevel}
-        className="w-full flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-border hover:bg-muted/50 transition-all active:scale-[0.98]"
-      >
-        <Plus className="w-4 h-4 text-muted-foreground" />
-        <span className="text-xs font-semibold text-muted-foreground">Add custom level</span>
-      </button>
 
     </div>
   );

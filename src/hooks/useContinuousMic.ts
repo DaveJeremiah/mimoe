@@ -21,6 +21,18 @@ async function fetchAzureToken(): Promise<{ token: string; region: string } | nu
   }
 }
 
+// iOS (especially as a PWA) holds onto the audio session longer after both
+// SpeechRecognition and <audio> playback.  Use generous retry delays so the
+// mic restart doesn't race against the session that's still being torn down.
+const _IOS_MIC = typeof navigator !== "undefined" && (
+  /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ||
+  (typeof window !== "undefined" && (
+    (window.navigator as any).standalone === true ||
+    window.matchMedia?.("(display-mode: standalone)").matches
+  ))
+);
+
 export function useContinuousMic({ onTranscript, sttLang = "fr-FR" }: UseContinuousMicOptions) {
   const [status, setStatus] = useState<MicStatus>("idle");
 
@@ -89,16 +101,20 @@ export function useContinuousMic({ onTranscript, sttLang = "fr-FR" }: UseContinu
       rec.start();
       return true;
     } catch {
-      // iOS frequently rejects start() right after audio playback (the audio
-      // session hasn't freed yet). Retry a few times with a growing delay before
-      // giving up — this is what brings the mic back after TTS on iPhone.
+      // iOS/PWA frequently rejects start() right after audio playback because
+      // the audio session hasn't freed yet.  Retry with a growing delay.
+      // iOS needs much longer gaps than Android — audio-session teardown is
+      // async and the OS won't grant the mic until it fully completes.
       if (browserRecRef.current === rec) browserRecRef.current = null;
-      if (attempt < 4) {
+      if (attempt < 5) {
+        const delay = _IOS_MIC
+          ? 800 + attempt * 600   // iOS/PWA: 800 / 1400 / 2000 / 2600 / 3200 ms
+          : 350 + attempt * 250;  // Android/desktop: 350 / 600 / 850 / 1100 / 1350 ms
         setTimeout(() => {
           if (enabledRef.current && generationRef.current === generation && !browserRecRef.current) {
             startBrowserRef.current?.(generation, attempt + 1);
           }
-        }, 350 + attempt * 250);
+        }, delay);
         return true; // handled via retry — don't fall back to Azure
       }
       return false;
