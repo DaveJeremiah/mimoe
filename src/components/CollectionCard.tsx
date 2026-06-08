@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { MoreVertical, Edit, Trash2 } from "lucide-react";
+import { RipplePattern } from "./LevelSelect";
 import type { Collection } from "@/lib/collectionTypes";
 
 interface CollectionCardProps {
@@ -28,11 +29,9 @@ export function CollectionCard({ collection, onStudy, onEdit, onDelete }: Collec
     }
   };
 
-  const GRAIN_FINE = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='gf'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23gf)'/%3E%3C/svg%3E\")";
-
   return (
     <div className="relative overflow-hidden bg-card rounded-3xl border border-border p-5 card-shadow">
-      <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ backgroundImage: GRAIN_FINE, backgroundRepeat: "repeat", backgroundSize: "160px", opacity: 0.12, mixBlendMode: "soft-light" }} />
+      <RipplePattern cy="90%" maxRings={7} spacing={38} strokeWidth={0.8} color="rgba(255,255,255,0.5)" />
       <div className="flex items-start justify-between mb-4">
         <div className="w-10 h-10 rounded-xl bg-secondary/20 flex items-center justify-center">
           <span className="text-xl">🎵</span>

@@ -4,6 +4,7 @@ import type { FlashcardItem } from "@/lib/flashcardData";
 import type { LanguageConfig } from "@/lib/languageConfig";
 import { LANGUAGE_CONFIGS } from "@/lib/languageConfig";
 import { usePushToTalkMic } from "@/hooks/usePushToTalkMic";
+import { RipplePattern } from "./LevelSelect";
 import { RefreshCw } from "lucide-react";
 
 function vibrate(pattern: number | number[]) {
@@ -112,26 +113,8 @@ function PageCurl({ size, curl }: { size: number; curl: string }) {
   );
 }
 
-const GRAIN_FINE =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='gf'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23gf)'/%3E%3C/svg%3E\")";
-const GRAIN_COARSE =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='gc'%3E%3CfeTurbulence type='turbulence' baseFrequency='0.2' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23gc)'/%3E%3C/svg%3E\")";
-
 function CardPattern() {
-  return (
-    <>
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 pointer-events-none"
-        style={{ backgroundImage: GRAIN_FINE, backgroundRepeat: "repeat", backgroundSize: "160px", opacity: 0.28, mixBlendMode: "soft-light", borderRadius: "inherit" }}
-      />
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 pointer-events-none"
-        style={{ backgroundImage: GRAIN_COARSE, backgroundRepeat: "repeat", backgroundSize: "240px", opacity: 0.18, mixBlendMode: "multiply", borderRadius: "inherit" }}
-      />
-    </>
-  );
+  return <RipplePattern cy="80%" maxRings={9} spacing={40} strokeWidth={1.2} />;
 }
 
 export function Flashcard({

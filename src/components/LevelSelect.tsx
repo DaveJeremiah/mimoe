@@ -1,44 +1,30 @@
-import type { CSSProperties } from "react";
 import type { Level } from "@/lib/flashcardData";
 import { Check, Heart, ArrowLeft, ChevronRight } from "lucide-react";
 
-// Coarse fractal noise — lower baseFrequency = bigger chunks = clearly visible roughness.
-// Two layers stacked: a fine layer + a coarse layer for depth.
-const GRAIN_FINE =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='gf'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23gf)'/%3E%3C/svg%3E\")";
-const GRAIN_COARSE =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='gc'%3E%3CfeTurbulence type='turbulence' baseFrequency='0.2' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23gc)'/%3E%3C/svg%3E\")";
-
-function GrainTexture() {
+// Concentric ripple rings — SVG circles expanding from a bottom-center origin.
+// Gives cards a water-drop / pulse feel instead of grain texture.
+export function RipplePattern({ cx = "50%", cy = "85%", color = "white", maxRings = 10, spacing = 44, strokeWidth = 1.2 }:
+  { cx?: string; cy?: string; color?: string; maxRings?: number; spacing?: number; strokeWidth?: number }) {
   return (
-    <>
-      {/* Fine grain layer */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage: GRAIN_FINE,
-          backgroundRepeat: "repeat",
-          backgroundSize: "160px",
-          opacity: 0.28,
-          mixBlendMode: "soft-light",
-          borderRadius: "inherit",
-        }}
-      />
-      {/* Coarse chunky layer for the rugged/worn feel */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage: GRAIN_COARSE,
-          backgroundRepeat: "repeat",
-          backgroundSize: "240px",
-          opacity: 0.18,
-          mixBlendMode: "multiply",
-          borderRadius: "inherit",
-        }}
-      />
-    </>
+    <svg
+      aria-hidden="true"
+      className="absolute inset-0 w-full h-full pointer-events-none"
+      viewBox="0 0 400 400"
+      preserveAspectRatio="xMidYMid slice"
+    >
+      {Array.from({ length: maxRings }, (_, i) => (
+        <circle
+          key={i}
+          cx={cx}
+          cy={cy}
+          r={(i + 1) * spacing}
+          fill="none"
+          stroke={color}
+          strokeWidth={strokeWidth}
+          opacity={Math.max(0.03, 0.32 - i * 0.028)}
+        />
+      ))}
+    </svg>
   );
 }
 
@@ -283,9 +269,9 @@ export function LevelSelect({
   const BAND_CARDS = [
     {
       id: "A1" as const,
-      // Deep maroon → hot pink → royal blue
-      bg: "linear-gradient(140deg, #7B1C2E 0%, #DB2777 55%, #1E40AF 100%)",
-      shadow: "#4A0915",
+      // Coral → blush → mint — the three requested hues
+      bg: "linear-gradient(140deg, #EB5E55 0%, #ECBEB4 55%, #DBF9B8 100%)",
+      shadow: "#B83A32",
       img3d: BAND_IMGS.A1,
       title: "Beginner",
       subtitle: "Greetings, numbers, core verbs",
@@ -355,7 +341,7 @@ export function LevelSelect({
                 style={{ opacity: 0.38, mixBlendMode: "overlay" }}
               />
             )}
-            <GrainTexture opacity={0.15} />
+            <RipplePattern />
             <div className="absolute inset-0 p-5 flex flex-col justify-between">
               <div className="flex items-start justify-between">
                 <img
@@ -401,7 +387,7 @@ export function LevelSelect({
                 minHeight: "clamp(150px, 32vw, 190px)",
               }}
             >
-              <GrainTexture opacity={0.13} />
+              <RipplePattern cy="90%" maxRings={8} spacing={36} strokeWidth={1} />
               <div className="absolute inset-0 p-4 flex flex-col justify-between">
                 <div className="flex items-start justify-between">
                   <img
