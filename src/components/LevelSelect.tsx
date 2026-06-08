@@ -233,8 +233,9 @@ export function LevelSelect({
   const BAND_CARDS = [
     {
       id: "A1" as const,
-      bg: "linear-gradient(145deg, #FF5F6D 0%, #FF8444 42%, #FFA834 72%, #FFCC4A 100%)",
-      shadow: "#CC3344",
+      // Burnt sienna → blaze orange → tangerine → honey → pale gold
+      bg: "linear-gradient(148deg, #C44A0A 0%, #FF6800 22%, #FF9200 48%, #FFBE00 72%, #FFE566 90%, #FFF8C0 100%)",
+      shadow: "#8B3000",
       img3d: BAND_IMGS.A1,
       title: "Beginner",
       subtitle: "Greetings, numbers, core verbs",
