@@ -1200,12 +1200,17 @@ export function FlashcardApp() {
                   <div className="px-1">
                     <span className="text-xs font-bold text-white/35 uppercase tracking-widest">Collections</span>
                   </div>
-                  {collections.length > 0 ? (() => {
+                  {(() => {
+                    // Only show collections for the active language
+                    const visibleCollections = collections.filter(c => c.language === activeLanguage);
+                    if (visibleCollections.length === 0) return (
+                      <p className="text-center text-white/25 text-sm py-8">No collections yet</p>
+                    );
                     // Group by category; uncategorized last
                     const groups: { cat: typeof COLLECTION_CATEGORIES[number] | null; items: Collection[] }[] = [];
                     const catMap = new Map<string, Collection[]>();
                     const uncategorized: Collection[] = [];
-                    for (const col of collections) {
+                    for (const col of visibleCollections) {
                       if (col.category) {
                         if (!catMap.has(col.category)) catMap.set(col.category, []);
                         catMap.get(col.category)!.push(col);
@@ -1244,11 +1249,7 @@ export function FlashcardApp() {
                         ))}
                       </div>
                     );
-                  })() : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p className="text-sm">Add your first collection — song lyrics, dialogues, anything.</p>
-                    </div>
-                  )}
+                  })()}
                 </div>
               </div>
             </div>
