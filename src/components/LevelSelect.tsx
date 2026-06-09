@@ -341,19 +341,21 @@ export function LevelSelect({
             )}
             <CardShine strong />
             <div className="absolute inset-0 p-5 flex flex-col justify-between">
-              <div className="flex items-start justify-between">
-                <img
-                  src={b.img3d}
-                  alt=""
-                  className="w-20 h-20 object-contain"
-                  style={{ filter: "drop-shadow(0 8px 18px rgba(0,0,0,0.4))" }}
-                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "0"; }}
-                />
+              {/* Badge — top right only */}
+              <div className="flex items-start justify-end">
                 <span className="text-white/70 text-xs font-bold px-2 py-1 rounded-full bg-black/20">
                   {b.id} · {completed}/{decks.length}
                 </span>
               </div>
+              {/* Illustration + text — bottom */}
               <div>
+                <img
+                  src={b.img3d}
+                  alt=""
+                  className="w-20 h-20 object-contain mb-2"
+                  style={{ filter: "drop-shadow(0 8px 18px rgba(0,0,0,0.4))" }}
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "0"; }}
+                />
                 <p className="text-white font-black text-2xl leading-tight" style={{ textShadow: "0 1px 6px rgba(0,0,0,0.25)" }}>
                   {b.title}
                 </p>
