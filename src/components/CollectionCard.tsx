@@ -29,22 +29,8 @@ export function CollectionCard({ collection, onStudy, onEdit, onDelete }: Collec
         border: '1px solid rgba(255,255,255,0.07)',
       }}
     >
-      {/* Top row: category pill + menu */}
-      <div className="flex items-start justify-between mb-2 flex-shrink-0">
-        {catInfo ? (
-          <span
-            className="text-[9px] font-bold px-2 py-0.5 rounded-full leading-none flex items-center gap-1"
-            style={{
-              background: 'rgba(129,140,248,0.12)',
-              color: 'rgba(255,255,255,0.45)',
-              border: '1px solid rgba(129,140,248,0.18)',
-            }}
-          >
-            <span>{catInfo.emoji}</span>
-            <span>{catInfo.label}</span>
-          </span>
-        ) : <span />}
-
+      {/* Top row: menu button only */}
+      <div className="flex items-start justify-end mb-2 flex-shrink-0">
         <button
           onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
           className="p-1 rounded-lg hover:bg-white/8 transition-colors flex-shrink-0 -mr-1 -mt-0.5"

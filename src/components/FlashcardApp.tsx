@@ -1203,8 +1203,8 @@ export function FlashcardApp() {
                     <span className="text-xs font-bold text-white/35 uppercase tracking-widest">Collections</span>
                   </div>
                   {(() => {
-                    // Only show collections for the active language
-                    const visibleCollections = collections.filter(c => c.language === activeLanguage);
+                    // Only show collections for the active language (treat null/undefined as "french")
+                    const visibleCollections = collections.filter(c => (c.language ?? "french") === activeLanguage);
                     if (visibleCollections.length === 0) return (
                       <p className="text-center text-white/25 text-sm py-8">No collections yet</p>
                     );
