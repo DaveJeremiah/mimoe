@@ -1346,7 +1346,7 @@ export function FlashcardApp() {
       />
 
       {/* ── Home bottom nav ── */}
-      {!selectedLevelId && appView === "main" && (
+      {!selectedLevelId && appView === "main" && !isCollectionModalOpen && (
         <nav className="fixed bottom-0 left-0 right-0 z-50">
           <div
             className="w-full flex items-center px-5 gap-3"
