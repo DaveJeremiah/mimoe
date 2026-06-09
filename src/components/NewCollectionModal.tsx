@@ -104,7 +104,7 @@ export function NewCollectionModal({ isOpen, onClose, onSave, editingCollection,
 
         {/* Scrollable body */}
         <div className="overflow-y-auto" style={{ maxHeight: 'calc(92vh - 20px)' }}>
-          <div className="px-5 pt-5 pb-8 space-y-5">
+          <div className="px-5 pt-5 pb-4 space-y-5">
 
             {/* Title heading + WavyLine */}
             <div className="flex items-start justify-between">
@@ -208,34 +208,24 @@ export function NewCollectionModal({ isOpen, onClose, onSave, editingCollection,
               </div>
             )}
 
-            {/* Actions */}
-            <div className="flex gap-3 pt-1">
+          </div>
+
+          {/* Sticky Create button — always visible above keyboard */}
+          <div className="sticky bottom-0 px-5 pt-3 pb-7" style={{ background: '#050505' }}>
+            <div className="p-[1.5px] rounded-full" style={{ background: 'linear-gradient(135deg, #9b5cf6, #ec4899)' }}>
               <button
                 type="button"
-                onClick={handleClose}
+                onClick={handleSave}
                 disabled={isSaving}
-                className="flex-1 px-4 py-4 rounded-full text-white/50 font-semibold text-sm transition-colors disabled:opacity-40"
-                style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.08)' }}
+                className="w-full py-4 rounded-full font-bold text-white text-sm flex items-center justify-center gap-2 transition-opacity disabled:opacity-50"
+                style={{ background: '#0a0a0a' }}
               >
-                Cancel
+                {isSaving
+                  ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Saving…</>
+                  : <><Plus className="w-4 h-4" />{editingCollection ? "Update" : "Create"}</>
+                }
               </button>
-              {/* Gradient-border save button */}
-              <div className="flex-1 p-[1.5px] rounded-full" style={{ background: 'linear-gradient(135deg, #9b5cf6, #ec4899)' }}>
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className="w-full py-4 rounded-full font-bold text-white text-sm flex items-center justify-center gap-2 transition-opacity disabled:opacity-50"
-                  style={{ background: '#0a0a0a' }}
-                >
-                  {isSaving
-                    ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Saving…</>
-                    : <><Plus className="w-4 h-4" />{editingCollection ? "Update" : "Create"}</>
-                  }
-                </button>
-              </div>
             </div>
-
           </div>
         </div>
       </div>
