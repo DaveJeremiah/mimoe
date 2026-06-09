@@ -935,6 +935,9 @@ export function FlashcardApp() {
             paddingBottom: "24px",
             paddingLeft: "24px",
             paddingRight: "24px",
+            position: "sticky",
+            top: 0,
+            zIndex: 40,
           }}
         >
           {/* Top: Back + Search + French pill */}
