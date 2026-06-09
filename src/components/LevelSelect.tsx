@@ -267,9 +267,9 @@ export function LevelSelect({
     {
       id: "A1" as const,
       bg: activeLanguage === "arabic"
-        ? "linear-gradient(140deg, #0D7377 0%, #3B3E8C 55%, #7B2D8B 100%)"
+        ? "linear-gradient(140deg, #E8A020 0%, #F5C842 55%, #C86428 100%)"
         : "linear-gradient(140deg, #E8D5B0 0%, #ECBEB4 55%, #519E8A 100%)",
-      shadow: activeLanguage === "arabic" ? "#085558" : "#B8956A",
+      shadow: activeLanguage === "arabic" ? "#A0601A" : "#B8956A",
       img3d: BAND_IMGS.A1,
       title: "Beginner",
       subtitle: "Greetings, numbers, core verbs",

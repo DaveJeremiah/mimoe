@@ -38,12 +38,12 @@ export function FlashcardApp() {
   // Band colors — gradient palettes matching the home cards (3 vivid stops each)
   const BAND_STYLES: Record<"A1"|"A2"|"B1", BandStyle> = {
     A1: activeLanguage === "arabic" ? {
-      cardBg:    "#3B3E8C",  // rich indigo
-      ghost1:    "#6B6EC4",  // lighter indigo
-      ghost2:    "#0D7377",  // deep teal
-      lines:     "rgba(100,100,220,0.07)",
-      bar:       "linear-gradient(90deg, #0D7377 0%, #3B3E8C 55%, #7B2D8B 100%)",
-      curl:      "linear-gradient(140deg, #7B2D8B 0%, #3B3E8C 50%, #0D7377 100%)",
+      cardBg:    "#E8A020",  // sandy gold
+      ghost1:    "#F5C842",  // warm amber
+      ghost2:    "#C86428",  // burnt orange
+      lines:     "rgba(255,200,80,0.07)",
+      bar:       "linear-gradient(90deg, #E8A020 0%, #F5C842 55%, #C86428 100%)",
+      curl:      "linear-gradient(140deg, #C86428 0%, #F5C842 50%, #E8A020 100%)",
       textColor: "#FFFFFF",
     } : {
       cardBg:    "#E8D5B0",  // warm beige
@@ -830,7 +830,7 @@ export function FlashcardApp() {
   // Band info for when selectedBand is set
   const selectedBandInfo = selectedBand ? {
     A1: { hex: activeLanguage === "arabic"
-        ? "linear-gradient(140deg, #0D7377 0%, #3B3E8C 55%, #7B2D8B 100%)"
+        ? "linear-gradient(140deg, #E8A020 0%, #F5C842 55%, #C86428 100%)"
         : "linear-gradient(140deg, #E8D5B0 0%, #ECBEB4 55%, #519E8A 100%)", img: BAND_IMGS.A1, title: "Your starting point", subtitle: "Greetings, numbers, core verbs, basics" },
     A2: { hex: "linear-gradient(140deg, #059669 0%, #0EA5E9 50%, #6366F1 100%)", img: BAND_IMGS.A2, title: "Daily life", subtitle: "Routines, travel, shopping, past tense" },
     B1: { hex: "linear-gradient(140deg, #4F46E5 0%, #7C3AED 50%, #C026D3 100%)", img: BAND_IMGS.B1, title: "Real conversation", subtitle: "Opinions, work, emotions, storytelling" },
