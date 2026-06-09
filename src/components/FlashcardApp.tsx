@@ -1028,7 +1028,7 @@ export function FlashcardApp() {
 
             {/* Instruction label */}
             <div>
-              <h2 className="text-white font-black text-[1.3rem] leading-tight">Translate the words</h2>
+              <h2 className="text-white font-black text-[1.3rem] leading-tight">Speak fluency into existence</h2>
               <WavyLine className="mt-1 max-w-[120px]" />
             </div>
           </div>
