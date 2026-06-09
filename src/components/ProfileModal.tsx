@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { LogOut, BookOpen, Layers } from "lucide-react";
+import { LogOut, BookOpen, Layers, Pencil, Check, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { WavyLine } from "./LevelSelect";
 import type { User } from "@supabase/supabase-js";
 
@@ -13,8 +14,9 @@ interface ProfileModalProps {
   collectionsCount: number;
 }
 
+/** DiceBear PNG — PNG renders reliably as <img>, seed from user.id */
 export function dicebearUrl(seed: string) {
-  return `https://api.dicebear.com/9.x/micah/svg?seed=${encodeURIComponent(seed)}&backgroundColor=transparent&baseColor=f9c9b6,ac6651&hair=dannyPhantom,full,pixie,short,mrT&facialHair=&eyes=eyes,round&mouth=smile,smirk,laughing`;
+  return `https://api.dicebear.com/9.x/micah/png?seed=${encodeURIComponent(seed)}&size=200`;
 }
 
 export function ProfileModal({
@@ -22,12 +24,39 @@ export function ProfileModal({
   completedVocabCount, completedPhrasesCount, collectionsCount,
 }: ProfileModalProps) {
   const { signOut } = useAuth();
-  const [signingOut, setSigningOut] = useState(false);
+
+  const emailHandle = (user.email ?? "").split("@")[0];
+  const savedNickname = (user.user_metadata?.nickname as string | undefined) ?? emailHandle;
+
+  const [signingOut,   setSigningOut]   = useState(false);
+  const [editingName,  setEditingName]  = useState(false);
+  const [nickDraft,    setNickDraft]    = useState(savedNickname);
+  const [savingNick,   setSavingNick]   = useState(false);
+  const [nickError,    setNickError]    = useState("");
 
   const avatarUrl = dicebearUrl(user.id);
-  const email     = user.email ?? "";
-  const handle    = email.split("@")[0];
+  const displayName = savedNickname;
 
+  /* ── nickname save ── */
+  const handleSaveNick = async () => {
+    const trimmed = nickDraft.trim();
+    if (!trimmed) { setNickError("Name can't be empty"); return; }
+    if (trimmed.length > 24) { setNickError("Max 24 characters"); return; }
+    setNickError("");
+    setSavingNick(true);
+    const { error } = await supabase.auth.updateUser({ data: { nickname: trimmed } });
+    setSavingNick(false);
+    if (error) { setNickError("Couldn't save — try again"); return; }
+    setEditingName(false);
+  };
+
+  const handleCancelNick = () => {
+    setNickDraft(savedNickname);
+    setNickError("");
+    setEditingName(false);
+  };
+
+  /* ── sign out ── */
   const handleSignOut = async () => {
     setSigningOut(true);
     await signOut();
@@ -58,23 +87,72 @@ export function ProfileModal({
             <div
               className="w-[88px] h-[88px] rounded-full overflow-hidden flex-shrink-0"
               style={{
-                background: 'linear-gradient(135deg, rgba(129,140,248,0.25), rgba(168,85,247,0.25))',
+                background: 'linear-gradient(135deg, rgba(129,140,248,0.2), rgba(168,85,247,0.2))',
                 border: '2px solid rgba(129,140,248,0.35)',
               }}
             >
-              <img src={avatarUrl} alt="" className="w-full h-full" draggable={false} />
+              <img src={avatarUrl} alt="" className="w-full h-full object-cover" draggable={false} />
             </div>
-            <div className="text-center">
-              <h2 className="font-display text-[1.4rem] font-black text-white leading-tight">{handle}</h2>
-              <WavyLine className="mt-1 max-w-[100px] mx-auto" />
-              <p className="text-xs text-white/35 mt-1.5">{email}</p>
+
+            {/* Name + edit */}
+            <div className="text-center w-full max-w-[240px]">
+              {editingName ? (
+                <div className="flex flex-col items-center gap-2">
+                  <input
+                    autoFocus
+                    value={nickDraft}
+                    onChange={e => { setNickDraft(e.target.value); setNickError(""); }}
+                    onKeyDown={e => { if (e.key === "Enter") handleSaveNick(); if (e.key === "Escape") handleCancelNick(); }}
+                    maxLength={24}
+                    className="w-full text-center text-lg font-black text-white bg-transparent outline-none border-b-2 pb-1"
+                    style={{ borderColor: 'rgba(129,140,248,0.5)' }}
+                    disabled={savingNick}
+                  />
+                  {nickError && <p className="text-xs text-red-400">{nickError}</p>}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleSaveNick}
+                      disabled={savingNick}
+                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold transition-opacity disabled:opacity-50"
+                      style={{ background: 'rgba(129,140,248,0.15)', color: 'rgba(167,139,250,0.9)', border: '1px solid rgba(129,140,248,0.25)' }}
+                    >
+                      {savingNick
+                        ? <div className="w-3 h-3 border border-indigo-400/30 border-t-indigo-400 rounded-full animate-spin" />
+                        : <Check className="w-3 h-3" />
+                      }
+                      Save
+                    </button>
+                    <button
+                      onClick={handleCancelNick}
+                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold"
+                      style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.08)' }}
+                    >
+                      <X className="w-3 h-3" /> Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-1">
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-display text-[1.4rem] font-black text-white leading-tight">{displayName}</h2>
+                    <button
+                      onClick={() => { setNickDraft(displayName); setEditingName(true); }}
+                      className="p-1 rounded-lg hover:bg-white/8 transition-colors mt-0.5"
+                    >
+                      <Pencil className="w-3 h-3 text-white/30" />
+                    </button>
+                  </div>
+                  <WavyLine className="max-w-[100px]" />
+                  <p className="text-xs text-white/35 mt-0.5">{user.email}</p>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Stats */}
           <div className="grid grid-cols-3 gap-2.5">
             {[
-              { icon: <BookOpen className="w-4 h-4" />, value: completedVocabCount, label: "Vocab done" },
+              { icon: <BookOpen className="w-4 h-4" />, value: completedVocabCount,   label: "Vocab done"   },
               { icon: <Layers    className="w-4 h-4" />, value: completedPhrasesCount, label: "Phrases done" },
               { icon: <span className="text-base leading-none">📚</span>, value: collectionsCount, label: "Collections" },
             ].map(({ icon, value, label }) => (
