@@ -223,10 +223,7 @@ export function FlashcardApp() {
     }
   }, [user, loading, navigate]);
 
-  // Keep back-handler ref fresh
-  useEffect(() => { handleBackRef.current = handleBack; }, [handleBack]);
-
-  // Back gesture / hardware back button
+  // Back gesture / hardware back button (ref is kept fresh below, after handleBack is defined)
   useEffect(() => {
     const onPop = () => { handleBackRef.current(); };
     window.addEventListener('popstate', onPop);
@@ -480,6 +477,9 @@ export function FlashcardApp() {
       setSelectedBand(null);
     }
   }, [selectedLevelId, selectedBand]);
+
+  // Keep back-handler ref fresh (must be after handleBack is defined)
+  useEffect(() => { handleBackRef.current = handleBack; }, [handleBack]);
 
   // Swipe handlers for regular cards
   const handleSwipeForward = useCallback(() => {
