@@ -47,7 +47,7 @@ export function CollectionCard({ collection, onStudy, onEdit, onDelete }: Collec
       {/* Title + count */}
       <div className="mb-3 flex-shrink-0">
         <h3
-          className="font-display text-sm font-bold text-white leading-tight mb-0.5"
+          className="font-sans text-sm font-bold text-white leading-tight mb-0.5"
           style={{
             display: '-webkit-box',
             WebkitLineClamp: 2,
