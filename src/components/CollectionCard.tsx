@@ -62,14 +62,16 @@ export function CollectionCard({ collection, onStudy, onEdit, onDelete }: Collec
         </p>
       </div>
 
-      {/* Study button */}
-      <button
-        onClick={() => onStudy(collection)}
-        className="w-full py-2 rounded-xl font-bold text-xs transition-opacity hover:opacity-90 flex-shrink-0"
-        style={{ background: 'linear-gradient(135deg, #7C3AED, #9B5CF6)', color: '#fff' }}
-      >
-        Study
-      </button>
+      {/* Study button — gradient outline */}
+      <div className="p-[1.5px] rounded-xl flex-shrink-0" style={{ background: 'linear-gradient(135deg, #7C3AED, #9B5CF6)' }}>
+        <button
+          onClick={() => onStudy(collection)}
+          className="w-full py-2 rounded-[10px] font-bold text-xs transition-opacity hover:opacity-80"
+          style={{ background: '#0E0E14', color: 'rgba(167,139,250,0.9)' }}
+        >
+          Study
+        </button>
+      </div>
 
       {/* Dropdown menu */}
       {showMenu && (
