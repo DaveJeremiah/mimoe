@@ -253,7 +253,7 @@ export function FlashcardApp() {
         .from("user_progress")
         .select("level_id, tab, all_correct")
         .eq("user_id", user.id);
-      if (data) {
+      if (data && data.length > 0) {
         const vocab: string[] = [];
         const phrases: string[] = [];
         data.forEach((row) => {
@@ -262,8 +262,9 @@ export function FlashcardApp() {
             else if (row.tab === "phrases") phrases.push(row.level_id);
           }
         });
-        setCompletedVocab(vocab);
-        setCompletedPhrases(phrases);
+        // Merge with localStorage — never wipe data that's already there
+        if (vocab.length > 0)   setCompletedVocab(prev  => [...new Set([...prev,  ...vocab])]);
+        if (phrases.length > 0) setCompletedPhrases(prev => [...new Set([...prev, ...phrases])]);
       }
     };
     loadProgress();
@@ -451,8 +452,8 @@ export function FlashcardApp() {
     if (isDeckComplete && selectedLevelId && !isBookmarkedSession) {
       const allCorrectFirstTry = allCards.length > 0 && failedCards.size === 0;
 
-      // Mark completed regardless of mistakes — allCorrectFirstTry only affects the star/perfect badge
-      if (!completedIds.includes(selectedLevelId)) {
+      // Only mark complete on a perfect run (zero mistakes)
+      if (allCorrectFirstTry && !completedIds.includes(selectedLevelId)) {
         setCompletedIds((prev) => [...prev, selectedLevelId]);
       }
 
