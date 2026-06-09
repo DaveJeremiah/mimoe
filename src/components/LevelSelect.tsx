@@ -51,6 +51,7 @@ interface LevelSelectProps {
   selectedBand: "A1" | "A2" | "B1" | null;
   onSelectBand: (band: "A1" | "A2" | "B1") => void;
   onBack: () => void;
+  activeLanguage?: string;
 }
 
 // Colors match the home band cards exactly
@@ -162,6 +163,7 @@ export function LevelSelect({
   selectedBand,
   onSelectBand,
   onBack,
+  activeLanguage = "french",
 }: LevelSelectProps) {
 
   const grouped: Record<string, Level[]> = { A1: [], A2: [], B1: [], custom: [] };
@@ -329,7 +331,7 @@ export function LevelSelect({
           >
             {b.id === "A1" && (
               <img
-                src="/images/a1-bg.png"
+                src={activeLanguage === "arabic" ? "/images/ar-a1-bg.png" : "/images/a1-bg.png"}
                 alt=""
                 aria-hidden="true"
                 className="absolute bottom-0 left-0 w-full pointer-events-none"

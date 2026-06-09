@@ -1086,6 +1086,7 @@ export function FlashcardApp() {
             selectedBand={selectedBand}
             onSelectBand={setSelectedBand}
             onBack={() => setSelectedBand(null)}
+            activeLanguage={activeLanguage}
           />
         ) : allCards.length === 0 ? (
           <div className="flex flex-col items-center gap-3 text-center animate-fade-in py-8">
