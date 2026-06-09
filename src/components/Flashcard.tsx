@@ -202,13 +202,13 @@ export function Flashcard({
 
 
   const animateAndAdvance = useCallback((
-    exitClass: string, opts: { failed: boolean; requeue: boolean }
+    _exitClass: string, opts: { failed: boolean; requeue: boolean }
   ) => {
     if (isExiting) return;
     setIsExiting(true);
-    setExitAnim(exitClass);
+    setExitAnim("animate-card-flip-out");
     if (advanceTimerRef.current) { window.clearTimeout(advanceTimerRef.current); advanceTimerRef.current = null; }
-    setTimeout(() => { setIsExiting(false); setExitAnim(""); onAdvance(opts); }, 420);
+    setTimeout(() => { setIsExiting(false); setExitAnim(""); onAdvance(opts); }, 220);
   }, [isExiting, onAdvance]);
 
   useEffect(() => { if (onAnimateAdvance) onAnimateAdvance(animateAndAdvance); }, [onAnimateAdvance, animateAndAdvance]);
@@ -269,8 +269,8 @@ export function Flashcard({
     // Brief suppress so the tail of the previous card's audio isn't misheard
     ignoreUntilRef.current = Date.now() + 600;
     lastProcessedRef.current = "";
-    setEnterAnim("animate-enter-right");
-    setTimeout(() => setEnterAnim(""), 400);
+    setEnterAnim("animate-card-flip-in");
+    setTimeout(() => setEnterAnim(""), 220);
 
     // No auto-speak on card appear — TTS only fires after the user speaks
   }, [card.id]);
@@ -309,93 +309,98 @@ export function Flashcard({
     <div className="flex flex-col items-center w-full">
 
       {/* Card stack */}
-      <div className={`relative w-full max-w-[270px] ${exitAnim} ${cardAnim} animate-curl-breathe`}>
+      <div className={`relative w-full max-w-[360px] ${cardAnim}`}>
 
-        {/* Ghost layers — peek out from the TOP */}
-        <div className="absolute inset-x-4 top-[-8px] bottom-3 rounded-[36px]"
-          style={{ background: bandStyle.ghost2, boxShadow: "0 -4px 16px rgba(0,0,0,0.2)" }} />
-        <div className="absolute inset-x-2 top-[-4px] bottom-1.5 rounded-[36px]"
-          style={{ background: bandStyle.ghost1, boxShadow: "0 -2px 10px rgba(0,0,0,0.15)" }} />
+        {/* Ghost layers using SVG card design — peek from TOP */}
+        <div className="absolute inset-x-4 top-[-8px] bottom-3 overflow-hidden"
+          style={{ borderRadius: 24, boxShadow: "0 -4px 16px rgba(0,0,0,0.2)" }}>
+          <img src="/images/card-template.svg" className="absolute inset-0 w-full h-full" style={{ objectFit: 'fill' }} alt="" />
+          <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.32)' }} />
+        </div>
+        <div className="absolute inset-x-2 top-[-4px] bottom-1.5 overflow-hidden"
+          style={{ borderRadius: 26, boxShadow: "0 -2px 10px rgba(0,0,0,0.15)" }}>
+          <img src="/images/card-template.svg" className="absolute inset-0 w-full h-full" style={{ objectFit: 'fill' }} alt="" />
+          <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.16)' }} />
+        </div>
 
-        {/* Front card — solid band colour */}
-        <div
-          className={`relative aspect-square overflow-hidden ${enterAnim}`}
-          style={{
-            borderRadius: "36px",
-            background: bandStyle.cardBg,
-            backgroundImage: `repeating-linear-gradient(transparent, transparent 29px, ${bandStyle.lines} 29px, ${bandStyle.lines} 30px)`,
-            backgroundSize: "100% 30px",
-            backgroundPositionY: "48px",
-            boxShadow: "0 14px 40px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.2)",
-          }}
-        >
-          {/* Same diagonal crack pattern as home cards */}
-          <CardPattern />
+        {/* Front card — 3D flip on advance */}
+        <div style={{ perspective: '900px' }}>
+          <div
+            className={`relative overflow-hidden ${enterAnim} ${exitAnim}`}
+            style={{
+              aspectRatio: '570/438',
+              borderRadius: 28,
+              boxShadow: "0 14px 40px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.2)",
+              transformOrigin: 'center center',
+            }}
+          >
+            {/* SVG card template as visual background */}
+            <img src="/images/card-template.svg" className="absolute inset-0 w-full h-full" style={{ objectFit: 'fill' }} alt="" aria-hidden />
 
-          {/* Streak fire badge — top-right corner of card */}
-          {streak >= 2 && (
-            <div className="absolute top-3 right-3 z-20 flex items-center gap-0.5 px-2 py-1 rounded-full"
-              style={{ background: "rgba(0,0,0,0.25)", backdropFilter: "blur(4px)" }}>
-              <span className="text-[13px] leading-none">🔥</span>
-              <span className="text-[11px] font-black text-white/90 leading-none">{streak}</span>
+            {/* Streak fire badge */}
+            {streak >= 2 && (
+              <div className="absolute top-3 right-3 z-20 flex items-center gap-0.5 px-2 py-1 rounded-full"
+                style={{ background: "rgba(0,0,0,0.18)", backdropFilter: "blur(4px)" }}>
+                <span className="text-[13px] leading-none">🔥</span>
+                <span className="text-[11px] font-black text-white/90 leading-none">{streak}</span>
+              </div>
+            )}
+
+            {/* Sparkle stars */}
+            {showSparkle && (
+              <>
+                <span className="absolute top-7 right-9 leading-none pointer-events-none select-none animate-sparkle"
+                  style={{ fontSize: "22px", color: '#2a2a3a', opacity: 0.65 }}>✦</span>
+                <span className="absolute bottom-10 left-9 leading-none pointer-events-none select-none animate-sparkle"
+                  style={{ fontSize: "14px", color: '#2a2a3a', opacity: 0.4, animationDelay: "90ms" }}>✦</span>
+              </>
+            )}
+
+            {/* Card content */}
+            <div className="relative w-full h-full flex flex-col items-center justify-center p-8 z-10">
+
+              {/* QUESTION */}
+              {isQuestion && (
+                <h2
+                  className="font-black text-[2.4rem] text-center leading-tight tracking-tight"
+                  style={{ color: '#1a1a2a' }}
+                >
+                  {card.english}
+                </h2>
+              )}
+
+              {/* WRONG_FIRST — show target word as hint */}
+              {isWrongFirst && (
+                <div className="flex flex-col items-center gap-2 animate-pop-in">
+                  <h2 dir={targetDir} className={`font-bold text-[2rem] text-center leading-tight lowercase ${targetFontClass}`}
+                    style={{ color: '#1a1a2a' }}>
+                    {targetWord}
+                  </h2>
+                  {spokenText && <p className="text-sm italic" style={{ color: 'rgba(30,30,50,0.4)' }}>"{spokenText}"</p>}
+                </div>
+              )}
+
+              {/* CORRECT or WRONG_FINAL */}
+              {(isReveal || isWrongFinal) && (
+                <div className="flex flex-col items-center gap-3 animate-pop-in">
+                  <h2 dir={targetDir} className={`font-bold text-[2rem] text-center leading-tight lowercase ${targetFontClass}`}
+                    style={{ color: isGreenState ? '#1a6e3a' : '#1a1a2a' }}>
+                    {targetWord}
+                  </h2>
+                  <p className="text-sm" style={{ color: "rgba(30,30,50,0.5)" }}>{card.english}</p>
+                  {isWrongFinal && (
+                    <button
+                      onClick={handleKnewItAfterFinal}
+                      className="mt-1 text-[11px] font-semibold px-4 py-1.5 rounded-full transition-colors"
+                      style={{ color: "rgba(30,30,50,0.45)", border: "1px solid rgba(30,30,50,0.2)" }}
+                    >
+                      I knew it
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
-          )}
-
-          {/* Sparkle stars */}
-          {showSparkle && (
-            <>
-              <span className="absolute top-7 right-9 text-white/90 leading-none pointer-events-none select-none animate-sparkle" style={{ fontSize: "22px" }}>✦</span>
-              <span className="absolute bottom-10 left-9 text-white/65 leading-none pointer-events-none select-none animate-sparkle" style={{ fontSize: "14px", animationDelay: "90ms" }}>✦</span>
-            </>
-          )}
-
-          {/* Card content */}
-          <div className="relative w-full h-full flex flex-col items-center justify-center p-8 z-10">
-
-            {/* QUESTION */}
-            {isQuestion && (
-              <h2
-                className="font-black text-[2.4rem] text-center leading-tight tracking-tight"
-                style={{ color: bandStyle.textColor, textShadow: "0 1px 6px rgba(0,0,0,0.18)" }}
-              >
-                {card.english}
-              </h2>
-            )}
-
-            {/* WRONG_FIRST — reveal in white */}
-            {isWrongFirst && (
-              <div className="flex flex-col items-center gap-2 animate-pop-in">
-                <h2 dir={targetDir} className={`font-bold text-[2rem] text-center leading-tight lowercase ${targetFontClass}`}
-                  style={{ color: answerColor }}>
-                  {targetWord}
-                </h2>
-                {spokenText && <p className="text-white/45 text-sm italic">"{spokenText}"</p>}
-              </div>
-            )}
-
-            {/* CORRECT or WRONG_FINAL */}
-            {(isReveal || isWrongFinal) && (
-              <div className="flex flex-col items-center gap-3 animate-pop-in">
-                <h2 dir={targetDir} className={`font-bold text-[2rem] text-center leading-tight lowercase ${targetFontClass}`}
-                  style={{ color: answerColor }}>
-                  {targetWord}
-                </h2>
-                <p className="text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>{card.english}</p>
-                {isWrongFinal && (
-                  <button
-                    onClick={handleKnewItAfterFinal}
-                    className="mt-1 text-[11px] font-semibold px-4 py-1.5 rounded-full transition-colors"
-                    style={{ color: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.2)" }}
-                  >
-                    I knew it
-                  </button>
-                )}
-              </div>
-            )}
           </div>
-
-          {/* Page curl — pass gradient as prop, no scope issue */}
-          <PageCurl size={108} curl={bandStyle.curl} />
         </div>
       </div>
 
