@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { MoreVertical, Edit, Trash2 } from "lucide-react";
-import { RipplePattern } from "./LevelSelect";
 import type { Collection } from "@/lib/collectionTypes";
 import { COLLECTION_CATEGORIES } from "@/lib/collectionTypes";
 
@@ -24,7 +23,6 @@ export function CollectionCard({ collection, onStudy, onEdit, onDelete }: Collec
 
   return (
     <div className="relative overflow-hidden bg-card rounded-3xl border border-border p-5 card-shadow">
-      <RipplePattern />
 
       <div className="flex items-start justify-between mb-3">
         {/* Icon + category badge */}

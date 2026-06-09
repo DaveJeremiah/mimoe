@@ -6,6 +6,7 @@ import { LANGUAGE_CONFIGS } from "@/lib/languageConfig";
 import { usePushToTalkMic } from "@/hooks/usePushToTalkMic";
 import { RipplePattern } from "./LevelSelect";
 import { RefreshCw } from "lucide-react";
+import logoDark from "@/assets/logo-dark.png";
 
 function vibrate(pattern: number | number[]) {
   try { navigator.vibrate?.(pattern) } catch { /* unsupported */ }
@@ -312,15 +313,14 @@ export function Flashcard({
       <div className={`relative w-full max-w-[420px] ${cardAnim}`}>
         <div style={{ perspective: '900px' }}>
           {/*
-            Layout (% of container, aspect 570/438):
+            Layout (% of square container, aspect 1/1):
               Ghost 2:    left 0     top 0     width 80%  height 89%
-              Ghost 1:    left 7%    top 3.5%  width 80%  height 89%
-              Front card: left 18%   top 7%    right 0    bottom 0
-              Ring:       left 11%   top 20%   diam ~13%  z-index 20
+              Ghost 1:    left 5%    top 2.5%  width 80%  height 89%
+              Front card: left 12%   top 12%   right 0    bottom 0   (88×88% → square)
           */}
           <div
             className={`relative ${enterAnim} ${exitAnim}`}
-            style={{ aspectRatio: '570/438', transformOrigin: 'center center' }}
+            style={{ aspectRatio: '1/1', transformOrigin: 'center center' }}
           >
 
             {/* ── Ghost card 2 (back) ── */}
@@ -339,7 +339,7 @@ export function Flashcard({
             <div
               className="absolute rounded-[22px]"
               style={{
-                left: '7%', top: '3.5%', width: '80%', height: '89%',
+                left: '5%', top: '2.5%', width: '80%', height: '89%',
                 background: bandStyle.ghost1,
                 boxShadow: '0 6px 18px rgba(0,0,0,0.16)',
                 opacity: exitAnim ? 0 : 1,
@@ -351,7 +351,7 @@ export function Flashcard({
             <div
               className="absolute rounded-[24px]"
               style={{
-                left: '18%', top: '7%', right: 0, bottom: 0,
+                left: '12%', top: '12%', right: 0, bottom: 0,
                 background: bandStyle.cardBg,
                 boxShadow: '0 16px 44px rgba(0,0,0,0.38), 0 2px 8px rgba(0,0,0,0.18)',
               }}
@@ -360,9 +360,10 @@ export function Flashcard({
               <div className="absolute inset-0 rounded-[24px] pointer-events-none"
                 style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.14) 0%, transparent 55%)' }} />
 
-              {/* Mascot at bottom-center */}
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-lg select-none pointer-events-none"
-                style={{ opacity: 0.65 }}>🐄</div>
+              {/* Logo at bottom-center */}
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 select-none pointer-events-none flex items-center justify-center">
+                <img src={logoDark} alt="" style={{ height: 26, width: 'auto', opacity: 1 }} />
+              </div>
 
               {/* Streak fire badge */}
               {streak >= 2 && (
@@ -434,32 +435,6 @@ export function Flashcard({
               </div>
             </div>
 
-            {/* ── Binder ring — sits over the junction of ghost + front card ── */}
-            <div
-              className="absolute pointer-events-none"
-              style={{ left: '11%', top: '20%', width: '13%', aspectRatio: '1', zIndex: 20 }}
-            >
-              <svg viewBox="0 0 56 56" className="w-full h-full" aria-hidden>
-                {/* Drop shadow */}
-                <circle cx="29" cy="30" r="22" fill="rgba(0,0,0,0.25)" />
-                {/* Steel outer ring */}
-                <circle cx="28" cy="28" r="22" fill="#7A8599" />
-                {/* Mid ring */}
-                <circle cx="28" cy="28" r="18" fill="#9DABBE" />
-                {/* Inner rim */}
-                <circle cx="28" cy="28" r="14" fill="#B8C6D4" />
-                {/* Hole */}
-                <circle cx="28" cy="28" r="11" fill="#1a1a2e" />
-                {/* Specular highlight */}
-                <ellipse cx="22" cy="20" rx="5" ry="3"
-                  fill="rgba(255,255,255,0.55)"
-                  transform="rotate(-35 22 20)" />
-                {/* Softer secondary highlight */}
-                <ellipse cx="35" cy="35" rx="3" ry="2"
-                  fill="rgba(255,255,255,0.18)"
-                  transform="rotate(-35 35 35)" />
-              </svg>
-            </div>
 
           </div>
         </div>

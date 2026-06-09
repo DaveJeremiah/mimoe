@@ -81,6 +81,17 @@ export function FlashcardApp() {
     curl:      "linear-gradient(140deg,#fffde0 0%,#f5ef90 40%,#e8d840 70%,#d4c020 100%)",
     textColor: "#1a0e00",
   };
+
+  // Solid dark style used for all custom collections — no gradients
+  const COLLECTION_BAND_STYLE: BandStyle = {
+    cardBg:    "#2C3561",
+    ghost1:    "#242C52",
+    ghost2:    "#1C2443",
+    lines:     "rgba(255,255,255,0.05)",
+    bar:       "#818CF8",
+    curl:      "#818CF8",
+    textColor: "#FFFFFF",
+  };
   // Personal Space state
   const [appView, setAppView] = useState<AppView>("main");
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -88,6 +99,8 @@ export function FlashcardApp() {
   const [isCollectionModalOpen, setIsCollectionModalOpen] = useState(false);
   const [editingCollection, setEditingCollection] = useState<Collection | undefined>();
   const [collectionQueue, setCollectionQueue] = useState<string[]>([]);
+  const [collectionComboCount, setCollectionComboCount] = useState(0);
+  const collectionAnimateAdvanceRef = useRef<((exitClass: string, opts: { failed: boolean; requeue: boolean }) => void) | null>(null);
 
   const [customVocab, setCustomVocab] = useState<Record<string, FlashcardItem[]>>({});
   const [customPhrases, setCustomPhrases] = useState<Record<string, FlashcardItem[]>>({});
@@ -698,6 +711,7 @@ export function FlashcardApp() {
     const queueIds = collection.entries.map((_, index) => `collection-${collection.id}-${index}`);
     setCollectionQueue(queueIds);
     setCollectionHistory([]);
+    setCollectionComboCount(0);
     const collLang = collection.language === "arabic"
       ? (collection.dialect ? getArabicConfigForDialect(collection.dialect) : LANGUAGE_CONFIGS.arabic)
       : LANGUAGE_CONFIGS.french;
@@ -715,9 +729,14 @@ export function FlashcardApp() {
   // Swipe handlers for collection cards
   const handleCollectionSwipeForward = useCallback(() => {
     if (collectionQueue.length === 0) return;
-    // Count as correct and add to history
-    setCollectionHistory(prev => [...prev, collectionQueue[0]]);
-    setCollectionQueue(prev => prev.slice(1));
+    // Route through animation ref so flip plays and handleCollectionAdvance runs
+    if (collectionAnimateAdvanceRef.current) {
+      collectionAnimateAdvanceRef.current("", { failed: false, requeue: false });
+    } else {
+      setCollectionComboCount(prev => prev + 1);
+      setCollectionHistory(prev => [...prev, collectionQueue[0]]);
+      setCollectionQueue(prev => prev.slice(1));
+    }
   }, [collectionQueue]);
 
   const handleCollectionSwipeBackward = useCallback(() => {
@@ -728,13 +747,18 @@ export function FlashcardApp() {
     setCollectionQueue(prev => [lastCardId, ...prev]);
   }, [collectionHistory]);
 
-  const handleCollectionAdvance = useCallback(({ requeue }: { failed: boolean; requeue: boolean }) => {
-    if (requeue) {
-      setCollectionQueue(q => [...q.slice(1), q[0]]);
-    } else {
-      setCollectionQueue(q => q.slice(1));
+  const handleCollectionAdvance = useCallback(({ failed, requeue }: { failed: boolean; requeue: boolean }) => {
+    // Streak: reset on failure-requeue, increment on completion
+    if (failed && requeue) {
+      setCollectionComboCount(0);
+    } else if (!requeue) {
+      setCollectionComboCount(prev => prev + 1);
     }
-  }, []);
+    setCollectionQueue(q => requeue ? [...q.slice(1), q[0]] : q.slice(1));
+    if (!requeue) {
+      setCollectionHistory(prev => [...prev, collectionQueue[0]]);
+    }
+  }, [collectionQueue]);
 
   const isCollectionDeckComplete = collectionQueue.length === 0 && selectedCollection !== null;
 
@@ -790,25 +814,50 @@ export function FlashcardApp() {
   if (!user) return null;
 
   if (appView === "collection" && selectedCollection) {
+    const colTotal = selectedCollection.entries.length;
+    const colProgress = colTotal > 0 ? ((colTotal - collectionQueue.length) / colTotal) * 100 : 0;
+
     return (
-      <div 
-        className="min-h-screen flex flex-col items-center max-w-[480px] mx-auto px-[15px] py-[61px]"
+      <div
+        className="min-h-screen flex flex-col items-center max-w-[480px] mx-auto pt-[28px] pb-36 px-[15px]"
         onTouchStart={handleSessionTouchStart}
         onTouchEnd={handleCollectionSessionTouchEnd}
       >
-        <header className="text-center mb-6 w-full">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleBackToMain}
-              className="p-2 -ml-2 rounded-xl hover:bg-accent/50 transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5 text-foreground" />
-            </button>
-            <div className="text-left">
-              <h1 className="font-display text-xl font-bold text-foreground tracking-tight">
-                {selectedCollection.title}
-              </h1>
-              <p className="text-xs text-muted-foreground">Personal Collection</p>
+        <header
+          className="mb-6 flex w-full px-5"
+          style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 14px)', paddingBottom: '12px' }}
+        >
+          <div className="w-full flex flex-col gap-3">
+            {/* X + progress bar */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleBackToMain}
+                className="flex-shrink-0 w-8 h-8 flex items-center justify-center hover:opacity-60 transition-opacity"
+              >
+                <X className="w-5 h-5 text-white/50" />
+              </button>
+              <div className="flex-1 relative">
+                {collectionComboCount >= 2 && (
+                  <div
+                    className="absolute -top-[22px] left-1/2 -translate-x-1/2 flex items-center gap-1 px-2 py-0.5 rounded-full animate-combo-pop"
+                    style={{ background: "rgba(249,115,22,0.18)", border: "1px solid rgba(249,115,22,0.35)" }}
+                  >
+                    <span className="text-[11px] leading-none">🔥</span>
+                    <span className="text-[9px] font-black text-orange-400 whitespace-nowrap">{collectionComboCount} in a row</span>
+                  </div>
+                )}
+                <div className="h-[14px] rounded-full bg-[#252f45] overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500 ease-out"
+                    style={{ background: COLLECTION_BAND_STYLE.bar, width: `${colProgress}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+            {/* Collection title */}
+            <div>
+              <h2 className="text-white font-black text-[1.3rem] leading-tight">{selectedCollection.title}</h2>
+              <WavyLine className="mt-1 max-w-[120px]" />
             </div>
           </div>
         </header>
@@ -831,9 +880,11 @@ export function FlashcardApp() {
               key={`collection-${selectedCollection.id}-${collectionQueue[0]}`}
               card={currentCollectionCard}
               onAdvance={handleCollectionAdvance}
-              total={selectedCollection.entries.length}
+              total={colTotal}
               remaining={collectionQueue.length}
-              bandStyle={currentBandStyle}
+              streak={collectionComboCount}
+              onAnimateAdvance={(fn) => { collectionAnimateAdvanceRef.current = fn; }}
+              bandStyle={COLLECTION_BAND_STYLE}
               langConfig={
                 selectedCollection.language === "arabic"
                   ? (selectedCollection.dialect ? getArabicConfigForDialect(selectedCollection.dialect) : LANGUAGE_CONFIGS.arabic)
