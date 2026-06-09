@@ -362,7 +362,7 @@ export function Flashcard({
 
               {/* Logo at bottom-center */}
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 select-none pointer-events-none flex items-center justify-center">
-                <img src={logoDark} alt="" style={{ height: 26, width: 'auto', opacity: 1 }} />
+                <img src={logoDark} alt="" style={{ height: 36, width: 'auto', opacity: 1 }} />
               </div>
 
               {/* Streak fire badge */}

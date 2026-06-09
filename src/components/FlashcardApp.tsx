@@ -1117,7 +1117,7 @@ export function FlashcardApp() {
           /* ── Home header: logo | centered lang pill | notification ── */
           <div className="w-full flex items-center relative">
             {/* Left: logo */}
-            <img src={logoLight} alt="Mimoe" className="h-8 w-auto flex-shrink-0" />
+            <img src={logoLight} alt="Mimoe" className="h-11 w-auto flex-shrink-0" />
 
             {/* Center: language pill — absolutely positioned */}
             <div className="absolute left-1/2 -translate-x-1/2">
