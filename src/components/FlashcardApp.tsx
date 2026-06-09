@@ -97,6 +97,8 @@ export function FlashcardApp() {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
   const [isCollectionModalOpen, setIsCollectionModalOpen] = useState(false);
+  const [collectionModalMode, setCollectionModalMode] = useState<"notes" | "bulk">("bulk");
+  const [showCollectionTooltip, setShowCollectionTooltip] = useState(false);
   const [editingCollection, setEditingCollection] = useState<Collection | undefined>();
   const [collectionQueue, setCollectionQueue] = useState<string[]>([]);
   const [collectionComboCount, setCollectionComboCount] = useState(0);
@@ -697,6 +699,7 @@ export function FlashcardApp() {
 
   const handleEditCollection = useCallback((collection: Collection) => {
     setEditingCollection(collection);
+    setCollectionModalMode("notes");
     setIsCollectionModalOpen(true);
   }, []);
 
@@ -1194,13 +1197,50 @@ export function FlashcardApp() {
               {/* ── Personal panel ── */}
               <div className="min-w-full">
                 <div className="w-full space-y-5">
-                  <button
-                    onClick={handleCreateCollection}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-white transition-colors font-medium bg-[#818898]/0"
-                  >
-                    <Plus className="w-5 h-5" />
-                    New Collection
-                  </button>
+                  {/* Section header with tooltip-triggered + button */}
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-xs font-bold text-white/35 uppercase tracking-widest">Collections</span>
+                    <div className="relative">
+                      {showCollectionTooltip && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setShowCollectionTooltip(false)} />
+                          <div
+                            className="absolute bottom-full right-0 mb-2 w-52 rounded-2xl overflow-hidden z-50 animate-slide-up-in"
+                            style={{ background: '#111118', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 16px 40px rgba(0,0,0,0.7)' }}
+                          >
+                            <button
+                              onClick={() => { setShowCollectionTooltip(false); setCollectionModalMode("notes"); setEditingCollection(undefined); setIsCollectionModalOpen(true); }}
+                              className="w-full flex items-start gap-3 px-4 py-3.5 hover:bg-white/5 transition-colors text-left"
+                            >
+                              <span className="text-base leading-none mt-0.5">📝</span>
+                              <div>
+                                <p className="text-sm font-semibold text-white">Notes</p>
+                                <p className="text-[11px] text-white/40 leading-snug mt-0.5">Add pairs one by one</p>
+                              </div>
+                            </button>
+                            <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }} />
+                            <button
+                              onClick={() => { setShowCollectionTooltip(false); setCollectionModalMode("bulk"); setEditingCollection(undefined); setIsCollectionModalOpen(true); }}
+                              className="w-full flex items-start gap-3 px-4 py-3.5 hover:bg-white/5 transition-colors text-left"
+                            >
+                              <span className="text-base leading-none mt-0.5">📋</span>
+                              <div>
+                                <p className="text-sm font-semibold text-white">Bulk</p>
+                                <p className="text-[11px] text-white/40 leading-snug mt-0.5">Paste multiple at once</p>
+                              </div>
+                            </button>
+                          </div>
+                        </>
+                      )}
+                      <button
+                        onClick={() => setShowCollectionTooltip(v => !v)}
+                        className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                        style={{ background: 'rgba(129,140,248,0.14)', border: '1px solid rgba(129,140,248,0.28)' }}
+                      >
+                        <Plus className="w-4 h-4" style={{ color: '#818CF8' }} />
+                      </button>
+                    </div>
+                  </div>
                   {collections.length > 0 ? (() => {
                     // Group by category; uncategorized last
                     const groups: { cat: typeof COLLECTION_CATEGORIES[number] | null; items: Collection[] }[] = [];
@@ -1230,7 +1270,7 @@ export function FlashcardApp() {
                                 <span className="text-xs font-bold text-white/40 uppercase tracking-wider">{cat.label}</span>
                               </div>
                             )}
-                            <div className="grid gap-4">
+                            <div className="grid grid-cols-2 gap-3">
                               {items.map((collection) => (
                                 <CollectionCard
                                   key={collection.id}
@@ -1394,6 +1434,7 @@ export function FlashcardApp() {
         onSave={handleSaveCollection}
         editingCollection={editingCollection}
         activeLanguage={activeLanguage}
+        mode={editingCollection ? "notes" : collectionModalMode}
       />
 
       {/* ── Home bottom nav ── */}

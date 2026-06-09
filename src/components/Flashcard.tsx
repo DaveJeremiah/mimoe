@@ -313,14 +313,14 @@ export function Flashcard({
       <div className={`relative w-full max-w-[420px] ${cardAnim}`}>
         <div style={{ perspective: '900px' }}>
           {/*
-            Layout (% of square container, aspect 1/1):
+            Layout (% of container, aspect 570/438):
               Ghost 2:    left 0     top 0     width 80%  height 89%
               Ghost 1:    left 5%    top 2.5%  width 80%  height 89%
-              Front card: left 12%   top 12%   right 0    bottom 0   (88×88% → square)
+              Front card: left 12%   top 5%    right 0    bottom 0
           */}
           <div
             className={`relative ${enterAnim} ${exitAnim}`}
-            style={{ aspectRatio: '1/1', transformOrigin: 'center center' }}
+            style={{ aspectRatio: '570/438', transformOrigin: 'center center' }}
           >
 
             {/* ── Ghost card 2 (back) ── */}
@@ -351,7 +351,7 @@ export function Flashcard({
             <div
               className="absolute rounded-[24px]"
               style={{
-                left: '12%', top: '12%', right: 0, bottom: 0,
+                left: '12%', top: '5%', right: 0, bottom: 0,
                 background: bandStyle.cardBg,
                 boxShadow: '0 16px 44px rgba(0,0,0,0.38), 0 2px 8px rgba(0,0,0,0.18)',
               }}

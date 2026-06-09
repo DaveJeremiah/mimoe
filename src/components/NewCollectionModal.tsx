@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react";
-import { X, Plus } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { X, Plus, Trash2 } from "lucide-react";
 import type { Collection, CollectionEntry, CollectionFormData, CollectionCategory } from "@/lib/collectionTypes";
 import { COLLECTION_CATEGORIES } from "@/lib/collectionTypes";
 import { ARABIC_DIALECTS } from "@/lib/languageConfig";
 import type { Language } from "@/lib/languageConfig";
 import { WavyLine } from "./LevelSelect";
+
+interface Pair { english: string; target: string; }
 
 interface NewCollectionModalProps {
   isOpen: boolean;
@@ -12,30 +14,51 @@ interface NewCollectionModalProps {
   onSave: (collection: CollectionFormData) => void;
   editingCollection?: Collection;
   activeLanguage?: Language;
+  mode?: "notes" | "bulk";
 }
 
-export function NewCollectionModal({ isOpen, onClose, onSave, editingCollection, activeLanguage }: NewCollectionModalProps) {
-  const [title, setTitle]               = useState(editingCollection?.title || "");
-  const [importText, setImportText]     = useState("");
-  const [isSaving, setIsSaving]         = useState(false);
-  const [error, setError]               = useState("");
+export function NewCollectionModal({
+  isOpen, onClose, onSave, editingCollection, activeLanguage, mode = "bulk",
+}: NewCollectionModalProps) {
+  const [title, setTitle]             = useState(editingCollection?.title || "");
+  const [importText, setImportText]   = useState("");
+  const [pairs, setPairs]             = useState<Pair[]>([{ english: "", target: "" }]);
+  const [isSaving, setIsSaving]       = useState(false);
+  const [error, setError]             = useState("");
   const [selectedDialect, setSelectedDialect]   = useState(editingCollection?.dialect ?? "ar-SA");
   const [selectedCategory, setSelectedCategory] = useState<CollectionCategory | undefined>(editingCollection?.category);
 
+  const targetLabel = activeLanguage === "arabic" ? "Arabic" : "French";
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Populate fields when modal opens / editingCollection changes
   useEffect(() => {
     if (editingCollection && isOpen) {
       setTitle(editingCollection.title);
       setSelectedCategory(editingCollection.category);
       setSelectedDialect(editingCollection.dialect ?? "ar-SA");
-      const existingEntries = editingCollection.entries.map(entry => {
+
+      // Notes mode: populate pairs
+      if (editingCollection.entries.length > 0) {
+        setPairs(editingCollection.entries.map(e => ({
+          english: e.english,
+          target: e.target ?? e.french,
+        })));
+      } else {
+        setPairs([{ english: "", target: "" }]);
+      }
+
+      // Bulk mode: populate textarea
+      const text = editingCollection.entries.map(entry => {
         const alts = entry.alternatives?.length ? ` | ${entry.alternatives.join(' | ')}` : '';
         return `${entry.english} | ${entry.french}${alts}`;
       }).join('\n');
-      setImportText(existingEntries);
+      setImportText(text);
     } else if (!isOpen) {
       setImportText("");
       setTitle("");
       setSelectedCategory(undefined);
+      setPairs([{ english: "", target: "" }]);
     }
   }, [editingCollection, isOpen]);
 
@@ -43,6 +66,19 @@ export function NewCollectionModal({ isOpen, onClose, onSave, editingCollection,
     if (isOpen) setSelectedDialect(editingCollection?.dialect ?? "ar-SA");
   }, [isOpen, editingCollection]);
 
+  // ── Pair helpers (Notes mode) ──────────────────────────────────────────────
+  const updatePair = (i: number, field: "english" | "target", value: string) => {
+    setPairs(prev => prev.map((p, idx) => idx === i ? { ...p, [field]: value } : p));
+  };
+  const addPair = () => {
+    setPairs(prev => [...prev, { english: "", target: "" }]);
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+  };
+  const removePair = (i: number) => {
+    setPairs(prev => prev.length === 1 ? [{ english: "", target: "" }] : prev.filter((_, idx) => idx !== i));
+  };
+
+  // ── Bulk parse ─────────────────────────────────────────────────────────────
   const parseImportText = (text: string): CollectionEntry[] => {
     const entries: CollectionEntry[] = [];
     for (const line of text.split('\n').filter(l => l.trim())) {
@@ -61,18 +97,37 @@ export function NewCollectionModal({ isOpen, onClose, onSave, editingCollection,
     return entries;
   };
 
+  // ── Save ───────────────────────────────────────────────────────────────────
   const handleSave = () => {
     setError("");
     if (!title.trim()) { setError("Please enter a title"); return; }
-    const entries = importText.trim() ? parseImportText(importText) : [];
-    if (!importText.trim() && !editingCollection) {
-      setError("Add at least one entry (English | Target)");
-      return;
+
+    let entries: CollectionEntry[] = [];
+
+    if (mode === "notes") {
+      entries = pairs
+        .filter(p => p.english.trim() && p.target.trim())
+        .map(p => ({
+          english: p.english.trim(),
+          french: p.target.trim(),
+          target: p.target.trim(),
+        }));
+      if (entries.length === 0 && !editingCollection) {
+        setError("Add at least one complete pair");
+        return;
+      }
+    } else {
+      entries = importText.trim() ? parseImportText(importText) : [];
+      if (!importText.trim() && !editingCollection) {
+        setError("Add at least one entry (English | Target)");
+        return;
+      }
+      if (importText.trim() && entries.length === 0) {
+        setError("No valid entries found — use: English | French");
+        return;
+      }
     }
-    if (importText.trim() && entries.length === 0) {
-      setError("No valid entries found — use: English | French");
-      return;
-    }
+
     setIsSaving(true);
     onSave({
       title: title.trim(),
@@ -86,7 +141,7 @@ export function NewCollectionModal({ isOpen, onClose, onSave, editingCollection,
 
   const handleClose = () => {
     setTitle(""); setImportText(""); setError(""); setIsSaving(false);
-    setSelectedCategory(undefined); onClose();
+    setSelectedCategory(undefined); setPairs([{ english: "", target: "" }]); onClose();
   };
 
   if (!isOpen) return null;
@@ -106,7 +161,7 @@ export function NewCollectionModal({ isOpen, onClose, onSave, editingCollection,
         <div className="overflow-y-auto" style={{ maxHeight: 'calc(92vh - 20px)' }}>
           <div className="px-5 pt-5 pb-4 space-y-5">
 
-            {/* Title heading + WavyLine */}
+            {/* Title heading */}
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="font-black text-white text-[1.9rem] leading-tight tracking-tight">
@@ -183,23 +238,86 @@ export function NewCollectionModal({ isOpen, onClose, onSave, editingCollection,
               </div>
             )}
 
-            {/* Entries */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-white/40 text-sm font-medium pl-1">
-                {editingCollection ? "Edit entries" : "Entries"}
-              </label>
-              <textarea
-                value={importText}
-                onChange={e => setImportText(e.target.value)}
-                placeholder={"One pair per line:\nHello | Bonjour\nGoodbye | Au revoir\nThank you | Merci"}
-                disabled={isSaving}
-                className="w-full h-40 rounded-3xl px-5 py-4 text-sm text-white placeholder:text-white/25 font-mono resize-none outline-none"
-                style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.08)' }}
-              />
-              <p className="text-xs text-white/25 pl-1">
-                Format: <span className="text-white/45 font-mono">English | Target | Alt</span>
-              </p>
-            </div>
+            {/* ── Entries ── */}
+            {mode === "notes" ? (
+              /* Notes mode — pair-by-pair */
+              <div className="flex flex-col gap-2">
+                <label className="text-white/40 text-sm font-medium pl-1">Pairs</label>
+                <div className="flex flex-col gap-2">
+                  {pairs.map((pair, i) => (
+                    <div
+                      key={i}
+                      className="rounded-2xl p-3 flex flex-col gap-2"
+                      style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.07)' }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-white/25 w-14 flex-shrink-0">English</span>
+                        <input
+                          type="text"
+                          value={pair.english}
+                          onChange={e => updatePair(i, "english", e.target.value)}
+                          placeholder="e.g. Hello"
+                          disabled={isSaving}
+                          className="flex-1 bg-transparent text-white text-sm placeholder:text-white/20 outline-none"
+                        />
+                        {pairs.length > 1 && (
+                          <button
+                            onClick={() => removePair(i)}
+                            className="flex-shrink-0 p-1 rounded-lg hover:bg-white/8 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-white/25" />
+                          </button>
+                        )}
+                      </div>
+                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }} />
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-white/25 w-14 flex-shrink-0">{targetLabel}</span>
+                        <input
+                          type="text"
+                          value={pair.target}
+                          onChange={e => updatePair(i, "target", e.target.value)}
+                          placeholder="e.g. Bonjour"
+                          disabled={isSaving}
+                          className="flex-1 bg-transparent text-white text-sm placeholder:text-white/20 outline-none"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Add pair button */}
+                <button
+                  type="button"
+                  onClick={addPair}
+                  disabled={isSaving}
+                  className="flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-semibold transition-colors"
+                  style={{ background: 'rgba(129,140,248,0.08)', border: '1px dashed rgba(129,140,248,0.25)', color: 'rgba(129,140,248,0.7)' }}
+                >
+                  <Plus className="w-4 h-4" />
+                  Add pair
+                </button>
+
+                <div ref={bottomRef} />
+              </div>
+            ) : (
+              /* Bulk mode — textarea */
+              <div className="flex flex-col gap-1.5">
+                <label className="text-white/40 text-sm font-medium pl-1">
+                  {editingCollection ? "Edit entries" : "Entries"}
+                </label>
+                <textarea
+                  value={importText}
+                  onChange={e => setImportText(e.target.value)}
+                  placeholder={"One pair per line:\nHello | Bonjour\nGoodbye | Au revoir\nThank you | Merci"}
+                  disabled={isSaving}
+                  className="w-full h-40 rounded-3xl px-5 py-4 text-sm text-white placeholder:text-white/25 font-mono resize-none outline-none"
+                  style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.08)' }}
+                />
+                <p className="text-xs text-white/25 pl-1">
+                  Format: <span className="text-white/45 font-mono">English | Target | Alt</span>
+                </p>
+              </div>
+            )}
 
             {/* Error */}
             {error && (
@@ -210,7 +328,7 @@ export function NewCollectionModal({ isOpen, onClose, onSave, editingCollection,
 
           </div>
 
-          {/* Sticky Create button — always visible above keyboard */}
+          {/* Sticky Create button */}
           <div className="sticky bottom-0 px-5 pt-3 pb-7" style={{ background: '#050505' }}>
             <div className="p-[1.5px] rounded-full" style={{ background: 'linear-gradient(135deg, #9b5cf6, #ec4899)' }}>
               <button
