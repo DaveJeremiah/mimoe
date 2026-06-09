@@ -8,6 +8,7 @@ import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { CollectionCard } from "./CollectionCard";
 import { NewCollectionModal } from "./NewCollectionModal";
 import { NewLevelModal } from "./NewLevelModal";
+import { ProfileModal, dicebearUrl } from "./ProfileModal";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { db } from "@/lib/db";
@@ -15,7 +16,7 @@ import { vocabularyLevels, phraseLevels, arabicVocabularyLevels, arabicPhraseLev
 import { type Collection, CollectionFormData, COLLECTION_CATEGORIES } from "@/lib/collectionTypes";
 import { prefetchAudio, unlockAudio } from "@/lib/speechUtils";
 import { LANGUAGE_CONFIGS, ARABIC_DIALECTS, getArabicConfigForDialect, type Language } from "@/lib/languageConfig";
-import { ArrowLeft, Plus, MoreVertical, Shuffle, Bookmark, User, X, CheckCircle2, Share2, BookOpen, PartyPopper } from "lucide-react";
+import { ArrowLeft, Plus, MoreVertical, Shuffle, Bookmark, X, CheckCircle2, Share2, BookOpen, PartyPopper } from "lucide-react";
 
 type Tab = "vocabulary" | "phrases";
 type AppView = "main" | "collection";
@@ -124,6 +125,7 @@ export function FlashcardApp() {
   const [customOrder, setCustomOrder] = useLocalStorage<Record<string, string[]>>("mimoe-custom-order", {});
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isWordBankOpen, setIsWordBankOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
   const [homeTab, setHomeTab] = useState<"levels" | "personal">("levels");
 
@@ -1477,8 +1479,19 @@ export function FlashcardApp() {
             </div>
 
             {/* User avatar / profile */}
-            <button className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,255,255,0.1)' }}>
-              <User className="w-4 h-4 text-white/60" />
+            <button
+              onClick={() => setIsProfileOpen(true)}
+              className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 transition-opacity active:opacity-70"
+              style={{ border: '1.5px solid rgba(129,140,248,0.35)', background: 'linear-gradient(135deg, rgba(129,140,248,0.2), rgba(168,85,247,0.2))' }}
+            >
+              {user && (
+                <img
+                  src={dicebearUrl(user.id)}
+                  alt="Profile"
+                  className="w-full h-full"
+                  draggable={false}
+                />
+              )}
             </button>
           </div>
         </nav>
@@ -1491,6 +1504,17 @@ export function FlashcardApp() {
         onSave={handleAddLevel}
         activeLanguage={activeLanguage}
       />
+
+      {user && (
+        <ProfileModal
+          isOpen={isProfileOpen}
+          onClose={() => setIsProfileOpen(false)}
+          user={user}
+          completedVocabCount={completedVocab.length}
+          completedPhrasesCount={completedPhrases.length}
+          collectionsCount={collections.length}
+        />
+      )}
     </div>
   );
 }
