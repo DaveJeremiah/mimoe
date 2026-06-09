@@ -451,7 +451,8 @@ export function FlashcardApp() {
     if (isDeckComplete && selectedLevelId && !isBookmarkedSession) {
       const allCorrectFirstTry = allCards.length > 0 && failedCards.size === 0;
 
-      if (allCorrectFirstTry && !completedIds.includes(selectedLevelId)) {
+      // Mark completed regardless of mistakes — allCorrectFirstTry only affects the star/perfect badge
+      if (!completedIds.includes(selectedLevelId)) {
         setCompletedIds((prev) => [...prev, selectedLevelId]);
       }
 
