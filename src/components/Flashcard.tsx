@@ -308,100 +308,159 @@ export function Flashcard({
   return (
     <div className="flex flex-col items-center w-full">
 
-      {/* Card stack */}
+      {/* ── Card stack — pure JSX recreation, no SVG dependency ── */}
       <div className={`relative w-full max-w-[420px] ${cardAnim}`}>
-
-        {/* Ghost layers — fade out during flip so they don't look like a card-back */}
-        <div className="absolute inset-x-4 top-[-8px] bottom-3"
-          style={{ opacity: exitAnim ? 0 : 0.5, transition: 'opacity 0.12s ease' }}>
-          <img src="/images/card-template.svg" className="w-full h-full" style={{ objectFit: 'fill' }} alt="" />
-        </div>
-        <div className="absolute inset-x-2 top-[-4px] bottom-1.5"
-          style={{ opacity: exitAnim ? 0 : 0.75, transition: 'opacity 0.12s ease' }}>
-          <img src="/images/card-template.svg" className="w-full h-full" style={{ objectFit: 'fill' }} alt="" />
-        </div>
-
-        {/* Front card — 3D flip on advance */}
         <div style={{ perspective: '900px' }}>
+          {/*
+            Layout (% of container, aspect 570/438):
+              Ghost 2:    left 0     top 0     width 80%  height 89%
+              Ghost 1:    left 7%    top 3.5%  width 80%  height 89%
+              Front card: left 18%   top 7%    right 0    bottom 0
+              Ring:       left 11%   top 20%   diam ~13%  z-index 20
+          */}
           <div
             className={`relative ${enterAnim} ${exitAnim}`}
-            style={{
-              aspectRatio: '570/438',
-              transformOrigin: 'center center',
-            }}
+            style={{ aspectRatio: '570/438', transformOrigin: 'center center' }}
           >
-            {/* SVG card — drop-shadow follows the actual card shape, not a rectangle */}
-            <img
-              src="/images/card-template.svg"
-              className="absolute inset-0 w-full h-full"
-              style={{ objectFit: 'fill', filter: 'drop-shadow(0 12px 32px rgba(0,0,0,0.45))' }}
-              alt="" aria-hidden
+
+            {/* ── Ghost card 2 (back) ── */}
+            <div
+              className="absolute rounded-[20px]"
+              style={{
+                left: 0, top: 0, width: '80%', height: '89%',
+                background: bandStyle.ghost2,
+                boxShadow: '0 6px 22px rgba(0,0,0,0.22)',
+                opacity: exitAnim ? 0 : 1,
+                transition: 'opacity 0.1s ease',
+              }}
             />
 
-            {/* Streak fire badge */}
-            {streak >= 2 && (
-              <div className="absolute top-3 right-3 z-20 flex items-center gap-0.5 px-2 py-1 rounded-full"
-                style={{ background: "rgba(0,0,0,0.18)", backdropFilter: "blur(4px)" }}>
-                <span className="text-[13px] leading-none">🔥</span>
-                <span className="text-[11px] font-black text-white/90 leading-none">{streak}</span>
+            {/* ── Ghost card 1 (middle) ── */}
+            <div
+              className="absolute rounded-[22px]"
+              style={{
+                left: '7%', top: '3.5%', width: '80%', height: '89%',
+                background: bandStyle.ghost1,
+                boxShadow: '0 6px 18px rgba(0,0,0,0.16)',
+                opacity: exitAnim ? 0 : 1,
+                transition: 'opacity 0.1s ease',
+              }}
+            />
+
+            {/* ── Front card ── */}
+            <div
+              className="absolute rounded-[24px]"
+              style={{
+                left: '18%', top: '7%', right: 0, bottom: 0,
+                background: bandStyle.cardBg,
+                boxShadow: '0 16px 44px rgba(0,0,0,0.38), 0 2px 8px rgba(0,0,0,0.18)',
+              }}
+            >
+              {/* Subtle top-left sheen */}
+              <div className="absolute inset-0 rounded-[24px] pointer-events-none"
+                style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.14) 0%, transparent 55%)' }} />
+
+              {/* Mascot at bottom-center */}
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 text-lg select-none pointer-events-none"
+                style={{ opacity: 0.65 }}>🐄</div>
+
+              {/* Streak fire badge */}
+              {streak >= 2 && (
+                <div className="absolute top-3 right-3 z-20 flex items-center gap-0.5 px-2 py-1 rounded-full"
+                  style={{ background: 'rgba(0,0,0,0.22)', backdropFilter: 'blur(4px)' }}>
+                  <span className="text-[13px] leading-none">🔥</span>
+                  <span className="text-[11px] font-black text-white/90 leading-none">{streak}</span>
+                </div>
+              )}
+
+              {/* Sparkle stars */}
+              {showSparkle && (
+                <>
+                  <span className="absolute top-6 right-8 leading-none pointer-events-none select-none animate-sparkle"
+                    style={{ fontSize: 20, color: 'rgba(255,255,255,0.8)' }}>✦</span>
+                  <span className="absolute bottom-8 left-8 leading-none pointer-events-none select-none animate-sparkle"
+                    style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', animationDelay: '90ms' }}>✦</span>
+                </>
+              )}
+
+              {/* ── Card content — perfectly centered in front card face ── */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center z-10"
+                style={{ padding: '12px 28px 44px 28px' }}>
+
+                {/* QUESTION */}
+                {isQuestion && (
+                  <h2
+                    className="font-black text-[1.5rem] text-center leading-snug tracking-tight"
+                    style={{ color: 'rgba(255,255,255,0.96)' }}
+                  >
+                    {card.english}
+                  </h2>
+                )}
+
+                {/* WRONG_FIRST — reveal target as hint */}
+                {isWrongFirst && (
+                  <div className="flex flex-col items-center gap-2 animate-pop-in">
+                    <h2 dir={targetDir}
+                      className={`font-bold text-[1.5rem] text-center leading-snug lowercase ${targetFontClass}`}
+                      style={{ color: 'rgba(255,255,255,0.96)' }}>
+                      {targetWord}
+                    </h2>
+                    {spokenText && (
+                      <p className="text-sm italic" style={{ color: 'rgba(255,255,255,0.45)' }}>"{spokenText}"</p>
+                    )}
+                  </div>
+                )}
+
+                {/* CORRECT or WRONG_FINAL */}
+                {(isReveal || isWrongFinal) && (
+                  <div className="flex flex-col items-center gap-3 animate-pop-in">
+                    <h2 dir={targetDir}
+                      className={`font-bold text-[1.5rem] text-center leading-snug lowercase ${targetFontClass}`}
+                      style={{ color: isGreenState ? '#a8f0bb' : 'rgba(255,255,255,0.96)' }}>
+                      {targetWord}
+                    </h2>
+                    <p className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>{card.english}</p>
+                    {isWrongFinal && (
+                      <button
+                        onClick={handleKnewItAfterFinal}
+                        className="mt-1 text-[11px] font-semibold px-4 py-1.5 rounded-full transition-colors"
+                        style={{ color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.25)' }}
+                      >
+                        I knew it
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
-            )}
-
-            {/* Sparkle stars */}
-            {showSparkle && (
-              <>
-                <span className="absolute top-7 right-9 leading-none pointer-events-none select-none animate-sparkle"
-                  style={{ fontSize: "22px", color: '#2a2a3a', opacity: 0.65 }}>✦</span>
-                <span className="absolute bottom-10 left-9 leading-none pointer-events-none select-none animate-sparkle"
-                  style={{ fontSize: "14px", color: '#2a2a3a', opacity: 0.4, animationDelay: "90ms" }}>✦</span>
-              </>
-            )}
-
-            {/* Card content — inset to match the orange card face within the SVG */}
-            <div className="absolute flex flex-col items-center justify-center z-10"
-              style={{ top: '5%', bottom: '8%', left: '20%', right: '3%' }}>
-
-              {/* QUESTION */}
-              {isQuestion && (
-                <h2
-                  className="font-black text-[1.45rem] text-center leading-snug tracking-tight"
-                  style={{ color: 'rgba(255,255,255,0.95)' }}
-                >
-                  {card.english}
-                </h2>
-              )}
-
-              {/* WRONG_FIRST — show target word as hint */}
-              {isWrongFirst && (
-                <div className="flex flex-col items-center gap-2 animate-pop-in">
-                  <h2 dir={targetDir} className={`font-bold text-[1.45rem] text-center leading-snug lowercase ${targetFontClass}`}
-                    style={{ color: 'rgba(255,255,255,0.95)' }}>
-                    {targetWord}
-                  </h2>
-                  {spokenText && <p className="text-sm italic" style={{ color: 'rgba(255,255,255,0.45)' }}>"{spokenText}"</p>}
-                </div>
-              )}
-
-              {/* CORRECT or WRONG_FINAL */}
-              {(isReveal || isWrongFinal) && (
-                <div className="flex flex-col items-center gap-3 animate-pop-in">
-                  <h2 dir={targetDir} className={`font-bold text-[1.45rem] text-center leading-snug lowercase ${targetFontClass}`}
-                    style={{ color: isGreenState ? '#a8f0bb' : 'rgba(255,255,255,0.95)' }}>
-                    {targetWord}
-                  </h2>
-                  <p className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>{card.english}</p>
-                  {isWrongFinal && (
-                    <button
-                      onClick={handleKnewItAfterFinal}
-                      className="mt-1 text-[11px] font-semibold px-4 py-1.5 rounded-full transition-colors"
-                      style={{ color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.25)' }}
-                    >
-                      I knew it
-                    </button>
-                  )}
-                </div>
-              )}
             </div>
+
+            {/* ── Binder ring — sits over the junction of ghost + front card ── */}
+            <div
+              className="absolute pointer-events-none"
+              style={{ left: '11%', top: '20%', width: '13%', aspectRatio: '1', zIndex: 20 }}
+            >
+              <svg viewBox="0 0 56 56" className="w-full h-full" aria-hidden>
+                {/* Drop shadow */}
+                <circle cx="29" cy="30" r="22" fill="rgba(0,0,0,0.25)" />
+                {/* Steel outer ring */}
+                <circle cx="28" cy="28" r="22" fill="#7A8599" />
+                {/* Mid ring */}
+                <circle cx="28" cy="28" r="18" fill="#9DABBE" />
+                {/* Inner rim */}
+                <circle cx="28" cy="28" r="14" fill="#B8C6D4" />
+                {/* Hole */}
+                <circle cx="28" cy="28" r="11" fill="#1a1a2e" />
+                {/* Specular highlight */}
+                <ellipse cx="22" cy="20" rx="5" ry="3"
+                  fill="rgba(255,255,255,0.55)"
+                  transform="rotate(-35 22 20)" />
+                {/* Softer secondary highlight */}
+                <ellipse cx="35" cy="35" rx="3" ry="2"
+                  fill="rgba(255,255,255,0.18)"
+                  transform="rotate(-35 35 35)" />
+              </svg>
+            </div>
+
           </div>
         </div>
       </div>
