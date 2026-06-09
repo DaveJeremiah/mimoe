@@ -314,11 +314,11 @@ export function LevelSelect({
       )}
 
       {/*
-        Responsive band-card grid:
+        Responsive band-card grid (bento layout):
         - Mobile  : 2 columns — A1 spans both (col-span-2), A2 + B1 each take 1
-        - md+     : 3 equal columns — all three side by side
+        - md+     : 2 columns — A1 spans 2 rows (tall left), A2 + B1 stack on right
       */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         {BAND_CARDS.map((b, i) => {
           const decks = grouped[b.id] ?? [];
           const completed = decks.filter(d => completedLevelIds.includes(d.id)).length;
@@ -330,14 +330,13 @@ export function LevelSelect({
               key={b.id}
               onClick={() => onSelectBand(b.id)}
               className={`relative overflow-hidden text-left active:scale-[0.97] transition-transform ${
-                isHero ? "col-span-2 md:col-span-1" : ""
+                isHero ? "col-span-2 md:col-span-1 md:row-span-2" : "col-span-1"
               }`}
               style={{
                 background: b.bg,
                 borderRadius: isHero ? "36px" : "30px",
                 boxShadow: `0 ${isHero ? 6 : 5}px 0 ${b.shadow}, 0 ${isHero ? 12 : 10}px ${isHero ? 32 : 24}px rgba(0,0,0,${isHero ? 0.35 : 0.3})`,
-                // Hero is tall on mobile; all cards equal on md+ (handled by aspect-ratio below)
-                minHeight: isHero ? "clamp(220px, 52vw, 340px)" : "clamp(150px, 28vw, 200px)",
+                minHeight: isHero ? "clamp(220px, 52vw, 340px)" : "clamp(160px, 24vw, 220px)",
               }}
             >
               {/* A1 scenic background image (mobile hero only) */}
