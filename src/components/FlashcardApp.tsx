@@ -5,7 +5,6 @@ import { Flashcard, type BandStyle } from "./Flashcard";
 import { WordBank } from "./WordBank";
 import { LevelSelect, BAND_IMGS, WavyLine } from "./LevelSelect";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
-import { PersonalSpaceDivider } from "./PersonalSpaceDivider";
 import { CollectionCard } from "./CollectionCard";
 import { NewCollectionModal } from "./NewCollectionModal";
 import { NewLevelModal } from "./NewLevelModal";
@@ -16,7 +15,7 @@ import { vocabularyLevels, phraseLevels, arabicVocabularyLevels, arabicPhraseLev
 import { type Collection, CollectionFormData } from "@/lib/collectionTypes";
 import { prefetchAudio, unlockAudio } from "@/lib/speechUtils";
 import { LANGUAGE_CONFIGS, ARABIC_DIALECTS, getArabicConfigForDialect, type Language } from "@/lib/languageConfig";
-import { ArrowLeft, Plus, MoreVertical, Shuffle, Bookmark, Home, User, X, Zap, CheckCircle2, Share2, BookOpen, PartyPopper } from "lucide-react";
+import { ArrowLeft, Plus, MoreVertical, Shuffle, Bookmark, User, X, CheckCircle2, Share2, BookOpen, PartyPopper } from "lucide-react";
 
 type Tab = "vocabulary" | "phrases";
 type AppView = "main" | "collection";
@@ -111,6 +110,7 @@ export function FlashcardApp() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isWordBankOpen, setIsWordBankOpen] = useState(false);
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
+  const [homeTab, setHomeTab] = useState<"levels" | "personal">("levels");
 
 
   const baseLevels = useMemo(() => {
@@ -737,11 +737,16 @@ export function FlashcardApp() {
     const dy = Math.abs(touchStart.y - e.changedTouches[0].clientY);
     // Only register horizontal swipes (ignore scrolling)
     if (Math.abs(dx) < 60 || dy > 80) return;
+    // On home (no level/band), swipe switches pivot tab
+    if (!selectedLevelId && !selectedBand) {
+      if (dx > 0) setHomeTab("personal");
+      else setHomeTab("levels");
+      setTouchStart(null);
+      return;
+    }
     if (dx > 0) {
-      // Swipe left = forward
       handleSwipeForward();
     } else {
-      // Swipe right = backward
       handleSwipeBackward();
     }
     setTouchStart(null);
@@ -1075,10 +1080,21 @@ export function FlashcardApp() {
         ) : null /* deck list — band card above serves as header */}
       </header>
 
-      {/* Levels label — only show on home, not in deck list */}
+      {/* Pivot header — Levels / Personal */}
       {!selectedLevelId && !selectedBand && (
         <div className="flex flex-col w-full mb-4">
-          <h2 className="font-black text-white text-[2.6rem] leading-none tracking-tight">Levels</h2>
+          <div className="flex items-baseline gap-5">
+            <button onClick={() => setHomeTab("levels")}>
+              <span className={`font-black tracking-tight leading-none transition-all duration-300 ${
+                homeTab === "levels" ? "text-[2.6rem] text-white" : "text-[1.5rem] text-white/35"
+              }`}>Levels</span>
+            </button>
+            <button onClick={() => setHomeTab("personal")}>
+              <span className={`font-black tracking-tight leading-none transition-all duration-300 ${
+                homeTab === "personal" ? "text-[2.6rem] text-white" : "text-[1.5rem] text-white/35"
+              }`}>Personal</span>
+            </button>
+          </div>
           <WavyLine className="mt-2 max-w-[200px]" />
         </div>
       )}
@@ -1086,18 +1102,58 @@ export function FlashcardApp() {
       {/* Content */}
       <div className="flex-1 w-full flex flex-col items-center justify-center">
         {!selectedLevelId ? (
-          <LevelSelect
-            levels={levels}
-            completedLevelIds={completedIds}
-            onSelectLevel={(levelId) => startLevel(levelId)}
-            onAddLevel={() => setIsNewLevelModalOpen(true)}
-            bookmarkedCount={bookmarkedLevel?.cards.length ?? 0}
-            onStudyBookmarked={startBookmarkedSession}
-            selectedBand={selectedBand}
-            onSelectBand={setSelectedBand}
-            onBack={() => setSelectedBand(null)}
-            activeLanguage={activeLanguage}
-          />
+          /* Sliding pivot panels */
+          <div className="w-full overflow-x-hidden">
+            <div
+              className="flex transition-transform duration-300 ease-out"
+              style={{ transform: homeTab === "levels" ? "translateX(0)" : "translateX(-100%)" }}
+            >
+              {/* ── Levels panel ── */}
+              <div className="min-w-full">
+                <LevelSelect
+                  levels={levels}
+                  completedLevelIds={completedIds}
+                  onSelectLevel={(levelId) => startLevel(levelId)}
+                  onAddLevel={() => setIsNewLevelModalOpen(true)}
+                  bookmarkedCount={bookmarkedLevel?.cards.length ?? 0}
+                  onStudyBookmarked={startBookmarkedSession}
+                  selectedBand={selectedBand}
+                  onSelectBand={setSelectedBand}
+                  onBack={() => setSelectedBand(null)}
+                  activeLanguage={activeLanguage}
+                />
+              </div>
+              {/* ── Personal panel ── */}
+              <div className="min-w-full">
+                <div className="w-full space-y-4">
+                  <button
+                    onClick={handleCreateCollection}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-white transition-colors font-medium bg-[#818898]/0"
+                  >
+                    <Plus className="w-5 h-5" />
+                    New Collection
+                  </button>
+                  {collections.length > 0 ? (
+                    <div className="grid gap-4">
+                      {collections.map((collection) => (
+                        <CollectionCard
+                          key={collection.id}
+                          collection={collection}
+                          onStudy={handleStudyCollection}
+                          onEdit={handleEditCollection}
+                          onDelete={handleDeleteCollection}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p className="text-sm">Add your first collection — song lyrics, dialogues, anything.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         ) : allCards.length === 0 ? (
           <div className="flex flex-col items-center gap-3 text-center animate-fade-in py-8">
             <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
@@ -1232,50 +1288,13 @@ export function FlashcardApp() {
         </div>
       )}
 
-      {/* Personal Space Section (Only on levels page) */}
-      {!selectedLevelId && (
-        <>
-          <PersonalSpaceDivider />
-          
-          <div className="w-full space-y-4">
-            <button
-              onClick={handleCreateCollection}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-white transition-colors font-medium bg-[#818898]/0"
-            >
-              <Plus className="w-5 h-5" />
-              New Collection
-            </button>
-
-            {collections.length > 0 ? (
-              <div className="grid gap-4">
-                {collections.map((collection) => (
-                  <CollectionCard
-                    key={collection.id}
-                    collection={collection}
-                    onStudy={handleStudyCollection}
-                    onEdit={handleEditCollection}
-                    onDelete={handleDeleteCollection}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <p className="text-sm">
-                  Add your first collection — song lyrics, dialogues, anything.
-                </p>
-              </div>
-            )}
-          </div>
-
-          <NewCollectionModal
-            isOpen={isCollectionModalOpen}
-            onClose={() => setIsCollectionModalOpen(false)}
-            onSave={handleSaveCollection}
-            editingCollection={editingCollection}
-            activeLanguage={activeLanguage}
-          />
-        </>
-      )}
+      <NewCollectionModal
+        isOpen={isCollectionModalOpen}
+        onClose={() => setIsCollectionModalOpen(false)}
+        onSave={handleSaveCollection}
+        editingCollection={editingCollection}
+        activeLanguage={activeLanguage}
+      />
 
       {/* ── Home bottom nav ── */}
       {!selectedLevelId && appView === "main" && (
