@@ -12,7 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { db } from "@/lib/db";
 import { vocabularyLevels, phraseLevels, arabicVocabularyLevels, arabicPhraseLevels, type FlashcardItem } from "@/lib/flashcardData";
-import { type Collection, CollectionFormData } from "@/lib/collectionTypes";
+import { type Collection, CollectionFormData, COLLECTION_CATEGORIES } from "@/lib/collectionTypes";
 import { prefetchAudio, unlockAudio } from "@/lib/speechUtils";
 import { LANGUAGE_CONFIGS, ARABIC_DIALECTS, getArabicConfigForDialect, type Language } from "@/lib/languageConfig";
 import { ArrowLeft, Plus, MoreVertical, Shuffle, Bookmark, User, X, CheckCircle2, Share2, BookOpen, PartyPopper } from "lucide-react";
@@ -214,6 +214,7 @@ export function FlashcardApp() {
     : LANGUAGE_CONFIGS.french;
 
   const animateAdvanceRef = useRef<((exitClass: string, opts: { failed: boolean; requeue: boolean }) => void) | null>(null);
+  const handleBackRef = useRef<() => void>(() => {});
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -221,6 +222,16 @@ export function FlashcardApp() {
       navigate("/auth");
     }
   }, [user, loading, navigate]);
+
+  // Keep back-handler ref fresh
+  useEffect(() => { handleBackRef.current = handleBack; }, [handleBack]);
+
+  // Back gesture / hardware back button
+  useEffect(() => {
+    const onPop = () => { handleBackRef.current(); };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
 
   // Load progress from DB on mount
   useEffect(() => {
@@ -319,6 +330,7 @@ export function FlashcardApp() {
   const startLevel = useCallback((levelId: string) => {
     const level = levels.find((l) => l.id === levelId);
     if (!level) return;
+    window.history.pushState({ mimoe: 'level' }, '', window.location.pathname);
     unlockAudio();
     setIsBookmarkedSession(false);
     const custom = customCards[level.id] || [];
@@ -643,11 +655,12 @@ export function FlashcardApp() {
         await db.updateCollection(editingCollection.id, {
           title: data.title,
           dialect: data.dialect,
+          category: data.category,
           entries: data.entries,
         });
         setCollections(prev => prev.map(col =>
           col.id === editingCollection.id
-            ? { ...col, title: data.title, dialect: data.dialect, entries: data.entries, language: data.language ?? col.language }
+            ? { ...col, title: data.title, dialect: data.dialect, category: data.category, entries: data.entries, language: data.language ?? col.language }
             : col
         ));
       } catch (e) {
@@ -659,6 +672,7 @@ export function FlashcardApp() {
           title: data.title,
           language: data.language ?? activeLanguage,
           dialect: data.dialect,
+          category: data.category,
           entries: data.entries,
         });
         setCollections(prev => [...prev, created]);
@@ -1118,14 +1132,17 @@ export function FlashcardApp() {
                   bookmarkedCount={bookmarkedLevel?.cards.length ?? 0}
                   onStudyBookmarked={startBookmarkedSession}
                   selectedBand={selectedBand}
-                  onSelectBand={setSelectedBand}
+                  onSelectBand={(band) => {
+                    window.history.pushState({ mimoe: 'band' }, '', window.location.pathname);
+                    setSelectedBand(band);
+                  }}
                   onBack={() => setSelectedBand(null)}
                   activeLanguage={activeLanguage}
                 />
               </div>
               {/* ── Personal panel ── */}
               <div className="min-w-full">
-                <div className="w-full space-y-4">
+                <div className="w-full space-y-5">
                   <button
                     onClick={handleCreateCollection}
                     className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-white transition-colors font-medium bg-[#818898]/0"
@@ -1133,19 +1150,51 @@ export function FlashcardApp() {
                     <Plus className="w-5 h-5" />
                     New Collection
                   </button>
-                  {collections.length > 0 ? (
-                    <div className="grid gap-4">
-                      {collections.map((collection) => (
-                        <CollectionCard
-                          key={collection.id}
-                          collection={collection}
-                          onStudy={handleStudyCollection}
-                          onEdit={handleEditCollection}
-                          onDelete={handleDeleteCollection}
-                        />
-                      ))}
-                    </div>
-                  ) : (
+                  {collections.length > 0 ? (() => {
+                    // Group by category; uncategorized last
+                    const groups: { cat: typeof COLLECTION_CATEGORIES[number] | null; items: Collection[] }[] = [];
+                    const catMap = new Map<string, Collection[]>();
+                    const uncategorized: Collection[] = [];
+                    for (const col of collections) {
+                      if (col.category) {
+                        if (!catMap.has(col.category)) catMap.set(col.category, []);
+                        catMap.get(col.category)!.push(col);
+                      } else {
+                        uncategorized.push(col);
+                      }
+                    }
+                    for (const catDef of COLLECTION_CATEGORIES) {
+                      if (catMap.has(catDef.value)) {
+                        groups.push({ cat: catDef, items: catMap.get(catDef.value)! });
+                      }
+                    }
+                    if (uncategorized.length > 0) groups.push({ cat: null, items: uncategorized });
+                    return (
+                      <div className="space-y-6">
+                        {groups.map(({ cat, items }) => (
+                          <div key={cat?.value ?? "__none"}>
+                            {cat && (
+                              <div className="flex items-center gap-2 mb-3">
+                                <span className="text-base">{cat.emoji}</span>
+                                <span className="text-xs font-bold text-white/40 uppercase tracking-wider">{cat.label}</span>
+                              </div>
+                            )}
+                            <div className="grid gap-4">
+                              {items.map((collection) => (
+                                <CollectionCard
+                                  key={collection.id}
+                                  collection={collection}
+                                  onStudy={handleStudyCollection}
+                                  onEdit={handleEditCollection}
+                                  onDelete={handleDeleteCollection}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })() : (
                     <div className="text-center py-8 text-muted-foreground">
                       <p className="text-sm">Add your first collection — song lyrics, dialogues, anything.</p>
                     </div>

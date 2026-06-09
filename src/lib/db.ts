@@ -133,7 +133,7 @@ export const db = {
   async listCollections(): Promise<Collection[]> {
     const { data: cols, error } = await supabase
       .from("collections")
-      .select("id, title, language, dialect, created_at")
+      .select("id, title, language, dialect, category, created_at")
       .order("created_at", { ascending: true });
     if (error) throw error;
     if (!cols || cols.length === 0) return [];
@@ -160,18 +160,19 @@ export const db = {
       title: c.title,
       language: c.language,
       dialect: c.dialect ?? undefined,
+      category: c.category ?? undefined,
       entries: grouped.get(c.id) ?? [],
       createdAt: c.created_at,
     }));
   },
 
-  async createCollection(input: { title: string; language: Language; dialect?: string; entries: CollectionEntry[] }): Promise<Collection> {
+  async createCollection(input: { title: string; language: Language; dialect?: string; category?: string; entries: CollectionEntry[] }): Promise<Collection> {
     const user_id = await uid();
     if (!user_id) throw new Error("Not signed in");
     const { data: col, error } = await supabase
       .from("collections")
-      .insert({ user_id, title: input.title, language: input.language, dialect: input.dialect ?? null })
-      .select("id, title, language, dialect, created_at")
+      .insert({ user_id, title: input.title, language: input.language, dialect: input.dialect ?? null, category: input.category ?? null })
+      .select("id, title, language, dialect, category, created_at")
       .single();
     if (error) throw error;
     if (input.entries.length > 0) {
@@ -191,17 +192,18 @@ export const db = {
       title: (col as any).title,
       language: (col as any).language,
       dialect: (col as any).dialect ?? undefined,
+      category: (col as any).category ?? undefined,
       entries: input.entries,
       createdAt: (col as any).created_at,
     };
   },
 
-  async updateCollection(id: string, input: { title: string; dialect?: string; entries: CollectionEntry[] }): Promise<void> {
+  async updateCollection(id: string, input: { title: string; dialect?: string; category?: string; entries: CollectionEntry[] }): Promise<void> {
     const user_id = await uid();
     if (!user_id) throw new Error("Not signed in");
     const { error } = await supabase
       .from("collections")
-      .update({ title: input.title, dialect: input.dialect ?? null })
+      .update({ title: input.title, dialect: input.dialect ?? null, category: input.category ?? null })
       .eq("id", id);
     if (error) throw error;
     // Replace entries

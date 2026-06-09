@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { X, Plus } from "lucide-react";
-import type { Collection, CollectionEntry, CollectionFormData } from "@/lib/collectionTypes";
+import type { Collection, CollectionEntry, CollectionFormData, CollectionCategory } from "@/lib/collectionTypes";
+import { COLLECTION_CATEGORIES } from "@/lib/collectionTypes";
 import { ARABIC_DIALECTS } from "@/lib/languageConfig";
 import type { Language } from "@/lib/languageConfig";
+import { WavyLine } from "./LevelSelect";
 
 interface NewCollectionModalProps {
   isOpen: boolean;
@@ -17,10 +19,14 @@ export function NewCollectionModal({ isOpen, onClose, onSave, editingCollection,
   const [importText, setImportText]     = useState("");
   const [isSaving, setIsSaving]         = useState(false);
   const [error, setError]               = useState("");
-  const [selectedDialect, setSelectedDialect] = useState(editingCollection?.dialect ?? "ar-SA");
+  const [selectedDialect, setSelectedDialect]   = useState(editingCollection?.dialect ?? "ar-SA");
+  const [selectedCategory, setSelectedCategory] = useState<CollectionCategory | undefined>(editingCollection?.category);
 
   useEffect(() => {
     if (editingCollection && isOpen) {
+      setTitle(editingCollection.title);
+      setSelectedCategory(editingCollection.category);
+      setSelectedDialect(editingCollection.dialect ?? "ar-SA");
       const existingEntries = editingCollection.entries.map(entry => {
         const alts = entry.alternatives?.length ? ` | ${entry.alternatives.join(' | ')}` : '';
         return `${entry.english} | ${entry.french}${alts}`;
@@ -28,6 +34,8 @@ export function NewCollectionModal({ isOpen, onClose, onSave, editingCollection,
       setImportText(existingEntries);
     } else if (!isOpen) {
       setImportText("");
+      setTitle("");
+      setSelectedCategory(undefined);
     }
   }, [editingCollection, isOpen]);
 
@@ -55,7 +63,7 @@ export function NewCollectionModal({ isOpen, onClose, onSave, editingCollection,
 
   const handleSave = () => {
     setError("");
-    if (!title.trim()) { setError("Please enter a collection title"); return; }
+    if (!title.trim()) { setError("Please enter a title"); return; }
     const entries = importText.trim() ? parseImportText(importText) : [];
     if (!importText.trim() && !editingCollection) {
       setError("Add at least one entry (English | Target)");
@@ -70,76 +78,103 @@ export function NewCollectionModal({ isOpen, onClose, onSave, editingCollection,
       title: title.trim(),
       language: activeLanguage ?? "french",
       dialect: activeLanguage === "arabic" ? selectedDialect : undefined,
+      category: selectedCategory,
       entries,
     });
     setTimeout(() => { setIsSaving(false); handleClose(); }, 500);
   };
 
   const handleClose = () => {
-    setTitle(""); setImportText(""); setError(""); setIsSaving(false); onClose();
+    setTitle(""); setImportText(""); setError(""); setIsSaving(false);
+    setSelectedCategory(undefined); onClose();
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
-      {/* Sheet slides up from bottom */}
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm animate-fade-in">
       <div
-        className="w-full max-w-[480px] rounded-t-3xl shadow-2xl overflow-hidden animate-slide-up-in"
-        style={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', maxHeight: '88vh' }}
+        className="w-full max-w-[480px] rounded-t-[32px] overflow-hidden animate-slide-up-in"
+        style={{ background: '#050505', border: '1px solid rgba(255,255,255,0.07)', maxHeight: '92vh' }}
       >
         {/* Handle */}
-        <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 rounded-full bg-white/20" />
-        </div>
-
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-border">
-          <h3 className="font-display text-lg font-bold text-foreground">
-            {editingCollection ? "Edit Collection" : "New Collection"}
-          </h3>
-          <button onClick={handleClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
-            <X className="w-4 h-4 text-muted-foreground" />
-          </button>
+        <div className="flex justify-center pt-3 pb-0">
+          <div className="w-10 h-1 rounded-full bg-white/15" />
         </div>
 
         {/* Scrollable body */}
-        <div className="overflow-y-auto" style={{ maxHeight: 'calc(88vh - 120px)' }}>
-          <div className="p-5 space-y-4">
+        <div className="overflow-y-auto" style={{ maxHeight: 'calc(92vh - 20px)' }}>
+          <div className="px-5 pt-5 pb-8 space-y-5">
 
-            {/* Title */}
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                Collection title
-              </label>
+            {/* Title heading + WavyLine */}
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="font-black text-white text-[1.9rem] leading-tight tracking-tight">
+                  {editingCollection ? "Edit" : "New"} Collection
+                </h3>
+                <WavyLine className="mt-1.5 max-w-[160px]" />
+              </div>
+              <button
+                onClick={handleClose}
+                className="mt-1 p-2 rounded-full hover:bg-white/8 transition-colors"
+                style={{ background: 'rgba(255,255,255,0.06)' }}
+              >
+                <X className="w-4 h-4 text-white/50" />
+              </button>
+            </div>
+
+            {/* Collection name */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-white/40 text-sm font-medium pl-1">Name</label>
               <input
                 type="text"
                 value={title}
                 onChange={e => setTitle(e.target.value)}
-                placeholder="e.g. La Vie en Rose, Weekend phrases…"
-                className="w-full rounded-xl border border-border bg-muted px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder="La Vie en Rose, Weekend phrases…"
                 autoFocus
                 disabled={isSaving}
+                className="w-full rounded-full px-5 py-4 text-white text-sm font-medium placeholder:text-white/25 outline-none"
+                style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.08)' }}
               />
+            </div>
+
+            {/* Category picker */}
+            <div className="flex flex-col gap-2">
+              <label className="text-white/40 text-sm font-medium pl-1">Category</label>
+              <div className="grid grid-cols-3 gap-2">
+                {COLLECTION_CATEGORIES.map(cat => (
+                  <button
+                    key={cat.value}
+                    type="button"
+                    onClick={() => setSelectedCategory(selectedCategory === cat.value ? undefined : cat.value)}
+                    className="flex items-center gap-1.5 px-3 py-2.5 rounded-full text-xs font-semibold transition-all"
+                    style={selectedCategory === cat.value
+                      ? { background: 'linear-gradient(135deg, #9b5cf6, #ec4899)', color: '#fff', border: '1px solid transparent' }
+                      : { background: '#111111', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.08)' }
+                    }
+                  >
+                    <span>{cat.emoji}</span>
+                    <span>{cat.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Arabic dialect selector */}
             {activeLanguage === "arabic" && (
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                  Arabic Dialect
-                </label>
+              <div className="flex flex-col gap-2">
+                <label className="text-white/40 text-sm font-medium pl-1">Dialect</label>
                 <div className="grid grid-cols-2 gap-2">
                   {ARABIC_DIALECTS.map(d => (
                     <button
                       key={d.code}
                       type="button"
                       onClick={() => setSelectedDialect(d.code)}
-                      className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-medium transition-all text-left ${
-                        selectedDialect === d.code
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border bg-muted text-muted-foreground hover:text-foreground"
-                      }`}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-semibold transition-all"
+                      style={selectedDialect === d.code
+                        ? { background: 'linear-gradient(135deg, #9b5cf6, #ec4899)', color: '#fff', border: '1px solid transparent' }
+                        : { background: '#111111', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.08)' }
+                      }
                     >
                       <span>{d.flag}</span><span>{d.label}</span>
                     </button>
@@ -148,52 +183,59 @@ export function NewCollectionModal({ isOpen, onClose, onSave, editingCollection,
               </div>
             )}
 
-            {/* Entries textarea */}
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                {editingCollection ? "Edit entries" : "Import entries"}
+            {/* Entries */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-white/40 text-sm font-medium pl-1">
+                {editingCollection ? "Edit entries" : "Entries"}
               </label>
               <textarea
                 value={importText}
                 onChange={e => setImportText(e.target.value)}
-                placeholder={"One pair per line:\nHello | Bonjour\nGoodbye | Au revoir\nThank you | Merci / Merci beaucoup"}
-                className="w-full h-44 rounded-xl border border-border bg-muted px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground font-mono resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder={"One pair per line:\nHello | Bonjour\nGoodbye | Au revoir\nThank you | Merci"}
                 disabled={isSaving}
+                className="w-full h-40 rounded-3xl px-5 py-4 text-sm text-white placeholder:text-white/25 font-mono resize-none outline-none"
+                style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.08)' }}
               />
-              <p className="text-xs text-muted-foreground mt-1.5">
-                Format: <span className="text-primary font-mono">English | Target | Alt2</span>
+              <p className="text-xs text-white/25 pl-1">
+                Format: <span className="text-white/45 font-mono">English | Target | Alt</span>
               </p>
             </div>
 
             {/* Error */}
             {error && (
-              <div className="px-4 py-3 rounded-xl bg-destructive/10 border border-destructive/30">
-                <p className="text-destructive text-sm">{error}</p>
+              <div className="px-4 py-3 rounded-2xl" style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)' }}>
+                <p className="text-red-400 text-sm">{error}</p>
               </div>
             )}
 
             {/* Actions */}
-            <div className="flex gap-2 pt-1 pb-2">
+            <div className="flex gap-3 pt-1">
               <button
                 type="button"
                 onClick={handleClose}
                 disabled={isSaving}
-                className="flex-1 px-4 py-3 rounded-xl bg-muted text-foreground font-semibold text-sm hover:bg-muted/70 transition-colors disabled:opacity-50"
+                className="flex-1 px-4 py-4 rounded-full text-white/50 font-semibold text-sm transition-colors disabled:opacity-40"
+                style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.08)' }}
               >
                 Cancel
               </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={isSaving}
-                className="flex-1 px-4 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {isSaving
-                  ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Saving…</>
-                  : <><Plus className="w-4 h-4" />{editingCollection ? "Update" : "Create"}</>
-                }
-              </button>
+              {/* Gradient-border save button */}
+              <div className="flex-1 p-[1.5px] rounded-full" style={{ background: 'linear-gradient(135deg, #9b5cf6, #ec4899)' }}>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="w-full py-4 rounded-full font-bold text-white text-sm flex items-center justify-center gap-2 transition-opacity disabled:opacity-50"
+                  style={{ background: '#0a0a0a' }}
+                >
+                  {isSaving
+                    ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Saving…</>
+                    : <><Plus className="w-4 h-4" />{editingCollection ? "Update" : "Create"}</>
+                  }
+                </button>
+              </div>
             </div>
+
           </div>
         </div>
       </div>
