@@ -21,6 +21,13 @@ import { ArrowLeft, Plus, MoreVertical, Shuffle, Bookmark, X, CheckCircle2, Shar
 type Tab = "vocabulary" | "phrases";
 type AppView = "main" | "collection";
 
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+
 export function FlashcardApp() {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
@@ -247,29 +254,42 @@ export function FlashcardApp() {
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
-  // Load progress from DB on mount
+  // Load + sync progress on mount (bidirectional: DB→local and local→DB)
   useEffect(() => {
     if (!user) return;
-    const loadProgress = async () => {
-      const { data } = await supabase
+    const syncProgress = async () => {
+      const { data, error } = await supabase
         .from("user_progress")
         .select("level_id, tab, all_correct")
         .eq("user_id", user.id);
-      if (data && data.length > 0) {
-        const vocab: string[] = [];
-        const phrases: string[] = [];
-        data.forEach((row) => {
-          if (row.all_correct) {
-            if (row.tab === "vocabulary") vocab.push(row.level_id);
-            else if (row.tab === "phrases") phrases.push(row.level_id);
-          }
-        });
-        // Merge with localStorage — never wipe data that's already there
-        if (vocab.length > 0)   setCompletedVocab(prev  => [...new Set([...prev,  ...vocab])]);
-        if (phrases.length > 0) setCompletedPhrases(prev => [...new Set([...prev, ...phrases])]);
+
+      if (error) { console.error("[mimoe] syncProgress fetch error:", error); return; }
+
+      const dbVocab   = (data ?? []).filter(r => r.all_correct && r.tab === "vocabulary").map(r => r.level_id as string);
+      const dbPhrases = (data ?? []).filter(r => r.all_correct && r.tab === "phrases"   ).map(r => r.level_id as string);
+
+      // DB → local: merge DB progress into localStorage state
+      if (dbVocab.length > 0)   setCompletedVocab(prev  => [...new Set([...prev,  ...dbVocab])]);
+      if (dbPhrases.length > 0) setCompletedPhrases(prev => [...new Set([...prev, ...dbPhrases])]);
+
+      // Local → DB: push any locally-completed IDs that aren't in the DB yet
+      // (handles offline completions or failed saves from previous sessions)
+      const localVocab:   string[] = JSON.parse(localStorage.getItem("mimoe-completed-vocab")   ?? "[]");
+      const localPhrases: string[] = JSON.parse(localStorage.getItem("mimoe-completed-phrases") ?? "[]");
+
+      const pending = [
+        ...localVocab  .filter(id => !dbVocab.includes(id))  .map(id => ({ user_id: user.id, level_id: id, tab: "vocabulary", all_correct: true })),
+        ...localPhrases.filter(id => !dbPhrases.includes(id)).map(id => ({ user_id: user.id, level_id: id, tab: "phrases",    all_correct: true })),
+      ];
+
+      if (pending.length > 0) {
+        const { error: upsertErr } = await supabase
+          .from("user_progress")
+          .upsert(pending, { onConflict: "user_id,level_id,tab" });
+        if (upsertErr) console.error("[mimoe] syncProgress push error:", upsertErr);
       }
     };
-    loadProgress();
+    syncProgress();
   }, [user]);
 
   // Load collections + bookmarks on user/language change
@@ -1158,6 +1178,15 @@ export function FlashcardApp() {
       {/* Pivot header — Levels / Personal */}
       {!selectedLevelId && !selectedBand && (
         <div className="flex flex-col w-full mb-4">
+          {/* Greeting */}
+          {user && (
+            <p className="text-sm font-medium mb-3" style={{ color: 'rgba(255,255,255,0.38)' }}>
+              {getGreeting()},{' '}
+              <span className="text-white/70 font-semibold">
+                {(user.user_metadata?.nickname as string | undefined) ?? user.email?.split("@")[0] ?? ""}
+              </span>{' '}👋
+            </p>
+          )}
           <div className="flex items-baseline gap-5">
             <button onClick={() => setHomeTab("levels")}>
               <span className={`font-black tracking-tight leading-none transition-all duration-300 ${
@@ -1486,7 +1515,7 @@ export function FlashcardApp() {
             >
               {user && (
                 <img
-                  src={dicebearUrl(user.id)}
+                  src={dicebearUrl((user.user_metadata?.avatar_seed as string | undefined) ?? user.id)}
                   alt="Profile"
                   className="w-full h-full"
                   draggable={false}

@@ -24,13 +24,13 @@ export function CollectionCard({ collection, onStudy, onEdit, onDelete }: Collec
     <div
       className="relative overflow-hidden rounded-[20px] flex flex-col p-4"
       style={{
-        aspectRatio: '1/1',
+        minHeight: 180,
         background: '#0E0E14',
         border: '1px solid rgba(255,255,255,0.07)',
       }}
     >
       {/* Top row: menu button only */}
-      <div className="flex items-start justify-end mb-2 flex-shrink-0">
+      <div className="flex items-start justify-end mb-1 flex-shrink-0">
         <button
           onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
           className="p-1 rounded-lg hover:bg-white/8 transition-colors flex-shrink-0 -mr-1 -mt-0.5"
@@ -39,9 +39,9 @@ export function CollectionCard({ collection, onStudy, onEdit, onDelete }: Collec
         </button>
       </div>
 
-      {/* Emoji — fills the middle */}
-      <div className="flex-1 flex items-center">
-        <span style={{ fontSize: 36, lineHeight: 1 }}>{catInfo?.emoji ?? "📚"}</span>
+      {/* Emoji */}
+      <div className="flex-1 flex items-center min-h-[44px]">
+        <span style={{ fontSize: 32, lineHeight: 1 }}>{catInfo?.emoji ?? "📚"}</span>
       </div>
 
       {/* Title + count */}
@@ -62,16 +62,14 @@ export function CollectionCard({ collection, onStudy, onEdit, onDelete }: Collec
         </p>
       </div>
 
-      {/* Study button — gradient outline */}
-      <div className="p-[1.5px] rounded-xl flex-shrink-0" style={{ background: 'linear-gradient(135deg, #7C3AED, #9B5CF6)' }}>
-        <button
-          onClick={() => onStudy(collection)}
-          className="w-full py-2 rounded-[10px] font-bold text-xs transition-opacity hover:opacity-80"
-          style={{ background: '#0E0E14', color: 'rgba(167,139,250,0.9)' }}
-        >
-          Study
-        </button>
-      </div>
+      {/* Study button — filled gradient pill */}
+      <button
+        onClick={() => onStudy(collection)}
+        className="w-full py-2.5 rounded-full font-bold text-xs flex-shrink-0 transition-opacity hover:opacity-85 active:opacity-70"
+        style={{ background: 'linear-gradient(135deg, #7C3AED, #9B5CF6)', color: '#fff' }}
+      >
+        Study
+      </button>
 
       {/* Dropdown menu */}
       {showMenu && (
