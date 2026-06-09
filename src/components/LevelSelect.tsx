@@ -183,8 +183,8 @@ export function LevelSelect({
 
     return (
       <div className="w-full pt-6">
-        {/* Deck list (band header is now at top of FlashcardApp) */}
-        <div className="flex flex-col gap-2">
+        {/* Deck list — single col on mobile, 2-col on sm+ */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {decks.map((deck, i) => {
             const isCompleted = completedLevelIds.includes(deck.id);
             const title = stripCefrPrefix(deck.title);
@@ -223,7 +223,7 @@ export function LevelSelect({
 
           {grouped.custom.length > 0 && (
             <>
-              <div className="pt-2 pb-1">
+              <div className="pt-2 pb-1 sm:col-span-2">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">My levels</p>
               </div>
               {grouped.custom.map((deck, i) => {
@@ -313,99 +313,86 @@ export function LevelSelect({
         </button>
       )}
 
-      {/* First band card — hero (full width, tall) */}
-      {BAND_CARDS.slice(0, 1).map((b) => {
-        const decks = grouped[b.id] ?? [];
-        const completed = decks.filter(d => completedLevelIds.includes(d.id)).length;
-        const pct = decks.length > 0 ? (completed / decks.length) * 100 : 0;
-        return (
-          <button
-            key={b.id}
-            onClick={() => onSelectBand(b.id)}
-            className="relative w-full overflow-hidden text-left active:scale-[0.97] transition-transform"
-            style={{
-              background: b.bg,
-              borderRadius: "36px",
-              boxShadow: `0 6px 0 ${b.shadow}, 0 12px 32px rgba(0,0,0,0.35)`,
-              minHeight: "clamp(290px, 58vw, 380px)",
-            }}
-          >
-            {b.id === "A1" && (
-              <img
-                src={activeLanguage === "arabic" ? "/images/ar-a1-bg.png" : "/images/a1-bg.png"}
-                alt=""
-                aria-hidden="true"
-                className="absolute bottom-0 left-0 w-full pointer-events-none"
-                style={{ opacity: 1, mixBlendMode: "normal", transform: "translateY(calc(22% - 4px))" }}
-              />
-            )}
-            <CardShine strong />
-            <div className="absolute inset-0 p-5 flex flex-col justify-between">
-              {/* Badge — top right only */}
-              <div className="flex items-start justify-end">
-                <span className="text-white/70 text-xs font-bold px-2 py-1 rounded-full bg-black/20">
-                  {b.id} · {completed}/{decks.length}
-                </span>
-              </div>
-              {/* Illustration + text — bottom */}
-              <div>
-                <img
-                  src={b.img3d}
-                  alt=""
-                  className="w-20 h-20 object-contain mb-2"
-                  style={{ filter: "drop-shadow(0 8px 18px rgba(0,0,0,0.4))" }}
-                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "0"; }}
-                />
-                <p className="text-white font-black text-2xl leading-tight" style={{ textShadow: "0 1px 6px rgba(0,0,0,0.25)" }}>
-                  {b.title}
-                </p>
-                <p className="text-white/70 text-xs mt-0.5 mb-3">{b.subtitle}</p>
-                <div className="h-1.5 rounded-full bg-black/20 overflow-hidden">
-                  <div className="h-full rounded-full bg-white/80 transition-all duration-500" style={{ width: `${pct}%` }} />
-                </div>
-              </div>
-            </div>
-          </button>
-        );
-      })}
-
-      {/* A2 + B1 side by side */}
-      <div className="grid grid-cols-2 gap-4">
-        {BAND_CARDS.slice(1).map((b) => {
+      {/*
+        Responsive band-card grid:
+        - Mobile  : 2 columns — A1 spans both (col-span-2), A2 + B1 each take 1
+        - md+     : 3 equal columns — all three side by side
+      */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        {BAND_CARDS.map((b, i) => {
           const decks = grouped[b.id] ?? [];
           const completed = decks.filter(d => completedLevelIds.includes(d.id)).length;
           const pct = decks.length > 0 ? (completed / decks.length) * 100 : 0;
+          const isHero = i === 0;
+
           return (
             <button
               key={b.id}
               onClick={() => onSelectBand(b.id)}
-              className="relative overflow-hidden text-left active:scale-[0.97] transition-transform"
+              className={`relative overflow-hidden text-left active:scale-[0.97] transition-transform ${
+                isHero ? "col-span-2 md:col-span-1" : ""
+              }`}
               style={{
                 background: b.bg,
-                borderRadius: "30px",
-                boxShadow: `0 5px 0 ${b.shadow}, 0 10px 24px rgba(0,0,0,0.3)`,
-                minHeight: "clamp(150px, 32vw, 190px)",
+                borderRadius: isHero ? "36px" : "30px",
+                boxShadow: `0 ${isHero ? 6 : 5}px 0 ${b.shadow}, 0 ${isHero ? 12 : 10}px ${isHero ? 32 : 24}px rgba(0,0,0,${isHero ? 0.35 : 0.3})`,
+                // Hero is tall on mobile; all cards equal on md+ (handled by aspect-ratio below)
+                minHeight: isHero ? "clamp(220px, 52vw, 340px)" : "clamp(150px, 28vw, 200px)",
               }}
             >
-              <CardShine />
-              <div className="absolute inset-0 p-4 flex flex-col justify-between">
-                <div className="flex items-start justify-between">
-                  <img
-                    src={b.img3d}
-                    alt=""
-                    className="w-14 h-14 object-contain"
-                    style={{ filter: "drop-shadow(0 6px 12px rgba(0,0,0,0.4))" }}
-                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "0"; }}
-                  />
-                  <span className="text-white/60 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-black/20">{b.id}</span>
+              {/* A1 scenic background image (mobile hero only) */}
+              {isHero && b.id === "A1" && (
+                <img
+                  src={activeLanguage === "arabic" ? "/images/ar-a1-bg.png" : "/images/a1-bg.png"}
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute bottom-0 left-0 w-full pointer-events-none"
+                  style={{ opacity: 1, mixBlendMode: "normal", transform: "translateY(calc(22% - 4px))" }}
+                />
+              )}
+
+              <CardShine strong={isHero} />
+
+              <div className={`absolute inset-0 flex flex-col justify-between ${isHero ? "p-5" : "p-4"}`}>
+                {/* Top row */}
+                <div className={`flex items-start ${isHero ? "justify-end" : "justify-between"}`}>
+                  {/* Small cards: illustration top-left */}
+                  {!isHero && (
+                    <img
+                      src={b.img3d}
+                      alt=""
+                      className="w-14 h-14 object-contain"
+                      style={{ filter: "drop-shadow(0 6px 12px rgba(0,0,0,0.4))" }}
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "0"; }}
+                    />
+                  )}
+                  <span className={`text-white/70 font-bold px-2 py-0.5 rounded-full bg-black/20 ${isHero ? "text-xs" : "text-[10px]"}`}>
+                    {b.id} {isHero ? `· ${completed}/${decks.length}` : ""}
+                  </span>
                 </div>
+
+                {/* Bottom: illustration (hero) + text + bar */}
                 <div>
-                  <p className="text-white font-black text-lg leading-tight" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.25)" }}>
+                  {isHero && (
+                    <img
+                      src={b.img3d}
+                      alt=""
+                      className="w-20 h-20 object-contain mb-2"
+                      style={{ filter: "drop-shadow(0 8px 18px rgba(0,0,0,0.4))" }}
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "0"; }}
+                    />
+                  )}
+                  <p
+                    className={`text-white font-black leading-tight ${isHero ? "text-2xl" : "text-lg"}`}
+                    style={{ textShadow: `0 1px ${isHero ? 6 : 4}px rgba(0,0,0,0.25)` }}
+                  >
                     {b.title}
                   </p>
-                  <p className="text-white/65 text-[10px] mt-0.5 mb-2">{completed}/{decks.length} decks</p>
-                  <div className="h-1 rounded-full bg-black/20 overflow-hidden">
-                    <div className="h-full rounded-full bg-white/75 transition-all duration-500" style={{ width: `${pct}%` }} />
+                  <p className={`text-white/70 mt-0.5 mb-2 ${isHero ? "text-xs" : "text-[10px]"}`}>
+                    {isHero ? b.subtitle : `${completed}/${decks.length} decks`}
+                  </p>
+                  <div className={`${isHero ? "h-1.5" : "h-1"} rounded-full bg-black/20 overflow-hidden`}>
+                    <div className="h-full rounded-full bg-white/80 transition-all duration-500" style={{ width: `${pct}%` }} />
                   </div>
                 </div>
               </div>
@@ -413,7 +400,6 @@ export function LevelSelect({
           );
         })}
       </div>
-
 
     </div>
   );

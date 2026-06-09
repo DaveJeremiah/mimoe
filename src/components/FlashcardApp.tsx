@@ -938,7 +938,7 @@ export function FlashcardApp() {
 
   return (
     <div
-      className={`min-h-screen flex flex-col items-center max-w-[480px] mx-auto ${selectedLevelId ? 'pt-[61px]' : 'pt-0'} px-[15px] ${selectedLevelId ? 'pb-36' : 'pb-24'}`}
+      className={`min-h-screen flex flex-col items-center w-full max-w-[480px] md:max-w-[860px] xl:max-w-[1100px] mx-auto ${selectedLevelId ? 'pt-[61px]' : 'pt-0'} px-[15px] md:px-6 ${selectedLevelId ? 'pb-36' : 'pb-24'}`}
       onTouchStart={handleSessionTouchStart}
       onTouchEnd={handleSessionTouchEnd}
     >
@@ -1270,7 +1270,7 @@ export function FlashcardApp() {
                                 <span className="text-xs font-bold text-white/40 uppercase tracking-wider">{cat.label}</span>
                               </div>
                             )}
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                               {items.map((collection) => (
                                 <CollectionCard
                                   key={collection.id}
@@ -1474,11 +1474,12 @@ export function FlashcardApp() {
 
       {/* ── Home bottom nav ── */}
       {!selectedLevelId && appView === "main" && !isCollectionModalOpen && (
-        <nav className="fixed bottom-0 left-0 right-0 z-50">
+        <nav className="fixed bottom-0 left-0 right-0 z-50"
+          style={{ background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.7) 30%, rgba(0,0,0,0.96) 70%)' }}
+        >
           <div
-            className="w-full flex items-center px-5 gap-3"
+            className="w-full max-w-[480px] md:max-w-[860px] xl:max-w-[1100px] mx-auto flex items-center px-5 md:px-6 gap-3"
             style={{
-              background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.7) 30%, rgba(0,0,0,0.96) 70%)',
               paddingTop: '28px',
               paddingBottom: '20px',
             }}
