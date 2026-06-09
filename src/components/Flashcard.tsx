@@ -311,12 +311,14 @@ export function Flashcard({
       {/* Card stack */}
       <div className={`relative w-full max-w-[420px] ${cardAnim}`}>
 
-        {/* Ghost layers — no overflow-hidden so transparent SVG margins don't form dark boxes */}
-        <div className="absolute inset-x-4 top-[-8px] bottom-3">
-          <img src="/images/card-template.svg" className="w-full h-full" style={{ objectFit: 'fill', opacity: 0.5 }} alt="" />
+        {/* Ghost layers — fade out during flip so they don't look like a card-back */}
+        <div className="absolute inset-x-4 top-[-8px] bottom-3"
+          style={{ opacity: exitAnim ? 0 : 0.5, transition: 'opacity 0.12s ease' }}>
+          <img src="/images/card-template.svg" className="w-full h-full" style={{ objectFit: 'fill' }} alt="" />
         </div>
-        <div className="absolute inset-x-2 top-[-4px] bottom-1.5">
-          <img src="/images/card-template.svg" className="w-full h-full" style={{ objectFit: 'fill', opacity: 0.75 }} alt="" />
+        <div className="absolute inset-x-2 top-[-4px] bottom-1.5"
+          style={{ opacity: exitAnim ? 0 : 0.75, transition: 'opacity 0.12s ease' }}>
+          <img src="/images/card-template.svg" className="w-full h-full" style={{ objectFit: 'fill' }} alt="" />
         </div>
 
         {/* Front card — 3D flip on advance */}
@@ -363,7 +365,7 @@ export function Flashcard({
               {isQuestion && (
                 <h2
                   className="font-black text-[1.45rem] text-center leading-snug tracking-tight"
-                  style={{ color: '#1a1a2a' }}
+                  style={{ color: 'rgba(255,255,255,0.95)' }}
                 >
                   {card.english}
                 </h2>
@@ -373,10 +375,10 @@ export function Flashcard({
               {isWrongFirst && (
                 <div className="flex flex-col items-center gap-2 animate-pop-in">
                   <h2 dir={targetDir} className={`font-bold text-[1.45rem] text-center leading-snug lowercase ${targetFontClass}`}
-                    style={{ color: '#1a1a2a' }}>
+                    style={{ color: 'rgba(255,255,255,0.95)' }}>
                     {targetWord}
                   </h2>
-                  {spokenText && <p className="text-sm italic" style={{ color: 'rgba(30,30,50,0.4)' }}>"{spokenText}"</p>}
+                  {spokenText && <p className="text-sm italic" style={{ color: 'rgba(255,255,255,0.45)' }}>"{spokenText}"</p>}
                 </div>
               )}
 
@@ -384,15 +386,15 @@ export function Flashcard({
               {(isReveal || isWrongFinal) && (
                 <div className="flex flex-col items-center gap-3 animate-pop-in">
                   <h2 dir={targetDir} className={`font-bold text-[1.45rem] text-center leading-snug lowercase ${targetFontClass}`}
-                    style={{ color: isGreenState ? '#1a6e3a' : '#1a1a2a' }}>
+                    style={{ color: isGreenState ? '#a8f0bb' : 'rgba(255,255,255,0.95)' }}>
                     {targetWord}
                   </h2>
-                  <p className="text-sm" style={{ color: "rgba(30,30,50,0.5)" }}>{card.english}</p>
+                  <p className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>{card.english}</p>
                   {isWrongFinal && (
                     <button
                       onClick={handleKnewItAfterFinal}
                       className="mt-1 text-[11px] font-semibold px-4 py-1.5 rounded-full transition-colors"
-                      style={{ color: "rgba(30,30,50,0.45)", border: "1px solid rgba(30,30,50,0.2)" }}
+                      style={{ color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.25)' }}
                     >
                       I knew it
                     </button>

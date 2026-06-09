@@ -1114,7 +1114,7 @@ export function FlashcardApp() {
       )}
 
       {/* Content */}
-      <div className="flex-1 w-full flex flex-col items-center justify-center">
+      <div className={`flex-1 w-full flex flex-col items-center ${selectedLevelId ? 'justify-center' : 'justify-start'}`}>
         {!selectedLevelId ? (
           /* Sliding pivot panels */
           <div className="w-full overflow-x-hidden">
