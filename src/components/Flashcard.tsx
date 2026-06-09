@@ -309,7 +309,7 @@ export function Flashcard({
     <div className="flex flex-col items-center w-full">
 
       {/* Card stack */}
-      <div className={`relative w-full max-w-[360px] ${cardAnim}`}>
+      <div className={`relative w-full max-w-[420px] ${cardAnim}`}>
 
         {/* Ghost layers — no overflow-hidden so transparent SVG margins don't form dark boxes */}
         <div className="absolute inset-x-4 top-[-8px] bottom-3">
@@ -355,8 +355,9 @@ export function Flashcard({
               </>
             )}
 
-            {/* Card content */}
-            <div className="relative w-full h-full flex flex-col items-center justify-center p-8 z-10">
+            {/* Card content — inset to match the orange card face within the SVG */}
+            <div className="absolute flex flex-col items-center justify-center z-10"
+              style={{ top: '5%', bottom: '8%', left: '20%', right: '3%' }}>
 
               {/* QUESTION */}
               {isQuestion && (

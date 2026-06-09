@@ -234,14 +234,14 @@
 
   .animate-slide-up      { animation: card-slide-up 0.42s cubic-bezier(0.55, 0, 1, 0.45) forwards; }
 
-  /* ── Card flip transitions ── */
+  /* ── Card flip transitions (X-axis = flips upward) ── */
   @keyframes card-flip-out {
-    0%   { transform: rotateY(0deg);  opacity: 1; }
-    100% { transform: rotateY(90deg); opacity: 0.4; }
+    0%   { transform: rotateX(0deg);   opacity: 1; }
+    100% { transform: rotateX(-90deg); opacity: 0.4; }
   }
   @keyframes card-flip-in {
-    0%   { transform: rotateY(-90deg); opacity: 0.4; }
-    100% { transform: rotateY(0deg);   opacity: 1; }
+    0%   { transform: rotateX(90deg);  opacity: 0.4; }
+    100% { transform: rotateX(0deg);   opacity: 1; }
   }
   .animate-card-flip-out { animation: card-flip-out 0.22s cubic-bezier(0.55, 0, 1, 0.45) forwards; }
   .animate-card-flip-in  { animation: card-flip-in  0.22s cubic-bezier(0, 0.55, 0.45, 1) forwards; }
