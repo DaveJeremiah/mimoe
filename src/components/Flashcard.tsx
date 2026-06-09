@@ -311,31 +311,30 @@ export function Flashcard({
       {/* Card stack */}
       <div className={`relative w-full max-w-[360px] ${cardAnim}`}>
 
-        {/* Ghost layers using SVG card design — peek from TOP */}
-        <div className="absolute inset-x-4 top-[-8px] bottom-3 overflow-hidden"
-          style={{ borderRadius: 24, boxShadow: "0 -4px 16px rgba(0,0,0,0.2)" }}>
-          <img src="/images/card-template.svg" className="absolute inset-0 w-full h-full" style={{ objectFit: 'fill' }} alt="" />
-          <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.32)' }} />
+        {/* Ghost layers — no overflow-hidden so transparent SVG margins don't form dark boxes */}
+        <div className="absolute inset-x-4 top-[-8px] bottom-3">
+          <img src="/images/card-template.svg" className="w-full h-full" style={{ objectFit: 'fill', opacity: 0.5 }} alt="" />
         </div>
-        <div className="absolute inset-x-2 top-[-4px] bottom-1.5 overflow-hidden"
-          style={{ borderRadius: 26, boxShadow: "0 -2px 10px rgba(0,0,0,0.15)" }}>
-          <img src="/images/card-template.svg" className="absolute inset-0 w-full h-full" style={{ objectFit: 'fill' }} alt="" />
-          <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.16)' }} />
+        <div className="absolute inset-x-2 top-[-4px] bottom-1.5">
+          <img src="/images/card-template.svg" className="w-full h-full" style={{ objectFit: 'fill', opacity: 0.75 }} alt="" />
         </div>
 
         {/* Front card — 3D flip on advance */}
         <div style={{ perspective: '900px' }}>
           <div
-            className={`relative overflow-hidden ${enterAnim} ${exitAnim}`}
+            className={`relative ${enterAnim} ${exitAnim}`}
             style={{
               aspectRatio: '570/438',
-              borderRadius: 28,
-              boxShadow: "0 14px 40px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.2)",
               transformOrigin: 'center center',
             }}
           >
-            {/* SVG card template as visual background */}
-            <img src="/images/card-template.svg" className="absolute inset-0 w-full h-full" style={{ objectFit: 'fill' }} alt="" aria-hidden />
+            {/* SVG card — drop-shadow follows the actual card shape, not a rectangle */}
+            <img
+              src="/images/card-template.svg"
+              className="absolute inset-0 w-full h-full"
+              style={{ objectFit: 'fill', filter: 'drop-shadow(0 12px 32px rgba(0,0,0,0.45))' }}
+              alt="" aria-hidden
+            />
 
             {/* Streak fire badge */}
             {streak >= 2 && (
@@ -362,7 +361,7 @@ export function Flashcard({
               {/* QUESTION */}
               {isQuestion && (
                 <h2
-                  className="font-black text-[2.4rem] text-center leading-tight tracking-tight"
+                  className="font-black text-[1.45rem] text-center leading-snug tracking-tight"
                   style={{ color: '#1a1a2a' }}
                 >
                   {card.english}
@@ -372,7 +371,7 @@ export function Flashcard({
               {/* WRONG_FIRST — show target word as hint */}
               {isWrongFirst && (
                 <div className="flex flex-col items-center gap-2 animate-pop-in">
-                  <h2 dir={targetDir} className={`font-bold text-[2rem] text-center leading-tight lowercase ${targetFontClass}`}
+                  <h2 dir={targetDir} className={`font-bold text-[1.45rem] text-center leading-snug lowercase ${targetFontClass}`}
                     style={{ color: '#1a1a2a' }}>
                     {targetWord}
                   </h2>
@@ -383,7 +382,7 @@ export function Flashcard({
               {/* CORRECT or WRONG_FINAL */}
               {(isReveal || isWrongFinal) && (
                 <div className="flex flex-col items-center gap-3 animate-pop-in">
-                  <h2 dir={targetDir} className={`font-bold text-[2rem] text-center leading-tight lowercase ${targetFontClass}`}
+                  <h2 dir={targetDir} className={`font-bold text-[1.45rem] text-center leading-snug lowercase ${targetFontClass}`}
                     style={{ color: isGreenState ? '#1a6e3a' : '#1a1a2a' }}>
                     {targetWord}
                   </h2>
