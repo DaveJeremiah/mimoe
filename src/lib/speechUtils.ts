@@ -228,8 +228,9 @@ function blobToBase64(blob: Blob): Promise<string> {
 // Google Translate TTS). Returns an MP3 we play through the unlocked <audio>
 // element — this is the path that actually works on iOS Safari, and it gives a
 // proper French/Arabic accent regardless of the device's installed voices.
-const TTS_PROXY_URL = 'https://ovunaubwudiyodywsdfz.supabase.co/functions/v1/tts'
-const TTS_PROXY_KEY = 'sb_publishable_wtThLbWFuenbMjGhJPtO9A_GrMInBNm'
+const TTS_PROXY_URL  = 'https://ovunaubwudiyodywsdfz.supabase.co/functions/v1/tts'
+const AZURE_TTS_URL  = 'https://ovunaubwudiyodywsdfz.supabase.co/functions/v1/azure-tts'
+const TTS_PROXY_KEY  = 'sb_publishable_wtThLbWFuenbMjGhJPtO9A_GrMInBNm'
 
 async function fetchProxyTTS(text: string, langConfig: LanguageConfig = DEFAULT_LANG): Promise<string | null> {
   const key = langConfig.cachePrefix + text.trim().toLowerCase()
@@ -252,8 +253,12 @@ async function fetchProxyTTS(text: string, langConfig: LanguageConfig = DEFAULT_
   }
 }
 
-// Combined remote TTS: our proxy first, Azure as a fallback if it's configured.
+// Arabic goes straight to Azure Neural TTS (proper dialect voices).
+// French uses the Google proxy first, Azure as fallback.
 async function fetchRemoteTTS(text: string, langConfig: LanguageConfig = DEFAULT_LANG): Promise<string | null> {
+  if (langConfig.code === 'arabic') {
+    return fetchAzureTTS(text, langConfig)
+  }
   const proxied = await fetchProxyTTS(text, langConfig)
   if (proxied) return proxied
   return fetchAzureTTS(text, langConfig)
@@ -266,18 +271,11 @@ async function fetchAzureTTS(text: string, langConfig: LanguageConfig = DEFAULT_
   if (typeof navigator !== 'undefined' && !navigator.onLine) return null
 
   try {
-    const { supabase } = await import('@/integrations/supabase/client')
-    const { data: sessionData } = await supabase.auth.getSession()
-    const accessToken = sessionData.session?.access_token
-    if (!accessToken) return null
-
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/azure-tts`
-    const res = await fetch(url, {
+    const res = await fetch(AZURE_TTS_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        Authorization: `Bearer ${accessToken}`,
+        apikey: TTS_PROXY_KEY,
       },
       body: JSON.stringify({ text, lang: langConfig.ttsLang, voice: langConfig.ttsVoice }),
     })
