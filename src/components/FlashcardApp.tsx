@@ -9,6 +9,7 @@ import { CollectionCard } from "./CollectionCard";
 import { NewCollectionModal } from "./NewCollectionModal";
 import { NewLevelModal } from "./NewLevelModal";
 import { ProfileModal, dicebearUrl } from "./ProfileModal";
+import { OnboardingModal } from "./OnboardingModal";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { db } from "@/lib/db";
@@ -135,6 +136,7 @@ export function FlashcardApp() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
   const [homeTab, setHomeTab] = useState<"levels" | "personal">("levels");
+  const [onboardingDone, setOnboardingDone] = useState(false);
 
 
   const baseLevels = useMemo(() => {
@@ -149,15 +151,40 @@ export function FlashcardApp() {
   const customLevelsList = activeTab === "vocabulary" ? customVocabLevels : customPhraseLevels;
   const setCustomLevelsList = activeTab === "vocabulary" ? setCustomVocabLevels : setCustomPhraseLevels;
 
-  // Merge built-in levels with user-created custom levels
+  // Merge built-in levels with user-created custom levels, then
+  // personalize the two "My name is…" / "I am from…" cards with the user's
+  // actual name and country stored in their profile.
   const levels = useMemo(() => {
     const customAsLevels = customLevelsList.map((cl) => ({
       id: cl.id,
       title: cl.title,
       cards: customCards[cl.id] || [],
     }));
-    return [...baseLevels, ...customAsLevels];
-  }, [baseLevels, customLevelsList, customCards]);
+    const merged = [...baseLevels, ...customAsLevels];
+
+    const nickname = (user?.user_metadata?.nickname as string | undefined) ?? "";
+    const country  = (user?.user_metadata?.country  as string | undefined) ?? "";
+    if (!nickname && !country) return merged;
+
+    type CardPatch = Partial<FlashcardItem>;
+    const PATCH: Record<string, CardPatch> = {};
+    if (nickname) {
+      PATCH["fr-p-a1-1-c01"] = { english: `My name is ${nickname}`, target: `Je m'appelle ${nickname}` };
+      PATCH["arp001"] = { english: `My name is ${nickname}`, arabic: `اسمي ${nickname}`, target: `اسمي ${nickname}`, transliteration: `ismī ${nickname}` };
+    }
+    if (country) {
+      PATCH["fr-p-a1-1-c02"] = { english: `I am from ${country}`, target: `Je viens de ${country}`, alternatives: [`Je suis de ${country}`] };
+      PATCH["arp004"] = { english: `I am from ${country}`, arabic: `أنا من ${country}`, target: `أنا من ${country}`, transliteration: `anā min ${country}` };
+    }
+
+    return merged.map(level => ({
+      ...level,
+      cards: level.cards.map(card => {
+        const patch = PATCH[card.id];
+        return patch ? { ...card, ...patch } : card;
+      }),
+    }));
+  }, [baseLevels, customLevelsList, customCards, user]);
 
   // Build a synthetic "bookmarked" level pulling cards from every level (current tab)
   const bookmarkedLevel = useMemo(() => {
@@ -1543,6 +1570,13 @@ export function FlashcardApp() {
           completedVocabCount={completedVocab.length}
           completedPhrasesCount={completedPhrases.length}
           collectionsCount={collections.length}
+        />
+      )}
+
+      {user && !user.user_metadata?.onboarding_done && !onboardingDone && (
+        <OnboardingModal
+          user={user}
+          onDone={() => setOnboardingDone(true)}
         />
       )}
     </div>

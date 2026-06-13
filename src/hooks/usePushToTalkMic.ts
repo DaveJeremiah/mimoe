@@ -7,11 +7,15 @@ interface Options {
   onResult: (text: string) => void;
 }
 
-// iOS / PWA holds the AVAudioSession after <audio> playback for up to ~800ms.
+// iOS / PWA holds the AVAudioSession after <audio> playback for up to ~1.5s.
 // During that window SpeechRecognition either:
 //   a) throws synchronously from rec.start(), OR
 //   b) fires onerror("audio-capture" | "aborted") → then onend with no text.
-// We handle both cases with an isHolding-gated retry loop (max 3 attempts).
+// We handle both cases with an isHolding-gated retry loop (up to MAX_RETRIES).
+//
+// iOS also doesn't honour continuous:true — recognition always stops after
+// one utterance (silence timeout). So we restart automatically if the user
+// is still holding after a successful delivery.
 const _isIOS = typeof navigator !== "undefined" && (
   /iPad|iPhone|iPod/.test(navigator.userAgent) ||
   (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ||
@@ -20,6 +24,8 @@ const _isIOS = typeof navigator !== "undefined" && (
     window.matchMedia?.("(display-mode: standalone)").matches
   ))
 );
+
+const MAX_RETRIES = 8; // enough for the full AVAudioSession drain cycle
 
 export function usePushToTalkMic({ lang = "fr-FR", onResult }: Options) {
   const [status, setStatus] = useState<PTTStatus>("idle");
@@ -35,8 +41,7 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult }: Options) {
 
   /**
    * Internal: create + start one SpeechRecognition attempt.
-   * `attempt` 0 = first try (from user gesture), 1-3 = iOS retries.
-   * Delay between retries: 800ms (attempt 0→1), 400ms (1→2), 400ms (2→3).
+   * `attempt` 0 = first try (from user gesture), 1+ = retries.
    */
   const doStart = useCallback((attempt: number) => {
     if (!isHoldingRef.current) return; // user already released
@@ -50,7 +55,9 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult }: Options) {
 
     const rec = new SR();
     rec.lang            = langRef.current;
-    rec.continuous      = true;
+    // iOS ignores continuous:true — set false explicitly so behaviour is
+    // consistent; we manually restart while isHoldingRef remains true.
+    rec.continuous      = !_isIOS;
     rec.interimResults  = true;
     rec.maxAlternatives = 1;
 
@@ -66,7 +73,6 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult }: Options) {
       latestRef.current = text.trim();
     };
 
-    // Track whether a permission-fatal error occurred.
     let permissionDenied = false;
 
     rec.onerror = (event: any) => {
@@ -78,8 +84,7 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult }: Options) {
         latestRef.current = "";
         return;
       }
-      // "audio-capture" / "aborted" / "network" etc. — onend will fire next;
-      // we handle the retry there so we only need one code path.
+      // "audio-capture" / "aborted" / "network" etc. — let onend handle retry.
     };
 
     rec.onend = () => {
@@ -90,16 +95,23 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult }: Options) {
       latestRef.current = "";
 
       if (text) {
-        // Got a real result — deliver it.
+        // Delivered a real result.
         setStatus("idle");
         onResultRef.current(text);
-      } else if (_isIOS && isHoldingRef.current && attempt < 3) {
-        // iOS ended without a transcript and user is still holding.
-        // This is the audio-session conflict case — retry after a delay.
+
+        // iOS stops after one utterance even with continuous:true.
+        // Restart silently so the user can keep speaking while still holding.
+        if (_isIOS && isHoldingRef.current) {
+          setTimeout(() => {
+            if (isHoldingRef.current) doStart(0);
+          }, 120); // short gap — no audio-session conflict here
+        }
+      } else if (isHoldingRef.current && attempt < MAX_RETRIES) {
+        // Empty result while user is still holding — audio-session conflict.
+        // Retry with back-off: longer first gap, then steady.
         setStatus("idle");
-        const delay = attempt === 0 ? 1000 : 600;
+        const delay = attempt === 0 ? 1200 : attempt < 3 ? 800 : 600;
         setTimeout(() => {
-          // eslint-disable-next-line @typescript-eslint/no-use-before-define
           if (isHoldingRef.current) doStart(attempt + 1);
         }, delay);
       } else {
@@ -112,10 +124,10 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult }: Options) {
     try {
       rec.start();
     } catch {
-      // Synchronous throw — also an iOS audio-session conflict.
+      // Synchronous throw — iOS audio-session not yet released.
       recRef.current = null;
-      if (_isIOS && isHoldingRef.current && attempt < 3) {
-        const delay = attempt === 0 ? 1000 : 600;
+      if (isHoldingRef.current && attempt < MAX_RETRIES) {
+        const delay = attempt === 0 ? 1200 : attempt < 3 ? 800 : 600;
         setTimeout(() => {
           if (isHoldingRef.current) doStart(attempt + 1);
         }, delay);
@@ -123,7 +135,7 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult }: Options) {
         setStatus("idle");
       }
     }
-  }, []); // deps: none — all mutable values accessed via refs
+  }, []); // deps: none — all mutable values via refs
 
   /** Call from onPointerDown — must be inside a user gesture. */
   const start = useCallback(() => {
@@ -140,7 +152,6 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult }: Options) {
     try {
       rec.stop(); // triggers onend → delivers transcript
     } catch {
-      // rec.stop() throws if recognition hasn't started yet (mid-retry gap).
       recRef.current = null;
       setStatus("idle");
     }
