@@ -65,8 +65,6 @@ type CardState =
   | "WRONG_RETRY_CORRECT"
   | "WRONG_FINAL";
 
-const AUTO_ADVANCE_MS = 1600;
-
 function matchesCard(answer: string, target: string, alternatives?: string[]): boolean {
   if (isMatch(answer, target)) return true;
   if (alternatives) return alternatives.some(alt => isMatch(answer, alt));
@@ -232,13 +230,6 @@ export function Flashcard({
 
   useEffect(() => { if (onAnimateAdvance) onAnimateAdvance(animateAndAdvance); }, [onAnimateAdvance, animateAndAdvance]);
 
-  const scheduleAutoAdvance = useCallback((failed: boolean) => {
-    if (advanceTimerRef.current) window.clearTimeout(advanceTimerRef.current);
-    advanceTimerRef.current = window.setTimeout(() => {
-      animateAndAdvance("animate-slide-up", { failed, requeue: failed });
-    }, AUTO_ADVANCE_MS);
-  }, [animateAndAdvance]);
-
   const processAnswer = useCallback((answer: string) => {
     const s = stateRef.current;
     if (s !== "QUESTION" && s !== "WRONG_FIRST") return;
@@ -247,10 +238,12 @@ export function Flashcard({
 
     if (s === "QUESTION") {
       if (correct) {
-        // ✓ Correct 1st try → no TTS, just advance
+        // ✓ Correct 1st try → play the word, then advance once audio finishes
         vibrate(40);
         setState("CORRECT_REVEAL");
-        scheduleAutoAdvance(false);
+        speakGated(targetRef.current, () => {
+          animateAndAdvance("animate-slide-up", { failed: false, requeue: false });
+        });
       } else {
         // ✗ Wrong 1st try → speak the word as a clue, HOLD for retry (no advance)
         vibrate([60, 40, 60]);
@@ -260,10 +253,12 @@ export function Flashcard({
       }
     } else if (s === "WRONG_FIRST") {
       if (correct) {
-        // ✓ Correct 2nd try → no TTS, just advance
+        // ✓ Correct 2nd try → play the word, then advance once audio finishes
         vibrate(40);
         setState("WRONG_RETRY_CORRECT");
-        scheduleAutoAdvance(true);
+        speakGated(targetRef.current, () => {
+          animateAndAdvance("animate-slide-up", { failed: true, requeue: true });
+        });
       } else {
         // ✗ Wrong 2nd try → speak the word, then advance ONCE audio finishes
         vibrate([60, 40, 60]);
@@ -273,7 +268,7 @@ export function Flashcard({
         });
       }
     }
-  }, [scheduleAutoAdvance, card.alternatives, speakGated, animateAndAdvance]);
+  }, [card.alternatives, speakGated, animateAndAdvance]);
 
   useEffect(() => { processAnswerRef.current = processAnswer; }, [processAnswer]);
 

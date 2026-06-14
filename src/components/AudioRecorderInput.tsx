@@ -7,8 +7,9 @@ interface Props {
   disabled?: boolean;
 }
 
-// Keep clips small — they're stored inline as base64 on the collection entry.
-const MAX_BYTES = 1_500_000; // ~1.5 MB of audio
+// Keep clips reasonable — they're stored inline as base64 on the collection entry.
+const MAX_BYTES = 5_000_000; // ~5 MB of audio
+const AUDIO_EXT = /\.(mp3|m4a|aac|wav|ogg|oga|opus|webm|flac|mp4|3gp|aiff?|caf)$/i;
 
 function blobToDataUri(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -67,8 +68,15 @@ export function AudioRecorderInput({ value, onChange, disabled }: Props) {
     const file = e.target.files?.[0];
     e.target.value = ""; // allow re-selecting the same file
     if (!file) return;
-    if (!file.type.startsWith("audio/")) { setErr("Pick an audio file"); return; }
-    if (file.size > MAX_BYTES) { setErr("File too large (max 1.5 MB)"); return; }
+    // Many audio files (esp. .m4a) report an empty or "video/mp4" MIME type,
+    // so accept by MIME OR by extension rather than requiring "audio/".
+    const looksAudio =
+      file.type.startsWith("audio/") ||
+      file.type === "" ||
+      file.type === "video/mp4" ||
+      AUDIO_EXT.test(file.name);
+    if (!looksAudio) { setErr("Pick an audio file"); return; }
+    if (file.size > MAX_BYTES) { setErr("File too large (max 5 MB)"); return; }
     onChange(await blobToDataUri(file));
   };
 
@@ -117,7 +125,7 @@ export function AudioRecorderInput({ value, onChange, disabled }: Props) {
             >
               <Upload className="w-3 h-3" /> Upload
             </button>
-            <input ref={fileRef} type="file" accept="audio/*" onChange={onUpload} className="hidden" />
+            <input ref={fileRef} type="file" accept="audio/*,.mp3,.m4a,.aac,.wav,.ogg,.opus,.flac,.mp4,.3gp,.caf" onChange={onUpload} className="hidden" />
           </>
         )}
       </div>
