@@ -136,6 +136,7 @@ export function FlashcardApp() {
   const [isWordBankOpen, setIsWordBankOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
+  const [langSplash, setLangSplash] = useState<Language | null>(null);
   const [homeTab, setHomeTab] = useState<"levels" | "personal">("levels");
   const [onboardingDone, setOnboardingDone] = useState(false);
 
@@ -971,6 +972,26 @@ export function FlashcardApp() {
       onTouchStart={handleSessionTouchStart}
       onTouchEnd={handleSessionTouchEnd}
     >
+      {/* Language switch splash */}
+      {langSplash && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center pointer-events-none">
+          <div className="absolute inset-0 animate-lang-veil" style={{ background: 'rgba(5,5,5,0.78)', backdropFilter: 'blur(6px)' }} />
+          <div
+            className="absolute left-1/2 top-1/2 flex flex-col items-center gap-3 animate-lang-splash"
+          >
+            <span className="text-[5rem] leading-none drop-shadow-[0_8px_24px_rgba(0,0,0,0.5)]">
+              {LANGUAGE_CONFIGS[langSplash].flag}
+            </span>
+            <span className="text-white font-black text-2xl tracking-tight">
+              {LANGUAGE_CONFIGS[langSplash].label}
+            </span>
+            <span className="text-white/45 text-xs font-semibold uppercase tracking-[0.2em]">
+              {langSplash === "arabic" ? "yalla, let's go" : "allez, on y va"}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Band header — edge-to-edge at top, only in deck list */}
       {selectedBand && selectedBandInfo && !selectedLevelId && (
         <div
@@ -1180,7 +1201,14 @@ export function FlashcardApp() {
                         return (
                           <button
                             key={lang}
-                            onClick={() => { setActiveLanguage(lang); setIsLangDropdownOpen(false); handleBack(); }}
+                            onClick={() => {
+                              setIsLangDropdownOpen(false);
+                              if (lang === activeLanguage) return;
+                              setActiveLanguage(lang);
+                              handleBack();
+                              setLangSplash(lang);
+                              window.setTimeout(() => setLangSplash(null), 950);
+                            }}
                             className={`w-full flex items-center gap-2.5 px-4 py-3 text-sm font-semibold transition-colors text-left ${
                               activeLanguage === lang ? "bg-white/10 text-white" : "text-white/55 hover:bg-white/5 hover:text-white"
                             }`}
@@ -1476,6 +1504,8 @@ export function FlashcardApp() {
                   onBulkAdd={handleBulkAdd}
                   onReorder={handleReorder}
                   label={activeTab === "vocabulary" ? "Vocabulary" : "Phrases"}
+                  targetLabel={activeLanguage === "arabic" ? "Arabic" : "French"}
+                  rtl={langConfig.rtl}
                 />
               </div>
             </div>

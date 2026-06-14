@@ -256,6 +256,26 @@
   .animate-combo-pop     { animation: combo-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
   .animate-result-slide  { animation: result-slide-up 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
 
+  /* ── Language switch splash ── */
+  @keyframes lang-splash {
+    0%   { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
+    20%  { transform: translate(-50%, -50%) scale(1.05); opacity: 1; }
+    70%  { transform: translate(-50%, -50%) scale(1);    opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(0.9);  opacity: 0; }
+  }
+  @keyframes lang-veil {
+    0%   { opacity: 0; }
+    25%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  @keyframes lang-content-in {
+    0%   { transform: translateY(10px) scale(0.985); opacity: 0; }
+    100% { transform: translateY(0) scale(1);        opacity: 1; }
+  }
+  .animate-lang-splash   { animation: lang-splash 0.95s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+  .animate-lang-veil     { animation: lang-veil 0.95s ease forwards; }
+  .animate-lang-content  { animation: lang-content-in 0.45s cubic-bezier(0.22, 1, 0.36, 1); }
+
   /* Waveform dot */
   .wave-dot {
     display: inline-block;

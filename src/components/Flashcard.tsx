@@ -419,7 +419,7 @@ export function Flashcard({
                       style={{ color: 'rgba(255,255,255,0.96)' }}>
                       {targetWord}
                     </h2>
-                    {card.transliteration && lc.rtl && (
+                    {card.transliteration && (
                       <p className="text-sm font-medium tracking-wide" style={{ color: 'rgba(255,255,255,0.55)' }}>
                         {card.transliteration}
                       </p>
@@ -438,7 +438,7 @@ export function Flashcard({
                       style={{ color: isGreenState ? '#a8f0bb' : 'rgba(255,255,255,0.96)' }}>
                       {targetWord}
                     </h2>
-                    {card.transliteration && lc.rtl && (
+                    {card.transliteration && (
                       <p className="text-sm font-medium tracking-wide" style={{ color: isGreenState ? 'rgba(168,240,187,0.65)' : 'rgba(255,255,255,0.5)' }}>
                         {card.transliteration}
                       </p>
