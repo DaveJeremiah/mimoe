@@ -17,7 +17,7 @@ import { vocabularyLevels, phraseLevels, arabicVocabularyLevels, arabicPhraseLev
 import { type Collection, CollectionFormData, COLLECTION_CATEGORIES } from "@/lib/collectionTypes";
 import { prefetchAudio, unlockAudio } from "@/lib/speechUtils";
 import { LANGUAGE_CONFIGS, ARABIC_DIALECTS, getArabicConfigForDialect, type Language } from "@/lib/languageConfig";
-import { ArrowLeft, Plus, MoreVertical, Shuffle, Bookmark, X, CheckCircle2, Share2, BookOpen, PartyPopper, RefreshCw, Pencil } from "lucide-react";
+import { ArrowLeft, Plus, MoreVertical, Shuffle, Bookmark, X, CheckCircle2, Share2, BookOpen, PartyPopper, RefreshCw, Pencil, Mic } from "lucide-react";
 
 type Tab = "vocabulary" | "phrases";
 type AppView = "main" | "collection";
@@ -256,6 +256,7 @@ export function FlashcardApp() {
   const [history, setHistory] = useState<string[]>([]); // Track completed cards for undo
   const [collectionHistory, setCollectionHistory] = useState<string[]>([]); // Track collection cards for undo
   const [isCollectionMenuOpen, setIsCollectionMenuOpen] = useState(false);
+  const [collectionUseCustomVoice, setCollectionUseCustomVoice] = useState(true);
 
   // Compute the active language config (with dialect override if Arabic)
   const customLevelDialect = selectedLevelId
@@ -757,6 +758,15 @@ export function FlashcardApp() {
             ? { ...col, title: data.title, dialect: data.dialect, category: data.category, entries: data.entries, language: data.language ?? col.language }
             : col
         ));
+        // If we're editing the collection that's currently being studied,
+        // refresh the live deck + queue so the changes take effect immediately.
+        if (selectedCollection?.id === editingCollection.id) {
+          const updated = { ...selectedCollection, title: data.title, dialect: data.dialect, category: data.category, entries: data.entries, language: data.language ?? selectedCollection.language };
+          setSelectedCollection(updated);
+          setCollectionQueue(updated.entries.map((_, i) => `collection-${updated.id}-${i}`));
+          setCollectionHistory([]);
+          setCollectionComboCount(0);
+        }
       } catch (e) {
         console.error("Failed to update collection", e);
       }
@@ -774,7 +784,7 @@ export function FlashcardApp() {
         console.error("Failed to create collection", e);
       }
     }
-  }, [editingCollection, activeLanguage]);
+  }, [editingCollection, activeLanguage, selectedCollection]);
 
   const handleEditCollection = useCallback((collection: Collection) => {
     setEditingCollection(collection);
@@ -972,6 +982,16 @@ export function FlashcardApp() {
                         <Pencil className="w-4 h-4" />
                         Edit Collection
                       </button>
+                      {currentCollectionCard?.audioUrl && (
+                        <button
+                          onClick={() => { setCollectionUseCustomVoice(v => !v); setIsCollectionMenuOpen(false); }}
+                          className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-white/80 hover:text-white hover:bg-white/5 transition-colors"
+                          style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+                        >
+                          <Mic className="w-4 h-4" />
+                          {collectionUseCustomVoice ? "Use mimoe voice" : "Use your voice"}
+                        </button>
+                      )}
                     </div>
                   </>
                 )}
@@ -1008,6 +1028,7 @@ export function FlashcardApp() {
               streak={collectionComboCount}
               onAnimateAdvance={(fn) => { collectionAnimateAdvanceRef.current = fn; }}
               bandStyle={COLLECTION_BAND_STYLE}
+              customAudioEnabled={collectionUseCustomVoice}
               langConfig={
                 selectedCollection.language === "arabic"
                   ? getArabicConfigForDialect(selectedCollection.dialect ?? preferredDialect)
@@ -1016,6 +1037,16 @@ export function FlashcardApp() {
             />
           ) : null}
         </div>
+
+        {/* Collection editor — rendered here too so "Edit Collection" works mid-study */}
+        <NewCollectionModal
+          isOpen={isCollectionModalOpen}
+          onClose={() => setIsCollectionModalOpen(false)}
+          onSave={handleSaveCollection}
+          editingCollection={editingCollection}
+          activeLanguage={activeLanguage}
+          mode={editingCollection ? "notes" : collectionModalMode}
+        />
       </div>
     );
   }

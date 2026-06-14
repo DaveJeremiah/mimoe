@@ -107,7 +107,7 @@ export function AudioRecorderInput({ value, onChange, disabled }: Props) {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold animate-pulse"
             style={{ background: "rgba(239,68,68,0.16)", color: "rgba(252,165,165,0.95)", border: "1px solid rgba(239,68,68,0.3)" }}
           >
-            <Square className="w-3 h-3" fill="currentColor" /> Stop
+            <Square className="w-3 h-3" fill="currentColor" /> Tap to stop
           </button>
         ) : (
           <>
@@ -116,7 +116,7 @@ export function AudioRecorderInput({ value, onChange, disabled }: Props) {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold"
               style={{ background: "rgba(129,140,248,0.1)", color: "rgba(165,180,252,0.85)", border: "1px solid rgba(129,140,248,0.22)" }}
             >
-              <Mic className="w-3 h-3" /> Record
+              <Mic className="w-3 h-3" /> Tap to record
             </button>
             <button
               type="button" onClick={() => fileRef.current?.click()} disabled={disabled}

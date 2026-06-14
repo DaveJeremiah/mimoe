@@ -56,6 +56,8 @@ interface FlashcardProps {
   onAnimateAdvance?: (fn: (exitClass: string, opts: { failed: boolean; requeue: boolean }) => void) => void;
   langConfig?: LanguageConfig;
   bandStyle?: BandStyle;
+  /** When the card has custom audio, whether to play it (vs the generated voice). Controlled by parent. */
+  customAudioEnabled?: boolean;
 }
 
 type CardState =
@@ -120,6 +122,7 @@ export function Flashcard({
   card, onAdvance, total, remaining, streak = 0,
   isBookmarked, onToggleBookmark, isMicOn = true,
   onAnimateAdvance, langConfig, bandStyle = DEFAULT_BAND_STYLE,
+  customAudioEnabled = true,
 }: FlashcardProps) {
   const lc = langConfig ?? LANGUAGE_CONFIGS.french;
   const targetWord = card.target ?? card.french ?? "";
@@ -146,16 +149,11 @@ export function Flashcard({
   // Track whether TTS is actively playing (used to disable the PTT button)
   const [isSpeaking, setIsSpeaking] = useState(false);
 
-  // Custom-audio source toggle: when this card has user-supplied audio, default
-  // to playing it; the user can flip to the generated (mimoe) voice.
+  // Custom-audio source: the card has user audio AND the parent (via the
+  // deck's 3-dot menu) hasn't switched to the generated voice.
   const hasCustomAudio = !!card.audioUrl;
-  const [useCustomAudio, setUseCustomAudio] = useState(hasCustomAudio);
-  const useCustomAudioRef = useRef(hasCustomAudio);
-  useEffect(() => {
-    const next = !!card.audioUrl;
-    setUseCustomAudio(next);
-    useCustomAudioRef.current = next;
-  }, [card.audioUrl]);
+  const useCustomAudio = hasCustomAudio && customAudioEnabled;
+  const useCustomAudioRef = useRef(useCustomAudio);
   useEffect(() => { useCustomAudioRef.current = useCustomAudio; }, [useCustomAudio]);
 
   // ── Push-to-talk recognition ─────────────────────────────────────────────
@@ -194,8 +192,9 @@ export function Flashcard({
         if (onDone) onDone();
       }, postDelay);
     };
-    // Safety: never stay gated more than 6.5 s
-    gateSafetyRef.current = window.setTimeout(onFinish, 6500);
+    // Safety: never stay gated too long — custom uploads can be lengthy, so the
+    // card always proceeds even if the clip is long or never fires 'ended'.
+    gateSafetyRef.current = window.setTimeout(onFinish, 4000);
     if (audioUrlRef.current && useCustomAudioRef.current) {
       speakAudioUrl(audioUrlRef.current, onFinish);
     } else {
@@ -492,15 +491,14 @@ export function Flashcard({
               </>
             )}
             <button
-              onPointerDown={(e) => {
+              onClick={(e) => {
                 e.preventDefault();
-                if (!isMicOn || isSpeaking) return;
+                if (isSpeaking) return;
+                if (pttStatus === "listening") { stopPTT(); return; }
+                if (!isMicOn) return;
                 unlockAudio();
                 startPTT();
               }}
-              onPointerUp={() => stopPTT()}
-              onPointerLeave={() => stopPTT()}
-              onPointerCancel={() => cancelPTT()}
               onContextMenu={(e) => e.preventDefault()}
               className={[
                 "relative z-10 w-[76px] h-[76px] rounded-full",
@@ -545,7 +543,7 @@ export function Flashcard({
                     <line x1="12" y1="17" x2="12" y2="21" stroke="rgba(255,255,255,0.55)" strokeWidth="2" />
                     <line x1="9" y1="21" x2="15" y2="21" stroke="rgba(255,255,255,0.55)" strokeWidth="2" />
                   </svg>
-                  <span className="text-[8px] font-bold text-white/25 uppercase tracking-[0.12em] leading-none">Hold</span>
+                  <span className="text-[8px] font-bold text-white/25 uppercase tracking-[0.12em] leading-none">Tap</span>
                 </>
               )}
             </button>
@@ -554,33 +552,6 @@ export function Flashcard({
           {/* Spacer — mirrors the replay button for visual balance */}
           <div className="w-[50px] h-[50px] flex-shrink-0" />
         </div>
-
-        {/* Voice source toggle — whenever this card has user-supplied audio */}
-        {hasCustomAudio && (
-          <div
-            className="flex items-center p-[3px] rounded-full"
-            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
-          >
-            <button
-              onClick={() => { setUseCustomAudio(true); speakAudioUrl(card.audioUrl!); }}
-              className="px-3.5 py-1.5 rounded-full text-[11px] font-bold transition-all"
-              style={useCustomAudio
-                ? { background: "linear-gradient(135deg,#9b5cf6,#ec4899)", color: "#fff" }
-                : { background: "transparent", color: "rgba(255,255,255,0.45)" }}
-            >
-              Your voice
-            </button>
-            <button
-              onClick={() => { setUseCustomAudio(false); speakFrench(targetWord, undefined, lc); }}
-              className="px-3.5 py-1.5 rounded-full text-[11px] font-bold transition-all"
-              style={!useCustomAudio
-                ? { background: "linear-gradient(135deg,#9b5cf6,#ec4899)", color: "#fff" }
-                : { background: "transparent", color: "rgba(255,255,255,0.45)" }}
-            >
-              mimoe voice
-            </button>
-          </div>
-        )}
 
         <button
           onClick={handleDontKnow}

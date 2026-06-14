@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Plus, Trash2 } from "lucide-react";
+import { X, Plus, Trash2, Sparkles } from "lucide-react";
 import type { Collection, CollectionEntry, CollectionFormData, CollectionCategory } from "@/lib/collectionTypes";
 import { COLLECTION_CATEGORIES } from "@/lib/collectionTypes";
 import { ARABIC_DIALECTS } from "@/lib/languageConfig";
 import type { Language } from "@/lib/languageConfig";
 import { WavyLine } from "./LevelSelect";
 import { AudioRecorderInput } from "./AudioRecorderInput";
+import { arabicToLatin } from "@/lib/transliterate";
 
 interface Pair { english: string; target: string; transliteration?: string; audioUrl?: string; }
 
@@ -302,6 +303,18 @@ export function NewCollectionModal({
                               disabled={isSaving}
                               className="flex-1 bg-transparent text-white text-sm placeholder:text-white/20 outline-none"
                             />
+                            {pair.target.trim() && (
+                              <button
+                                type="button"
+                                onClick={() => updatePair(i, "transliteration", arabicToLatin(pair.target))}
+                                disabled={isSaving}
+                                title="Auto-generate from Arabic"
+                                className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold flex-shrink-0"
+                                style={{ background: "rgba(129,140,248,0.12)", color: "rgba(165,180,252,0.9)", border: "1px solid rgba(129,140,248,0.25)" }}
+                              >
+                                <Sparkles className="w-3 h-3" /> Auto
+                              </button>
+                            )}
                           </div>
                         </>
                       )}
