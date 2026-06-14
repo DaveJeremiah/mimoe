@@ -1,6 +1,8 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import logoLight from "@/assets/logo-light.png";
+import { DeckComplete } from "./DeckComplete";
+import { encodeDeck, decodeDeck } from "@/lib/deckShare";
 import { Flashcard, type BandStyle } from "./Flashcard";
 import { WordBank } from "./WordBank";
 import { LevelSelect, BAND_IMGS, WavyLine } from "./LevelSelect";
@@ -17,7 +19,7 @@ import { vocabularyLevels, phraseLevels, arabicVocabularyLevels, arabicPhraseLev
 import { type Collection, CollectionFormData, COLLECTION_CATEGORIES } from "@/lib/collectionTypes";
 import { prefetchAudio, unlockAudio } from "@/lib/speechUtils";
 import { LANGUAGE_CONFIGS, ARABIC_DIALECTS, getArabicConfigForDialect, type Language } from "@/lib/languageConfig";
-import { ArrowLeft, Plus, MoreVertical, Shuffle, Bookmark, X, CheckCircle2, Share2, BookOpen, PartyPopper, RefreshCw, Pencil, Mic } from "lucide-react";
+import { ArrowLeft, Plus, MoreVertical, Shuffle, Bookmark, X, Share2, BookOpen, RefreshCw, Pencil, Mic, Download } from "lucide-react";
 
 type Tab = "vocabulary" | "phrases";
 type AppView = "main" | "collection";
@@ -104,8 +106,12 @@ export function FlashcardApp() {
   };
   // Personal Space state
   const [appView, setAppView] = useState<AppView>("main");
+  // Persisted so a page refresh restores the same screen.
+  const [persistedCollectionId, setPersistedCollectionId] = useLocalStorage<string | null>("mimoe-collection-id", null);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
+  const [collectionFailedCards, setCollectionFailedCards] = useState<Set<string>>(new Set());
+  const [shareToast, setShareToast] = useState<string | null>(null);
   const [isCollectionModalOpen, setIsCollectionModalOpen] = useState(false);
   const [collectionModalMode, setCollectionModalMode] = useState<"notes" | "bulk">("bulk");
   const [showCollectionTooltip, setShowCollectionTooltip] = useState(false);
@@ -334,6 +340,18 @@ export function FlashcardApp() {
         ]);
         setCollections(cols);
         setBookmarkedCards(bms);
+        // Restore the in-progress collection across a page refresh.
+        if (persistedCollectionId && !selectedCollection) {
+          const col = cols.find(c => c.id === persistedCollectionId);
+          if (col) {
+            setSelectedCollection(col);
+            setCollectionQueue(col.entries.map((_, i) => `collection-${col.id}-${i}`));
+            setCollectionHistory([]);
+            setCollectionFailedCards(new Set());
+            setCollectionComboCount(0);
+            setAppView("collection");
+          }
+        }
       } catch (e) {
         console.error("Failed to load collections/bookmarks", e);
       }
@@ -711,6 +729,7 @@ export function FlashcardApp() {
     const ids = collectionCards.map(c => c.id).sort(() => Math.random() - 0.5);
     setCollectionQueue(ids);
     setCollectionHistory([]);
+    setCollectionFailedCards(new Set());
     setCollectionComboCount(0);
     setIsCollectionMenuOpen(false);
   };
@@ -719,9 +738,43 @@ export function FlashcardApp() {
     if (!selectedCollection) return;
     setCollectionQueue(collectionCards.map(c => c.id));
     setCollectionHistory([]);
+    setCollectionFailedCards(new Set());
     setCollectionComboCount(0);
     setIsCollectionMenuOpen(false);
   };
+
+  const handleShareCollection = async (collection: Collection) => {
+    setIsCollectionMenuOpen(false);
+    try {
+      const code = encodeDeck(collection);
+      await navigator.clipboard.writeText(code);
+      setShareToast("Share code copied! Anyone can import it from their Personal tab.");
+    } catch {
+      setShareToast("Couldn't copy — try again.");
+    }
+    window.setTimeout(() => setShareToast(null), 3500);
+  };
+
+  const handleImportDeck = useCallback(async () => {
+    const code = window.prompt("Paste a mimoe deck code to import:");
+    if (!code || !code.trim()) return;
+    const data = decodeDeck(code);
+    if (!data) { setShareToast("That code isn't valid."); window.setTimeout(() => setShareToast(null), 3000); return; }
+    try {
+      const created = await db.createCollection({
+        title: data.title,
+        language: data.language ?? "french",
+        dialect: data.dialect,
+        category: data.category,
+        entries: data.entries,
+      });
+      setCollections(prev => [...prev, created]);
+      setShareToast(`Imported "${created.title}" 🎉`);
+    } catch {
+      setShareToast("Import failed — try again.");
+    }
+    window.setTimeout(() => setShareToast(null), 3500);
+  }, []);
 
   const handleEditCurrentCollection = () => {
     if (!selectedCollection) return;
@@ -800,23 +853,27 @@ export function FlashcardApp() {
   const handleStudyCollection = useCallback((collection: Collection) => {
     unlockAudio();
     setSelectedCollection(collection);
+    setPersistedCollectionId(collection.id);
     const queueIds = collection.entries.map((_, index) => `collection-${collection.id}-${index}`);
     setCollectionQueue(queueIds);
     setCollectionHistory([]);
+    setCollectionFailedCards(new Set());
     setCollectionComboCount(0);
     const collLang = collection.language === "arabic"
       ? getArabicConfigForDialect(collection.dialect ?? preferredDialect)
       : LANGUAGE_CONFIGS.french;
     prefetchAudio(collection.entries.slice(0, 3).map((e) => e.target ?? e.french ?? ""), collLang);
     setAppView("collection");
-  }, []);
+  }, [setPersistedCollectionId, preferredDialect]);
 
   const handleBackToMain = useCallback(() => {
     setAppView("main");
     setSelectedCollection(null);
+    setPersistedCollectionId(null);
     setCollectionQueue([]);
     setCollectionHistory([]);
-  }, []);
+    setCollectionFailedCards(new Set());
+  }, [setPersistedCollectionId]);
 
   // Swipe handlers for collection cards
   const handleCollectionSwipeForward = useCallback(() => {
@@ -839,17 +896,18 @@ export function FlashcardApp() {
     setCollectionQueue(prev => [lastCardId, ...prev]);
   }, [collectionHistory]);
 
-  const handleCollectionAdvance = useCallback(({ failed, requeue }: { failed: boolean; requeue: boolean }) => {
-    // Streak: reset on failure-requeue, increment on completion
-    if (failed && requeue) {
+  const handleCollectionAdvance = useCallback(({ failed }: { failed: boolean; requeue: boolean }) => {
+    // Single pass: every card is removed once answered. Missed cards are
+    // recorded for the performance screen instead of looping forever.
+    const currentId = collectionQueue[0];
+    if (failed) {
       setCollectionComboCount(0);
-    } else if (!requeue) {
+      if (currentId) setCollectionFailedCards(prev => new Set(prev).add(currentId));
+    } else {
       setCollectionComboCount(prev => prev + 1);
     }
-    setCollectionQueue(q => requeue ? [...q.slice(1), q[0]] : q.slice(1));
-    if (!requeue) {
-      setCollectionHistory(prev => [...prev, collectionQueue[0]]);
-    }
+    if (currentId) setCollectionHistory(prev => [...prev, currentId]);
+    setCollectionQueue(q => q.slice(1));
   }, [collectionQueue]);
 
   const isCollectionDeckComplete = collectionQueue.length === 0 && selectedCollection !== null;
@@ -904,6 +962,15 @@ export function FlashcardApp() {
   }
 
   if (!user) return null;
+
+  const shareToastEl = shareToast ? (
+    <div
+      className="fixed left-1/2 -translate-x-1/2 z-[90] px-4 py-3 rounded-2xl text-sm font-semibold text-white text-center max-w-[88vw] animate-slide-up-in"
+      style={{ bottom: 96, background: "linear-gradient(135deg,#9b5cf6,#ec4899)", boxShadow: "0 12px 34px rgba(0,0,0,0.5)" }}
+    >
+      {shareToast}
+    </div>
+  ) : null;
 
   if (appView === "collection" && selectedCollection) {
     const colTotal = selectedCollection.entries.length;
@@ -982,6 +1049,14 @@ export function FlashcardApp() {
                         <Pencil className="w-4 h-4" />
                         Edit Collection
                       </button>
+                      <button
+                        onClick={() => handleShareCollection(selectedCollection)}
+                        className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-white/80 hover:text-white hover:bg-white/5 transition-colors"
+                        style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+                      >
+                        <Share2 className="w-4 h-4" />
+                        Share Deck
+                      </button>
                       {currentCollectionCard?.audioUrl && (
                         <button
                           onClick={() => { setCollectionUseCustomVoice(v => !v); setIsCollectionMenuOpen(false); }}
@@ -1007,17 +1082,19 @@ export function FlashcardApp() {
 
         <div className="flex-1 w-full flex flex-col items-center justify-center">
           {isCollectionDeckComplete ? (
-            <div className="flex flex-col items-center gap-4 text-center animate-fade-in">
-              <PartyPopper className="w-16 h-16 text-secondary" />
-              <h2 className="font-display text-2xl font-bold text-foreground">Bien joué! 🎉</h2>
-              <p className="text-muted-foreground">You've mastered this collection!</p>
-              <button
-                onClick={handleBackToMain}
-                className="px-5 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:opacity-90 transition-opacity"
-              >
-                Back to Collections
-              </button>
-            </div>
+            <DeckComplete
+              cards={collectionCards}
+              failedIds={collectionFailedCards}
+              title={collectionFailedCards.size === 0 ? "Perfect!" : "Deck done!"}
+              subtitle={collectionFailedCards.size === 0
+                ? "Flawless run"
+                : `${collectionFailedCards.size} card${collectionFailedCards.size !== 1 ? "s" : ""} to review`}
+              primaryLabel="Practice Again"
+              onPrimary={handleRestartCollection}
+              secondaryLabel="Back to Collections"
+              onSecondary={handleBackToMain}
+              rtl={selectedCollection.language === "arabic"}
+            />
           ) : currentCollectionCard ? (
             <Flashcard
               key={`collection-${selectedCollection.id}-${collectionQueue[0]}`}
@@ -1047,6 +1124,7 @@ export function FlashcardApp() {
           activeLanguage={activeLanguage}
           mode={editingCollection ? "notes" : collectionModalMode}
         />
+        {shareToastEl}
       </div>
     );
   }
@@ -1417,8 +1495,15 @@ export function FlashcardApp() {
               {/* ── Personal panel ── */}
               <div className="min-w-full">
                 <div className="w-full space-y-5">
-                  <div className="px-1">
+                  <div className="px-1 flex items-center justify-between">
                     <span className="text-xs font-bold text-white/35 uppercase tracking-widest">Collections</span>
+                    <button
+                      onClick={handleImportDeck}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold text-white active:scale-95 transition-transform"
+                      style={{ background: "linear-gradient(135deg,#9b5cf6,#ec4899)", boxShadow: "0 3px 12px rgba(155,92,246,0.35)" }}
+                    >
+                      <Download className="w-3 h-3" /> Import deck
+                    </button>
                   </div>
                   {(() => {
                     // Only show collections for the active language (treat null/undefined as "french")
@@ -1485,20 +1570,19 @@ export function FlashcardApp() {
             </p>
           </div>
         ) : isDeckComplete ? (
-          <div className="w-full flex flex-wrap gap-2 justify-center animate-slide-up-in pb-4">
-            {allCards.map(card => (
-              <span
-                key={card.id}
-                className={`px-4 py-2.5 rounded-2xl border-2 font-semibold text-sm ${
-                  failedCards.has(card.id)
-                    ? "border-[#ffc800]/40 text-[#ffc800] bg-[#ffc800]/10"
-                    : "border-[#58cc02]/40 text-[#58cc02] bg-[#58cc02]/10"
-                }`}
-              >
-                {card.target ?? card.french ?? card.english}
-              </span>
-            ))}
-          </div>
+          <DeckComplete
+            cards={allCards}
+            failedIds={failedCards}
+            title={allCorrectThisSession ? "Perfect!" : "Level done!"}
+            subtitle={allCorrectThisSession
+              ? "Flawless run"
+              : `${failedCards.size} card${failedCards.size !== 1 ? "s" : ""} to review`}
+            primaryLabel={nextLevel ? "Next Level" : "Practice Again"}
+            onPrimary={nextLevel ? handleNextLevel : resetDeck}
+            secondaryLabel={nextLevel ? "Practice again" : undefined}
+            onSecondary={nextLevel ? resetDeck : undefined}
+            rtl={langConfig.rtl}
+          />
         ) : currentCard ? (
           <Flashcard
             key={currentCard.id}
@@ -1528,45 +1612,6 @@ export function FlashcardApp() {
         ) : null}
       </div>
 
-      {/* ── Completion result panel (slides up from bottom) ── */}
-      {isDeckComplete && selectedLevelId && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center">
-          <div className="w-full max-w-[480px] bg-[#0d2e00] border-t-2 border-[#58cc02]/30 px-5 pt-5 pb-8 animate-result-slide rounded-t-[36px]">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="w-8 h-8 text-[#58cc02]" />
-                <div>
-                  <p className="text-[#58cc02] font-black text-xl leading-tight">
-                    {allCorrectThisSession ? "Perfect!" : "Level done!"}
-                  </p>
-                  <p className="text-[#58cc02]/50 text-xs font-medium">
-                    {allCorrectThisSession
-                      ? "Flawless run"
-                      : `${failedCards.size} card${failedCards.size !== 1 ? "s" : ""} to review`}
-                  </p>
-                </div>
-              </div>
-              <button className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center">
-                <Share2 className="w-4 h-4 text-white/30" />
-              </button>
-            </div>
-            <button
-              onClick={nextLevel ? handleNextLevel : resetDeck}
-              className="w-full h-[52px] rounded-2xl bg-[#58cc02] text-white font-black text-sm tracking-widest uppercase shadow-[0_4px_0_#3e9200] active:shadow-none active:translate-y-1 transition-all"
-            >
-              {nextLevel ? "Next Level" : "Practice Again"}
-            </button>
-            {nextLevel && (
-              <button
-                onClick={resetDeck}
-                className="w-full mt-3 py-1.5 text-[#58cc02]/50 text-sm font-semibold"
-              >
-                Practice again
-              </button>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Word bank — opened from 3-dot menu */}
       {selectedLevelId && !isBookmarkedSession && isWordBankOpen && (
@@ -1738,6 +1783,8 @@ export function FlashcardApp() {
           onDone={() => setOnboardingDone(true)}
         />
       )}
+
+      {shareToastEl}
     </div>
   );
 }

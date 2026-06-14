@@ -6,7 +6,7 @@ import { LANGUAGE_CONFIGS } from "@/lib/languageConfig";
 import { usePushToTalkMic } from "@/hooks/usePushToTalkMic";
 import { RipplePattern } from "./LevelSelect";
 import { RefreshCw } from "lucide-react";
-import logoDark from "@/assets/logo-dark.png";
+import logoLight from "@/assets/logo-light.png";
 
 function vibrate(pattern: number | number[]) {
   try { navigator.vibrate?.(pattern) } catch { /* unsupported */ }
@@ -373,9 +373,9 @@ export function Flashcard({
               <div className="absolute inset-0 rounded-[24px] pointer-events-none"
                 style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.14) 0%, transparent 55%)' }} />
 
-              {/* Logo at bottom-center */}
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 select-none pointer-events-none flex items-center justify-center">
-                <img src={logoDark} alt="" style={{ height: 36, width: 'auto', opacity: 1 }} />
+              {/* Logo at top-center */}
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 select-none pointer-events-none flex items-center justify-center z-20">
+                <img src={logoLight} alt="" style={{ height: 20, width: 'auto', opacity: 0.9 }} />
               </div>
 
               {/* Streak fire badge */}
@@ -481,14 +481,14 @@ export function Flashcard({
             <RefreshCw className="w-4 h-4 text-white/40" />
           </button>
 
-          {/* Circular PTT with expanding ripple rings */}
+          {/* Push-to-talk — rotated squircle with accent gradient */}
           <div className="relative flex items-center justify-center flex-shrink-0">
-            {/* Ripple rings — staggered animate-ping, overflow beyond container (no clip) */}
+            {/* Ripple rings (accent) — staggered animate-ping */}
             {pttStatus === "listening" && (
               <>
-                <div className="absolute w-[76px] h-[76px] rounded-full bg-[#1cb0f6]/55 animate-ping" style={{ animationDuration: "1.1s" }} />
-                <div className="absolute w-[76px] h-[76px] rounded-full bg-[#1cb0f6]/35 animate-ping" style={{ animationDuration: "1.1s", animationDelay: "280ms" }} />
-                <div className="absolute w-[76px] h-[76px] rounded-full bg-[#1cb0f6]/18 animate-ping" style={{ animationDuration: "1.1s", animationDelay: "560ms" }} />
+                <div className="absolute w-[78px] h-[78px] animate-ping" style={{ borderRadius: 26, transform: "rotate(45deg)", background: "rgba(192,38,211,0.45)", animationDuration: "1.1s" }} />
+                <div className="absolute w-[78px] h-[78px] animate-ping" style={{ borderRadius: 26, transform: "rotate(45deg)", background: "rgba(155,92,246,0.30)", animationDuration: "1.1s", animationDelay: "280ms" }} />
+                <div className="absolute w-[78px] h-[78px] animate-ping" style={{ borderRadius: 26, transform: "rotate(45deg)", background: "rgba(236,72,153,0.18)", animationDuration: "1.1s", animationDelay: "560ms" }} />
               </>
             )}
             <button
@@ -502,52 +502,52 @@ export function Flashcard({
               onPointerLeave={() => stopPTT()}
               onPointerCancel={() => cancelPTT()}
               onContextMenu={(e) => e.preventDefault()}
-              className={[
-                "relative z-10 w-[76px] h-[76px] rounded-full",
-                "flex flex-col items-center justify-center gap-[3px]",
-                "select-none touch-none transition-all duration-150",
-                pttStatus === "listening"
-                  ? "bg-[#1cb0f6] shadow-[0_5px_0_#1592cc,0_0_22px_rgba(28,176,246,0.45)] scale-[0.92]"
-                  : isSpeaking
-                    ? "bg-[#252f45] opacity-60 cursor-default"
-                    : isMicOn
-                      ? "bg-[#252f45] shadow-[0_5px_0_#171e30] active:scale-[0.92] active:shadow-[0_2px_0_#171e30]"
-                      : "bg-[#252f45] opacity-30",
-              ].join(" ")}
-              style={{ WebkitUserSelect: "none", userSelect: "none", WebkitTouchCallout: "none" } as React.CSSProperties}
+              className="relative z-10 w-[78px] h-[78px] flex items-center justify-center select-none touch-none transition-all duration-150 active:scale-[0.9]"
+              style={{
+                borderRadius: 26,
+                transform: pttStatus === "listening" ? "rotate(45deg) scale(0.94)" : "rotate(45deg)",
+                background: pttStatus === "listening"
+                  ? "linear-gradient(135deg,#9b5cf6 0%,#c026d3 50%,#ec4899 100%)"
+                  : "#15131f",
+                boxShadow: pttStatus === "listening"
+                  ? "0 0 30px rgba(192,38,211,0.6)"
+                  : isMicOn
+                    ? "inset 0 0 0 2px rgba(167,139,250,0.55), 0 8px 22px rgba(124,58,237,0.28)"
+                    : "inset 0 0 0 2px rgba(255,255,255,0.06)",
+                opacity: isSpeaking ? 0.55 : !isMicOn ? 0.35 : 1,
+                cursor: isSpeaking ? "default" : "pointer",
+                WebkitUserSelect: "none", userSelect: "none", WebkitTouchCallout: "none",
+              } as React.CSSProperties}
             >
-              {pttStatus === "listening" ? (
-                <div className="flex items-center gap-[3px]">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <span
-                      key={i}
-                      className="wave-dot"
-                      data-active="true"
-                      style={{ "--dot-delay": `${i * 80}ms` } as React.CSSProperties}
-                    />
-                  ))}
-                </div>
-              ) : isSpeaking ? (
-                /* TTS playing — show speaker pulse so user knows to wait */
-                <>
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="rgba(255,255,255,0.45)" />
-                    <path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="rgba(255,255,255,0.55)" strokeWidth="2" />
-                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14" stroke="rgba(255,255,255,0.3)" strokeWidth="2" />
-                  </svg>
-                  <span className="text-[8px] font-bold text-white/30 uppercase tracking-[0.12em] leading-none">Wait…</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="9" y="2" width="6" height="12" rx="3" fill="rgba(255,255,255,0.55)" />
-                    <path d="M5 10a7 7 0 0 0 14 0" stroke="rgba(255,255,255,0.55)" strokeWidth="2" />
-                    <line x1="12" y1="17" x2="12" y2="21" stroke="rgba(255,255,255,0.55)" strokeWidth="2" />
-                    <line x1="9" y1="21" x2="15" y2="21" stroke="rgba(255,255,255,0.55)" strokeWidth="2" />
-                  </svg>
-                  <span className="text-[8px] font-bold text-white/25 uppercase tracking-[0.12em] leading-none">Hold</span>
-                </>
-              )}
+              {/* counter-rotate the contents so they stay upright */}
+              <div className="flex flex-col items-center justify-center gap-[3px]" style={{ transform: "rotate(-45deg)" }}>
+                {pttStatus === "listening" ? (
+                  <div className="flex items-center gap-[3px]">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <span key={i} className="wave-dot" data-active="true" style={{ "--dot-delay": `${i * 80}ms` } as React.CSSProperties} />
+                    ))}
+                  </div>
+                ) : isSpeaking ? (
+                  <>
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="rgba(255,255,255,0.45)" />
+                      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="rgba(255,255,255,0.55)" strokeWidth="2" />
+                      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" stroke="rgba(255,255,255,0.3)" strokeWidth="2" />
+                    </svg>
+                    <span className="text-[8px] font-bold text-white/30 uppercase tracking-[0.12em] leading-none">Wait…</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="9" y="2" width="6" height="12" rx="3" fill="rgba(196,181,253,0.95)" />
+                      <path d="M5 10a7 7 0 0 0 14 0" stroke="rgba(196,181,253,0.95)" strokeWidth="2" />
+                      <line x1="12" y1="17" x2="12" y2="21" stroke="rgba(196,181,253,0.95)" strokeWidth="2" />
+                      <line x1="9" y1="21" x2="15" y2="21" stroke="rgba(196,181,253,0.95)" strokeWidth="2" />
+                    </svg>
+                    <span className="text-[8px] font-bold uppercase tracking-[0.12em] leading-none" style={{ color: "rgba(167,139,250,0.85)" }}>Hold</span>
+                  </>
+                )}
+              </div>
             </button>
           </div>
 
