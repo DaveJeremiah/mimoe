@@ -555,8 +555,8 @@ export function Flashcard({
           <div className="w-[50px] h-[50px] flex-shrink-0" />
         </div>
 
-        {/* Voice source toggle — only when this card has user-supplied audio */}
-        {hasCustomAudio && isAnswerVisible && (
+        {/* Voice source toggle — whenever this card has user-supplied audio */}
+        {hasCustomAudio && (
           <div
             className="flex items-center p-[3px] rounded-full"
             style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}

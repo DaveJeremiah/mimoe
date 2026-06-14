@@ -4,6 +4,8 @@ export interface CollectionEntry {
   target?: string;
   alternatives?: string[];
   dialect?: string;
+  /** Optional romanized reading, shown for Arabic. */
+  transliteration?: string;
   /** Optional user-supplied audio (recorded or uploaded), stored as a data URI. */
   audioUrl?: string;
 }

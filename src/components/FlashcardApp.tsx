@@ -17,7 +17,7 @@ import { vocabularyLevels, phraseLevels, arabicVocabularyLevels, arabicPhraseLev
 import { type Collection, CollectionFormData, COLLECTION_CATEGORIES } from "@/lib/collectionTypes";
 import { prefetchAudio, unlockAudio } from "@/lib/speechUtils";
 import { LANGUAGE_CONFIGS, ARABIC_DIALECTS, getArabicConfigForDialect, type Language } from "@/lib/languageConfig";
-import { ArrowLeft, Plus, MoreVertical, Shuffle, Bookmark, X, CheckCircle2, Share2, BookOpen, PartyPopper } from "lucide-react";
+import { ArrowLeft, Plus, MoreVertical, Shuffle, Bookmark, X, CheckCircle2, Share2, BookOpen, PartyPopper, RefreshCw, Pencil } from "lucide-react";
 
 type Tab = "vocabulary" | "phrases";
 type AppView = "main" | "collection";
@@ -255,6 +255,7 @@ export function FlashcardApp() {
   const [queue, setQueue] = useState<string[]>([]);
   const [history, setHistory] = useState<string[]>([]); // Track completed cards for undo
   const [collectionHistory, setCollectionHistory] = useState<string[]>([]); // Track collection cards for undo
+  const [isCollectionMenuOpen, setIsCollectionMenuOpen] = useState(false);
 
   // Compute the active language config (with dialect override if Arabic)
   const customLevelDialect = selectedLevelId
@@ -444,6 +445,7 @@ export function FlashcardApp() {
       french: entry.french,
       target: entry.target ?? entry.french,
       ...(entry.alternatives && entry.alternatives.length > 0 ? { alternatives: entry.alternatives } : {}),
+      ...(entry.transliteration ? { transliteration: entry.transliteration } : {}),
       ...(entry.audioUrl ? { audioUrl: entry.audioUrl } : {}),
     }));
   }, [selectedCollection]);
@@ -703,6 +705,29 @@ export function FlashcardApp() {
     setIsMenuOpen(false);
   };
 
+  const handleShuffleCollection = () => {
+    if (!selectedCollection) return;
+    const ids = collectionCards.map(c => c.id).sort(() => Math.random() - 0.5);
+    setCollectionQueue(ids);
+    setCollectionHistory([]);
+    setCollectionComboCount(0);
+    setIsCollectionMenuOpen(false);
+  };
+
+  const handleRestartCollection = () => {
+    if (!selectedCollection) return;
+    setCollectionQueue(collectionCards.map(c => c.id));
+    setCollectionHistory([]);
+    setCollectionComboCount(0);
+    setIsCollectionMenuOpen(false);
+  };
+
+  const handleEditCurrentCollection = () => {
+    if (!selectedCollection) return;
+    setIsCollectionMenuOpen(false);
+    handleEditCollection(selectedCollection);
+  };
+
   const handleTabSwitch = (tab: Tab) => {
     setActiveTab(tab);
     setSelectedLevelId(null);
@@ -909,6 +934,47 @@ export function FlashcardApp() {
                     style={{ background: COLLECTION_BAND_STYLE.bar, width: `${colProgress}%` }}
                   />
                 </div>
+              </div>
+
+              {/* Options (3-dot) */}
+              <div className="flex-shrink-0 relative">
+                <button
+                  onClick={() => setIsCollectionMenuOpen(v => !v)}
+                  className="p-1 rounded-lg hover:bg-white/5 transition-colors"
+                >
+                  <MoreVertical className="w-4 h-4 text-white/30" />
+                </button>
+                {isCollectionMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setIsCollectionMenuOpen(false)} />
+                    <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl overflow-hidden z-50 animate-slide-up-in"
+                      style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 16px 40px rgba(0,0,0,0.6)' }}>
+                      <button
+                        onClick={handleShuffleCollection}
+                        className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-white/80 hover:text-white hover:bg-white/5 transition-colors"
+                      >
+                        <Shuffle className="w-4 h-4" />
+                        Shuffle Cards
+                      </button>
+                      <button
+                        onClick={handleRestartCollection}
+                        className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-white/80 hover:text-white hover:bg-white/5 transition-colors"
+                        style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                        Restart Deck
+                      </button>
+                      <button
+                        onClick={handleEditCurrentCollection}
+                        className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-white/80 hover:text-white hover:bg-white/5 transition-colors"
+                        style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+                      >
+                        <Pencil className="w-4 h-4" />
+                        Edit Collection
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
             {/* Collection title */}

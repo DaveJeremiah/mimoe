@@ -7,7 +7,7 @@ import type { Language } from "@/lib/languageConfig";
 import { WavyLine } from "./LevelSelect";
 import { AudioRecorderInput } from "./AudioRecorderInput";
 
-interface Pair { english: string; target: string; audioUrl?: string; }
+interface Pair { english: string; target: string; transliteration?: string; audioUrl?: string; }
 
 interface NewCollectionModalProps {
   isOpen: boolean;
@@ -44,6 +44,7 @@ export function NewCollectionModal({
         setPairs(editingCollection.entries.map(e => ({
           english: e.english,
           target: e.target ?? e.french,
+          transliteration: e.transliteration,
           audioUrl: e.audioUrl,
         })));
       } else {
@@ -69,7 +70,7 @@ export function NewCollectionModal({
   }, [isOpen, editingCollection]);
 
   // ── Pair helpers (Notes mode) ──────────────────────────────────────────────
-  const updatePair = (i: number, field: "english" | "target", value: string) => {
+  const updatePair = (i: number, field: "english" | "target" | "transliteration", value: string) => {
     setPairs(prev => prev.map((p, idx) => idx === i ? { ...p, [field]: value } : p));
   };
   const setPairAudio = (i: number, audioUrl: string | undefined) => {
@@ -116,6 +117,7 @@ export function NewCollectionModal({
           english: p.english.trim(),
           french: p.target.trim(),
           target: p.target.trim(),
+          ...(p.transliteration?.trim() ? { transliteration: p.transliteration.trim() } : {}),
           ...(p.audioUrl ? { audioUrl: p.audioUrl } : {}),
         }));
       if (entries.length === 0 && !editingCollection) {
@@ -287,6 +289,22 @@ export function NewCollectionModal({
                           className="flex-1 bg-transparent text-white text-sm placeholder:text-white/20 outline-none"
                         />
                       </div>
+                      {activeLanguage === "arabic" && (
+                        <>
+                          <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }} />
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-white/25 w-14 flex-shrink-0">Translit.</span>
+                            <input
+                              type="text"
+                              value={pair.transliteration ?? ""}
+                              onChange={e => updatePair(i, "transliteration", e.target.value)}
+                              placeholder="e.g. marḥaban"
+                              disabled={isSaving}
+                              className="flex-1 bg-transparent text-white text-sm placeholder:text-white/20 outline-none"
+                            />
+                          </div>
+                        </>
+                      )}
                       <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }} />
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-bold text-white/25 w-14 flex-shrink-0">Audio</span>

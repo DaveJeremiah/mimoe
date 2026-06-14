@@ -140,7 +140,7 @@ export const db = {
     const ids = cols.map((c: any) => c.id);
     const { data: entries, error: e2 } = await supabase
       .from("collection_entries")
-      .select("id, collection_id, english, target, alternatives, audio_url, position")
+      .select("id, collection_id, english, target, alternatives, transliteration, audio_url, position")
       .in("collection_id", ids)
       .order("position", { ascending: true });
     if (e2) throw e2;
@@ -152,6 +152,7 @@ export const db = {
         french: r.target,
         target: r.target,
         ...(Array.isArray(r.alternatives) && r.alternatives.length > 0 ? { alternatives: r.alternatives as string[] } : {}),
+        ...(r.transliteration ? { transliteration: r.transliteration as string } : {}),
         ...(r.audio_url ? { audioUrl: r.audio_url as string } : {}),
       });
       grouped.set(r.collection_id, list);
@@ -183,6 +184,7 @@ export const db = {
         english: e.english,
         target: e.target ?? e.french,
         alternatives: e.alternatives ?? [],
+        transliteration: e.transliteration ?? null,
         audio_url: e.audioUrl ?? null,
         position: i,
       }));
@@ -218,6 +220,7 @@ export const db = {
         english: e.english,
         target: e.target ?? e.french,
         alternatives: e.alternatives ?? [],
+        transliteration: e.transliteration ?? null,
         audio_url: e.audioUrl ?? null,
         position: i,
       }));
