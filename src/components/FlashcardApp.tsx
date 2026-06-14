@@ -34,6 +34,7 @@ export function FlashcardApp() {
   const navigate = useNavigate();
 
   const [activeLanguage, setActiveLanguage] = useLocalStorage<Language>("mimoe-language", "french");
+  const [preferredDialect, setPreferredDialect] = useLocalStorage<string>("mimoe-arabic-dialect", "ar-SA");
   const [activeTab, setActiveTab] = useLocalStorage<Tab>("mimoe-active-tab", "vocabulary");
   const [selectedLevelId, setSelectedLevelId] = useLocalStorage<string | null>("mimoe-selected-level", null);
   const [savedQueue, setSavedQueue] = useLocalStorage<string[]>("mimoe-saved-queue", []);
@@ -258,10 +259,10 @@ export function FlashcardApp() {
   const customLevelDialect = selectedLevelId
     ? customLevelsList.find(l => l.id === selectedLevelId)?.dialect ?? null
     : null;
-  const sessionDialect: string | null = customLevelDialect ?? selectedCollection?.dialect ?? null;
+  const sessionDialect: string = customLevelDialect ?? selectedCollection?.dialect ?? preferredDialect;
 
   const langConfig = activeLanguage === "arabic"
-    ? (sessionDialect ? getArabicConfigForDialect(sessionDialect) : LANGUAGE_CONFIGS.arabic)
+    ? getArabicConfigForDialect(sessionDialect)
     : LANGUAGE_CONFIGS.french;
 
   const animateAdvanceRef = useRef<((exitClass: string, opts: { failed: boolean; requeue: boolean }) => void) | null>(null);
@@ -767,7 +768,7 @@ export function FlashcardApp() {
     setCollectionHistory([]);
     setCollectionComboCount(0);
     const collLang = collection.language === "arabic"
-      ? (collection.dialect ? getArabicConfigForDialect(collection.dialect) : LANGUAGE_CONFIGS.arabic)
+      ? getArabicConfigForDialect(collection.dialect ?? preferredDialect)
       : LANGUAGE_CONFIGS.french;
     prefetchAudio(collection.entries.slice(0, 3).map((e) => e.target ?? e.french ?? ""), collLang);
     setAppView("collection");
@@ -941,7 +942,7 @@ export function FlashcardApp() {
               bandStyle={COLLECTION_BAND_STYLE}
               langConfig={
                 selectedCollection.language === "arabic"
-                  ? (selectedCollection.dialect ? getArabicConfigForDialect(selectedCollection.dialect) : LANGUAGE_CONFIGS.arabic)
+                  ? getArabicConfigForDialect(selectedCollection.dialect ?? preferredDialect)
                   : LANGUAGE_CONFIGS.french
               }
             />
@@ -1154,15 +1155,23 @@ export function FlashcardApp() {
                   className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold text-white/80 transition-all active:scale-95"
                   style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.10)' }}
                 >
-                  <span className="text-sm leading-none">{LANGUAGE_CONFIGS[activeLanguage].flag}</span>
-                  <span>{LANGUAGE_CONFIGS[activeLanguage].label}</span>
+                  <span className="text-sm leading-none">
+                    {activeLanguage === "arabic"
+                      ? (ARABIC_DIALECTS.find(d => d.code === preferredDialect)?.flag ?? LANGUAGE_CONFIGS.arabic.flag)
+                      : LANGUAGE_CONFIGS[activeLanguage].flag}
+                  </span>
+                  <span>
+                    {activeLanguage === "arabic"
+                      ? (ARABIC_DIALECTS.find(d => d.code === preferredDialect)?.label ?? "Arabic")
+                      : LANGUAGE_CONFIGS[activeLanguage].label}
+                  </span>
                   <svg className="w-2.5 h-2.5 text-white/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m6 9 6 6 6-6"/></svg>
                 </button>
                 {isLangDropdownOpen && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setIsLangDropdownOpen(false)} />
                     <div
-                      className="absolute top-full left-1/2 -translate-x-1/2 mt-2 rounded-2xl overflow-hidden z-50 min-w-[150px]"
+                      className="absolute top-full left-1/2 -translate-x-1/2 mt-2 rounded-2xl overflow-hidden z-50 min-w-[190px]"
                       style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 16px 40px rgba(0,0,0,0.6)' }}
                     >
                       {(["french", "arabic"] as Language[]).map((lang) => {
@@ -1183,6 +1192,28 @@ export function FlashcardApp() {
                           </button>
                         );
                       })}
+                      {activeLanguage === "arabic" && (
+                        <>
+                          <div className="px-4 py-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-white/30">Dialect</span>
+                          </div>
+                          {ARABIC_DIALECTS.map(d => (
+                            <button
+                              key={d.code}
+                              onClick={() => { setPreferredDialect(d.code); setIsLangDropdownOpen(false); }}
+                              className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold transition-colors text-left ${
+                                preferredDialect === d.code ? "bg-white/10 text-white" : "text-white/55 hover:bg-white/5 hover:text-white"
+                              }`}
+                            >
+                              <span className="text-base">{d.flag}</span>
+                              <span className="flex-1">{d.label}</span>
+                              {preferredDialect === d.code && (
+                                <svg className="w-3.5 h-3.5 text-white/60 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6 9 17l-5-5"/></svg>
+                              )}
+                            </button>
+                          ))}
+                        </>
+                      )}
                     </div>
                   </>
                 )}

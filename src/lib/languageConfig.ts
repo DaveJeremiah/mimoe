@@ -50,7 +50,7 @@ export const LANGUAGE_CONFIGS: Record<Language, LanguageConfig> = {
     sttLang: "ar-SA",
     rtl: true,
     fontClass: "font-arabic",
-    cachePrefix: "tts_az_ar_",
+    cachePrefix: "tts2_ar_sa_",
   },
 };
 
@@ -61,6 +61,6 @@ export function getArabicConfigForDialect(dialectCode: string): LanguageConfig {
     ttsLang: dialect.sttLang,
     ttsVoice: dialect.ttsVoice,
     sttLang: dialect.sttLang,
-    cachePrefix: `tts_az_${dialect.code.toLowerCase().replace("-", "_")}_`,
+    cachePrefix: `tts2_${dialect.code.toLowerCase().replace("-", "_")}_`,
   };
 }
