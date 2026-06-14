@@ -229,8 +229,9 @@ function blobToBase64(blob: Blob): Promise<string> {
 // element — this is the path that actually works on iOS Safari, and it gives a
 // proper French/Arabic accent regardless of the device's installed voices.
 const TTS_PROXY_URL  = 'https://ovunaubwudiyodywsdfz.supabase.co/functions/v1/tts'
-const AZURE_TTS_URL  = 'https://ovunaubwudiyodywsdfz.supabase.co/functions/v1/azure-tts'
+const AZURE_TTS_URL  = 'https://zwjydluacxsbfdxhanol.supabase.co/functions/v1/azure-tts'
 const TTS_PROXY_KEY  = 'sb_publishable_wtThLbWFuenbMjGhJPtO9A_GrMInBNm'
+const AZURE_TTS_KEY  = 'sb_publishable_qW88wOpvd4NT1OIiIaFFCA_0eD52E7q'
 
 async function fetchProxyTTS(text: string, langConfig: LanguageConfig = DEFAULT_LANG): Promise<string | null> {
   const key = langConfig.cachePrefix + text.trim().toLowerCase()
@@ -275,7 +276,7 @@ async function fetchAzureTTS(text: string, langConfig: LanguageConfig = DEFAULT_
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        apikey: TTS_PROXY_KEY,
+        apikey: AZURE_TTS_KEY,
       },
       body: JSON.stringify({ text, lang: langConfig.ttsLang, voice: langConfig.ttsVoice }),
     })
