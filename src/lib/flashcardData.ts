@@ -7,6 +7,8 @@ export interface FlashcardItem {
   alternatives?: string[];
   dialect?: string;
   transliteration?: string;
+  /** Optional user-supplied audio (recorded or uploaded), stored as a data URI. */
+  audioUrl?: string;
 }
 
 export interface Level {

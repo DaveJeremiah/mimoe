@@ -5,8 +5,9 @@ import { COLLECTION_CATEGORIES } from "@/lib/collectionTypes";
 import { ARABIC_DIALECTS } from "@/lib/languageConfig";
 import type { Language } from "@/lib/languageConfig";
 import { WavyLine } from "./LevelSelect";
+import { AudioRecorderInput } from "./AudioRecorderInput";
 
-interface Pair { english: string; target: string; }
+interface Pair { english: string; target: string; audioUrl?: string; }
 
 interface NewCollectionModalProps {
   isOpen: boolean;
@@ -43,6 +44,7 @@ export function NewCollectionModal({
         setPairs(editingCollection.entries.map(e => ({
           english: e.english,
           target: e.target ?? e.french,
+          audioUrl: e.audioUrl,
         })));
       } else {
         setPairs([{ english: "", target: "" }]);
@@ -69,6 +71,9 @@ export function NewCollectionModal({
   // ── Pair helpers (Notes mode) ──────────────────────────────────────────────
   const updatePair = (i: number, field: "english" | "target", value: string) => {
     setPairs(prev => prev.map((p, idx) => idx === i ? { ...p, [field]: value } : p));
+  };
+  const setPairAudio = (i: number, audioUrl: string | undefined) => {
+    setPairs(prev => prev.map((p, idx) => idx === i ? { ...p, audioUrl } : p));
   };
   const addPair = () => {
     setPairs(prev => [...prev, { english: "", target: "" }]);
@@ -111,6 +116,7 @@ export function NewCollectionModal({
           english: p.english.trim(),
           french: p.target.trim(),
           target: p.target.trim(),
+          ...(p.audioUrl ? { audioUrl: p.audioUrl } : {}),
         }));
       if (entries.length === 0 && !editingCollection) {
         setError("Add at least one complete pair");
@@ -279,6 +285,15 @@ export function NewCollectionModal({
                           placeholder="e.g. Bonjour"
                           disabled={isSaving}
                           className="flex-1 bg-transparent text-white text-sm placeholder:text-white/20 outline-none"
+                        />
+                      </div>
+                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }} />
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-white/25 w-14 flex-shrink-0">Audio</span>
+                        <AudioRecorderInput
+                          value={pair.audioUrl}
+                          onChange={(uri) => setPairAudio(i, uri)}
+                          disabled={isSaving}
                         />
                       </div>
                     </div>

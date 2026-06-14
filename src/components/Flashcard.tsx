@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { speakFrench, prefetchAudio, isMatch, stopAudio, unlockAudio } from "@/lib/speechUtils";
+import { speakFrench, speakAudioUrl, prefetchAudio, isMatch, stopAudio, unlockAudio } from "@/lib/speechUtils";
 import type { FlashcardItem } from "@/lib/flashcardData";
 import type { LanguageConfig } from "@/lib/languageConfig";
 import { LANGUAGE_CONFIGS } from "@/lib/languageConfig";
@@ -137,6 +137,7 @@ export function Flashcard({
   const stateRef      = useRef<CardState>("QUESTION");
   const targetRef     = useRef(targetWord);
   const lcRef         = useRef(lc);
+  const audioUrlRef   = useRef(card.audioUrl);
   const advanceTimerRef   = useRef<number | null>(null);
   const ignoreUntilRef    = useRef<number>(0);
   const lastProcessedRef  = useRef<string>("");
@@ -146,6 +147,18 @@ export function Flashcard({
 
   // Track whether TTS is actively playing (used to disable the PTT button)
   const [isSpeaking, setIsSpeaking] = useState(false);
+
+  // Custom-audio source toggle: when this card has user-supplied audio, default
+  // to playing it; the user can flip to the generated (mimoe) voice.
+  const hasCustomAudio = !!card.audioUrl;
+  const [useCustomAudio, setUseCustomAudio] = useState(hasCustomAudio);
+  const useCustomAudioRef = useRef(hasCustomAudio);
+  useEffect(() => {
+    const next = !!card.audioUrl;
+    setUseCustomAudio(next);
+    useCustomAudioRef.current = next;
+  }, [card.audioUrl]);
+  useEffect(() => { useCustomAudioRef.current = useCustomAudio; }, [useCustomAudio]);
 
   // ── Push-to-talk recognition ─────────────────────────────────────────────
   const { status: pttStatus, start: startPTT, stop: stopPTT, cancel: cancelPTT } =
@@ -185,12 +198,17 @@ export function Flashcard({
     };
     // Safety: never stay gated more than 6.5 s
     gateSafetyRef.current = window.setTimeout(onFinish, 6500);
-    speakFrench(text, onFinish, lcRef.current);
+    if (audioUrlRef.current && useCustomAudioRef.current) {
+      speakAudioUrl(audioUrlRef.current, onFinish);
+    } else {
+      speakFrench(text, onFinish, lcRef.current);
+    }
   }, []);
 
   useEffect(() => { stateRef.current = state; },       [state]);
   useEffect(() => { targetRef.current = targetWord; }, [targetWord]);
   useEffect(() => { lcRef.current = lc; },             [lc]);
+  useEffect(() => { audioUrlRef.current = card.audioUrl; }, [card.audioUrl]);
 
   // Sparkle on correct
   useEffect(() => {
@@ -459,8 +477,9 @@ export function Flashcard({
           {/* Replay / reveal button */}
           <button
             onClick={() => {
-              if (isAnswerVisible) speakFrench(targetWord, undefined, lc);
-              else handleDontKnow();
+              if (!isAnswerVisible) { handleDontKnow(); return; }
+              if (hasCustomAudio && useCustomAudio) speakAudioUrl(card.audioUrl!);
+              else speakFrench(targetWord, undefined, lc);
             }}
             className="w-[50px] h-[50px] rounded-full bg-[#252f45] flex items-center justify-center shadow-[0_4px_0_#171e30] active:shadow-[0_2px_0_#171e30] active:translate-y-[2px] transition-all flex-shrink-0"
           >
@@ -540,6 +559,33 @@ export function Flashcard({
           {/* Spacer — mirrors the replay button for visual balance */}
           <div className="w-[50px] h-[50px] flex-shrink-0" />
         </div>
+
+        {/* Voice source toggle — only when this card has user-supplied audio */}
+        {hasCustomAudio && isAnswerVisible && (
+          <div
+            className="flex items-center p-[3px] rounded-full"
+            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
+          >
+            <button
+              onClick={() => { setUseCustomAudio(true); speakAudioUrl(card.audioUrl!); }}
+              className="px-3.5 py-1.5 rounded-full text-[11px] font-bold transition-all"
+              style={useCustomAudio
+                ? { background: "linear-gradient(135deg,#9b5cf6,#ec4899)", color: "#fff" }
+                : { background: "transparent", color: "rgba(255,255,255,0.45)" }}
+            >
+              Your voice
+            </button>
+            <button
+              onClick={() => { setUseCustomAudio(false); speakFrench(targetWord, undefined, lc); }}
+              className="px-3.5 py-1.5 rounded-full text-[11px] font-bold transition-all"
+              style={!useCustomAudio
+                ? { background: "linear-gradient(135deg,#9b5cf6,#ec4899)", color: "#fff" }
+                : { background: "transparent", color: "rgba(255,255,255,0.45)" }}
+            >
+              mimoe voice
+            </button>
+          </div>
+        )}
 
         <button
           onClick={handleDontKnow}

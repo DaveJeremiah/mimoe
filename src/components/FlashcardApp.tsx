@@ -443,6 +443,7 @@ export function FlashcardApp() {
       french: entry.french,
       target: entry.target ?? entry.french,
       ...(entry.alternatives && entry.alternatives.length > 0 ? { alternatives: entry.alternatives } : {}),
+      ...(entry.audioUrl ? { audioUrl: entry.audioUrl } : {}),
     }));
   }, [selectedCollection]);
 

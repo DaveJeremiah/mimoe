@@ -351,3 +351,13 @@ export function speakFrench(text: string, onEnd?: () => void, langConfig: Langua
 export function speakCorrect(text: string, onEnd?: () => void, langConfig: LanguageConfig = DEFAULT_LANG): void {
   speakFrench(text, onEnd, langConfig)
 }
+
+// Play user-supplied audio (a data URI or remote URL) through the same unlocked
+// <audio> element used for TTS, so it works on iOS and never overlaps a clip.
+export function speakAudioUrl(uri: string, onEnd?: () => void): void {
+  if (!uri) { onEnd?.(); return }
+  stopAudio()
+  let done = false
+  const finish = () => { if (done) return; done = true; onEnd?.() }
+  playDataUri(uri, finish)
+}

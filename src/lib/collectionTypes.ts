@@ -4,6 +4,8 @@ export interface CollectionEntry {
   target?: string;
   alternatives?: string[];
   dialect?: string;
+  /** Optional user-supplied audio (recorded or uploaded), stored as a data URI. */
+  audioUrl?: string;
 }
 
 export type CollectionCategory = "lyrics" | "poem" | "dialogue" | "phrases" | "vocabulary" | "other";
