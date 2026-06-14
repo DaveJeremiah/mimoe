@@ -1148,7 +1148,7 @@ export function FlashcardApp() {
             <img src={logoLight} alt="Mimoe" className="h-11 w-auto flex-shrink-0" />
 
             {/* Center: language pill — absolutely positioned */}
-            <div className="absolute left-1/2 -translate-x-1/2">
+            <div className="absolute left-1/2 -translate-x-1/2 z-[70]">
               <div className="relative">
                 <button
                   onClick={() => setIsLangDropdownOpen(v => !v)}
