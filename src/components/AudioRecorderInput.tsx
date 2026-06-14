@@ -113,10 +113,22 @@ export function AudioRecorderInput({ value, onChange, disabled }: Props) {
           <>
             <button
               type="button" onClick={startRecording} disabled={disabled}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold"
-              style={{ background: "rgba(129,140,248,0.1)", color: "rgba(165,180,252,0.85)", border: "1px solid rgba(129,140,248,0.22)" }}
+              className="group relative flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[11px] font-bold text-white overflow-hidden active:scale-95 transition-transform"
+              style={{
+                background: "linear-gradient(135deg,#9b5cf6 0%,#c026d3 45%,#ec4899 100%)",
+                boxShadow: "0 4px 16px rgba(155,92,246,0.45)",
+              }}
             >
-              <Mic className="w-3 h-3" /> Tap to record
+              {/* sliding sheen */}
+              <span
+                className="pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700"
+                style={{ background: "linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.35) 50%, transparent 70%)" }}
+              />
+              <span className="relative flex items-center justify-center">
+                <span className="absolute w-3.5 h-3.5 rounded-full bg-white/40 animate-ping" />
+                <Mic className="relative w-3 h-3" />
+              </span>
+              <span className="relative">Tap to record</span>
             </button>
             <button
               type="button" onClick={() => fileRef.current?.click()} disabled={disabled}

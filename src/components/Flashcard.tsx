@@ -130,7 +130,7 @@ export function Flashcard({
   const [state, setState]           = useState<CardState>("QUESTION");
   const [spokenText, setSpokenText] = useState("");
   const [exitAnim, setExitAnim]     = useState<string>("");
-  const [enterAnim, setEnterAnim]   = useState<string>("animate-enter-right");
+  const [enterAnim, setEnterAnim]   = useState<string>("animate-enter-up");
   const [cardAnim, setCardAnim]     = useState<string>("");
   const [isExiting, setIsExiting]   = useState(false);
   const [showSparkle, setShowSparkle] = useState(false);
@@ -282,8 +282,8 @@ export function Flashcard({
     // Brief suppress so the tail of the previous card's audio isn't misheard
     ignoreUntilRef.current = Date.now() + 600;
     lastProcessedRef.current = "";
-    setEnterAnim("animate-card-flip-in");
-    setTimeout(() => setEnterAnim(""), 220);
+    setEnterAnim("animate-enter-up");
+    setTimeout(() => setEnterAnim(""), 420);
 
     // No auto-speak on card appear — TTS only fires after the user speaks
   }, [card.id]);
@@ -325,10 +325,11 @@ export function Flashcard({
       <div className={`relative w-full max-w-[420px] ${cardAnim}`}>
         <div style={{ perspective: '900px' }}>
           {/*
-            Layout (% of container, aspect 570/438):
-              Ghost 2:    left 0     top 0     width 80%  height 89%
-              Ghost 1:    left 5%    top 2.5%  width 80%  height 89%
-              Front card: left 12%   top 5%    right 0    bottom 0
+            Layout (% of container, aspect 570/438) — behind cards peek UP,
+            horizontally centred on the front card:
+              Ghost 2:    left 14%  right 14%  top 0    height 90%
+              Ghost 1:    left 11%  right 11%  top 4%   height 90%
+              Front card: left 8%   right 8%   top 8%   bottom 0
           */}
           <div
             className={`relative ${enterAnim} ${exitAnim}`}
@@ -339,7 +340,7 @@ export function Flashcard({
             <div
               className="absolute rounded-[20px]"
               style={{
-                left: 0, top: 0, width: '80%', height: '89%',
+                left: '14%', right: '14%', top: 0, height: '90%',
                 background: bandStyle.ghost2,
                 boxShadow: '0 6px 22px rgba(0,0,0,0.22)',
                 opacity: exitAnim ? 0 : 1,
@@ -351,7 +352,7 @@ export function Flashcard({
             <div
               className="absolute rounded-[22px]"
               style={{
-                left: '5%', top: '2.5%', width: '80%', height: '89%',
+                left: '11%', right: '11%', top: '4%', height: '90%',
                 background: bandStyle.ghost1,
                 boxShadow: '0 6px 18px rgba(0,0,0,0.16)',
                 opacity: exitAnim ? 0 : 1,
@@ -363,7 +364,7 @@ export function Flashcard({
             <div
               className="absolute rounded-[24px]"
               style={{
-                left: '12%', top: '5%', right: 0, bottom: 0,
+                left: '8%', right: '8%', top: '8%', bottom: 0,
                 background: bandStyle.cardBg,
                 boxShadow: '0 16px 44px rgba(0,0,0,0.38), 0 2px 8px rgba(0,0,0,0.18)',
               }}
@@ -491,14 +492,15 @@ export function Flashcard({
               </>
             )}
             <button
-              onClick={(e) => {
+              onPointerDown={(e) => {
                 e.preventDefault();
-                if (isSpeaking) return;
-                if (pttStatus === "listening") { stopPTT(); return; }
-                if (!isMicOn) return;
+                if (!isMicOn || isSpeaking) return;
                 unlockAudio();
                 startPTT();
               }}
+              onPointerUp={() => stopPTT()}
+              onPointerLeave={() => stopPTT()}
+              onPointerCancel={() => cancelPTT()}
               onContextMenu={(e) => e.preventDefault()}
               className={[
                 "relative z-10 w-[76px] h-[76px] rounded-full",
@@ -543,7 +545,7 @@ export function Flashcard({
                     <line x1="12" y1="17" x2="12" y2="21" stroke="rgba(255,255,255,0.55)" strokeWidth="2" />
                     <line x1="9" y1="21" x2="15" y2="21" stroke="rgba(255,255,255,0.55)" strokeWidth="2" />
                   </svg>
-                  <span className="text-[8px] font-bold text-white/25 uppercase tracking-[0.12em] leading-none">Tap</span>
+                  <span className="text-[8px] font-bold text-white/25 uppercase tracking-[0.12em] leading-none">Hold</span>
                 </>
               )}
             </button>
