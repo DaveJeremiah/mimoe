@@ -10,7 +10,7 @@ export interface ArabicDialect {
 
 export const ARABIC_DIALECTS: ArabicDialect[] = [
   { code: "ar-SA", label: "Modern Standard (MSA)", flag: "🇸🇦", sttLang: "ar-SA", ttsVoice: "ar-SA-ZariyahNeural" },
-  { code: "ar-EG", label: "Egyptian", flag: "🇪🇬", sttLang: "ar-EG", ttsVoice: "ar-EG-SalmaNeural" },
+  { code: "ar-EG", label: "Egyptian", flag: "🇪🇬", sttLang: "ar-EG", ttsVoice: "ar-EG-ShakirNeural" },
   { code: "ar-LB", label: "Levantine", flag: "🇱🇧", sttLang: "ar-LB", ttsVoice: "ar-LB-LaylaNeural" },
   { code: "ar-KW", label: "Gulf", flag: "🇰🇼", sttLang: "ar-KW", ttsVoice: "ar-KW-FahedNeural" },
   { code: "ar-MA", label: "Moroccan", flag: "🇲🇦", sttLang: "ar-MA", ttsVoice: "ar-MA-MounaNeural" },
@@ -50,7 +50,7 @@ export const LANGUAGE_CONFIGS: Record<Language, LanguageConfig> = {
     sttLang: "ar-SA",
     rtl: true,
     fontClass: "font-arabic",
-    cachePrefix: "tts2_ar_sa_",
+    cachePrefix: "tts3_ar_sa_",
   },
 };
 
@@ -61,6 +61,6 @@ export function getArabicConfigForDialect(dialectCode: string): LanguageConfig {
     ttsLang: dialect.sttLang,
     ttsVoice: dialect.ttsVoice,
     sttLang: dialect.sttLang,
-    cachePrefix: `tts2_${dialect.code.toLowerCase().replace("-", "_")}_`,
+    cachePrefix: `tts3_${dialect.code.toLowerCase().replace("-", "_")}_`,
   };
 }
