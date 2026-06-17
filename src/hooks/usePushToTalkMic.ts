@@ -18,7 +18,7 @@ const _isIOS = typeof navigator !== "undefined" && (
   // NOTE: display-mode: standalone intentionally excluded — Android PWAs match it too
 );
 
-// ── iOS: getUserMedia + MediaRecorder + Whisper ───────────────────────────────
+// ── iOS: getUserMedia + MediaRecorder + Azure STT ────────────────────────────
 //
 // Root cause of "button does nothing after TTS plays":
 //   webkitSpeechRecognition requests exclusive AVAudioSession ".record" mode.
@@ -26,48 +26,93 @@ const _isIOS = typeof navigator !== "undefined" && (
 //   The two modes conflict → recognition silently fails.
 //
 // Fix:
-//   Keep a getUserMedia stream open at all times → iOS stays in ".playAndRecord"
-//   mode → TTS audio and mic recording coexist with no conflict window.
-//   We record with MediaRecorder and transcribe via Whisper on button release.
+//   Record with MediaRecorder → convert MP4/AAC to 16-bit PCM WAV client-side
+//   via AudioContext.decodeAudioData → POST WAV to azure-stt edge function.
 
-function mimeToFilename(mimeType: string): string {
-  if (mimeType.includes("webm")) return "audio.webm";
-  if (mimeType.includes("ogg"))  return "audio.ogg";
-  // audio/mp4, video/mp4, audio/m4a, audio/x-m4a → all work as m4a for Whisper
-  return "audio.m4a";
+const AZURE_STT_URL = "https://zwjydluacxsbfdxhanol.supabase.co/functions/v1/azure-stt";
+const AZURE_STT_KEY = "sb_publishable_qW88wOpvd4NT1OIiIaFFCA_0eD52E7q";
+
+// Encode Float32 PCM samples → 16-bit little-endian WAV bytes
+function encodeWavPcm16(samples: Float32Array, sampleRate: number): ArrayBuffer {
+  const numSamples  = samples.length;
+  const bytesPerSample = 2;
+  const dataSize    = numSamples * bytesPerSample;
+  const buffer      = new ArrayBuffer(44 + dataSize);
+  const v           = new DataView(buffer);
+  const str = (off: number, s: string) => { for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i)); };
+  str(0, "RIFF"); v.setUint32(4, 36 + dataSize, true);
+  str(8, "WAVE"); str(12, "fmt ");
+  v.setUint32(16, 16, true);          // chunk size
+  v.setUint16(20, 1, true);           // PCM
+  v.setUint16(22, 1, true);           // mono
+  v.setUint32(24, sampleRate, true);  // sample rate
+  v.setUint32(28, sampleRate * bytesPerSample, true); // byte rate
+  v.setUint16(32, bytesPerSample, true);
+  v.setUint16(34, 16, true);          // bits per sample
+  str(36, "data"); v.setUint32(40, dataSize, true);
+  let off = 44;
+  for (let i = 0; i < numSamples; i++) {
+    const s = Math.max(-1, Math.min(1, samples[i]));
+    v.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+    off += 2;
+  }
+  return buffer;
 }
 
-// Same project that hosts azure-tts — hardcoded like speechUtils.ts does it.
-const WHISPER_URL = "https://zwjydluacxsbfdxhanol.supabase.co/functions/v1/whisper-stt";
-const WHISPER_KEY = "sb_publishable_qW88wOpvd4NT1OIiIaFFCA_0eD52E7q";
+// Decode any browser-supported audio blob → mono 16 kHz WAV
+async function blobToWav16k(blob: Blob): Promise<Blob> {
+  const TARGET_SR = 16000;
+  const arrayBuffer = await blob.arrayBuffer();
+  // OfflineAudioContext resamples to TARGET_SR during decoding
+  const tmpCtx = new AudioContext();
+  const decoded = await tmpCtx.decodeAudioData(arrayBuffer);
+  tmpCtx.close();
 
-async function transcribeViaWhisper(blob: Blob, langCode: string): Promise<string | null> {
+  const offCtx = new OfflineAudioContext(1, Math.ceil(decoded.duration * TARGET_SR), TARGET_SR);
+  const src = offCtx.createBufferSource();
+  src.buffer = decoded;
+  src.connect(offCtx.destination);
+  src.start(0);
+  const resampled = await offCtx.startRendering();
+  const samples   = resampled.getChannelData(0);
+
+  return new Blob([encodeWavPcm16(samples, TARGET_SR)], { type: "audio/wav" });
+}
+
+async function transcribeViaAzure(blob: Blob, langCode: string): Promise<string | null> {
   try {
-    const lang = langCode.split("-")[0];
-    console.log("[PTT] transcribeViaWhisper blob size=", blob.size, "type=", blob.type, "lang=", lang);
+    console.log("[PTT] transcribeViaAzure blob size=", blob.size, "type=", blob.type, "lang=", langCode);
+
+    let audioBlob: Blob;
+    try {
+      audioBlob = await blobToWav16k(blob);
+      console.log("[PTT] WAV converted size=", audioBlob.size);
+    } catch (convErr) {
+      console.error("[PTT] WAV conversion failed, sending original:", convErr);
+      audioBlob = blob;
+    }
 
     const form = new FormData();
-    form.append("file", blob, mimeToFilename(blob.type));
-    form.append("model", "whisper-1");
-    form.append("language", lang);
+    form.append("file", audioBlob, "audio.wav");
+    form.append("language", langCode);
 
-    const res = await fetch(WHISPER_URL, {
+    const res = await fetch(AZURE_STT_URL, {
       method: "POST",
-      headers: { apikey: WHISPER_KEY },
+      headers: { apikey: AZURE_STT_KEY },
       body: form,
     });
 
-    console.log("[PTT] whisper response status=", res.status);
+    console.log("[PTT] azure-stt response status=", res.status);
     if (!res.ok) {
       const errText = await res.text().catch(() => "");
-      console.error("[PTT] whisper error body=", errText);
+      console.error("[PTT] azure-stt error body=", errText);
       return null;
     }
     const json = await res.json() as { text?: string };
-    console.log("[PTT] whisper result=", json.text);
+    console.log("[PTT] azure-stt result=", json.text);
     return json.text?.trim() || null;
   } catch (err) {
-    console.error("[PTT] transcribeViaWhisper exception:", err);
+    console.error("[PTT] transcribeViaAzure exception:", err);
     return null;
   }
 }
@@ -188,7 +233,7 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult }: Options) {
 
     const mimeType = chunks[0]?.type || "audio/mp4";
     const blob = new Blob(chunks, { type: mimeType });
-    const text = await transcribeViaWhisper(blob, langRef.current);
+    const text = await transcribeViaAzure(blob, langRef.current);
     console.log("[PTT] final text=", text);
     if (text && gen === iosGenRef.current) onResultRef.current(text);
   }, []);
