@@ -95,18 +95,10 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult }: Options) {
   // Incremented on cancel so any in-flight async stop/transcription is discarded.
   const iosGenRef      = useRef(0);
 
-  // Pre-warm: try to acquire the mic stream on mount.
-  // This puts iOS into ".playAndRecord" mode so TTS and recording coexist.
-  // May fail silently on a first-ever visit (needs a gesture); iosStart
-  // re-tries within the onPointerDown gesture context in that case.
+  // Cleanup: stop any open iOS stream on unmount
   useEffect(() => {
     if (!_isIOS) return;
-    let alive = true;
-    navigator.mediaDevices?.getUserMedia({ audio: true })
-      .then(s => { if (alive) iosStreamRef.current = s; else s.getTracks().forEach(t => t.stop()); })
-      .catch(() => {});
     return () => {
-      alive = false;
       iosStreamRef.current?.getTracks().forEach(t => t.stop());
       iosStreamRef.current = null;
     };
@@ -114,23 +106,29 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult }: Options) {
 
   const iosStart = useCallback(async () => {
     const gen = ++iosGenRef.current;
-    console.log("[PTT] iosStart gen=", gen, "isIOS=", _isIOS, "stream active=", iosStreamRef.current?.active);
+    console.log("[PTT] iosStart gen=", gen, "isIOS=", _isIOS);
 
-    // Acquire mic stream. Called from onPointerDown so it counts as a user gesture.
-    let stream = iosStreamRef.current;
-    if (!stream?.active) {
-      try {
-        console.log("[PTT] calling getUserMedia...");
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        console.log("[PTT] getUserMedia OK, active=", stream.active);
-        if (iosGenRef.current !== gen) { stream.getTracks().forEach(t => t.stop()); return; }
-        iosStreamRef.current = stream;
-      } catch (err: any) {
-        console.error("[PTT] getUserMedia error:", err?.name, err?.message);
-        const name: string = err?.name ?? "";
-        if (name === "NotAllowedError" || name === "PermissionDeniedError") setStatus("denied");
-        return;
-      }
+    // Always call getUserMedia fresh within this gesture (onPointerDown).
+    // A pre-warmed stream acquired without a gesture has a muted audio track on
+    // iOS Safari — stream.active is true but the mic captures silence.
+    // Stopping the previous stream first ensures no duplicate tracks.
+    iosStreamRef.current?.getTracks().forEach(t => t.stop());
+    iosStreamRef.current = null;
+
+    let stream: MediaStream;
+    try {
+      console.log("[PTT] calling getUserMedia...");
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const track = stream.getAudioTracks()[0];
+      console.log("[PTT] getUserMedia OK, active=", stream.active,
+        "track.enabled=", track?.enabled, "track.muted=", track?.muted);
+      if (iosGenRef.current !== gen) { stream.getTracks().forEach(t => t.stop()); return; }
+      iosStreamRef.current = stream;
+    } catch (err: any) {
+      console.error("[PTT] getUserMedia error:", err?.name, err?.message);
+      const name: string = err?.name ?? "";
+      if (name === "NotAllowedError" || name === "PermissionDeniedError") setStatus("denied");
+      return;
     }
 
     const mimeType =
@@ -176,6 +174,10 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult }: Options) {
       ),
     ]);
     iosChunksRef.current = [];
+    // Stop the stream tracks immediately — releases the iOS mic indicator
+    iosStreamRef.current?.getTracks().forEach(t => t.stop());
+    iosStreamRef.current = null;
+
     console.log("[PTT] chunks=", chunks.length, "totalBytes=", chunks.reduce((s, c) => s + c.size, 0));
 
     setStatus("idle");
@@ -197,6 +199,8 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult }: Options) {
     iosRecorderRef.current = null;
     iosChunksRef.current = [];
     if (recorder && recorder.state !== "inactive") { try { recorder.stop(); } catch { } }
+    iosStreamRef.current?.getTracks().forEach(t => t.stop());
+    iosStreamRef.current = null;
     setStatus("idle");
   }, []);
 
