@@ -18,6 +18,13 @@ const _isIOS = typeof navigator !== "undefined" && (
   (window as any).navigator?.standalone === true
 );
 
+// ── iOS module-level singletons ──────────────────────────────────────────────
+// The Flashcard component is rendered with key={card.id}, so it fully remounts
+// on every card change — wiping all useRef state. These module-level vars survive
+// remounts so we keep the warm stream and permission grant across cards.
+let _iosStream: MediaStream | null = null;
+let _iosPermissionGranted = false;
+
 // ── iOS: getUserMedia + MediaRecorder + Azure STT ────────────────────────────
 
 const AZURE_STT_URL = "https://zwjydluacxsbfdxhanol.supabase.co/functions/v1/azure-stt";
@@ -117,7 +124,8 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult, handsFree = false }
   // On iOS the first mic acquisition must come from a user gesture (otherwise the
   // track is muted). `ready` tells the UI whether a warm stream exists so it can
   // auto-listen, or whether it must prompt for one tap first.
-  const [ready, setReady] = useState<boolean>(!_isIOS);
+  // On iOS: start ready if permission was already granted in a previous card's mount
+  const [ready, setReady] = useState<boolean>(!_isIOS || _iosPermissionGranted);
 
   const onResultRef  = useRef(onResult);
   const langRef      = useRef(lang);
@@ -127,33 +135,36 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult, handsFree = false }
   useEffect(() => { handsFreeRef.current = handsFree;  }, [handsFree]);
 
   // ── iOS refs ──────────────────────────────────────────────────────────────
-  const iosStreamRef   = useRef<MediaStream | null>(null); // warm — kept open all session
+  const iosStreamRef   = useRef<MediaStream | null>(_iosStream); // seeded from module singleton
   const iosRecorderRef = useRef<MediaRecorder | null>(null);
   const iosChunksRef   = useRef<Blob[]>([]);
   const iosGenRef      = useRef(0);
   const iosSafetyRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const iosVadStopRef          = useRef<(() => void) | null>(null);
-  const iosPermissionGrantedRef = useRef(false); // true after first getUserMedia succeeds
+  const iosVadStopRef = useRef<(() => void) | null>(null);
 
-  // Acquire (or reuse) the warm mic stream. Throws NEEDS_GESTURE if a fresh
-  // acquisition is required but this call isn't from a user gesture.
   const iosEnsureStream = useCallback(async (gesture: boolean): Promise<MediaStream> => {
-    const warm  = iosStreamRef.current;
+    // Read from module-level singleton — survives card key= remounts
+    const warm  = _iosStream;
     const track = warm?.getAudioTracks()[0];
 
-    // Happy path: warm stream is alive and unmuted — reuse it instantly.
-    if (warm?.active && track && track.readyState === "live" && !track.muted) return warm;
+    // Happy path: warm stream is active and unmuted — reuse it instantly.
+    if (warm?.active && track && track.readyState === "live" && !track.muted) {
+      iosStreamRef.current = warm;
+      return warm;
+    }
 
-    // iOS only requires a user gesture for the FIRST permission dialog.
-    // After that, getUserMedia works without a gesture — so we can silently
-    // acquire a fresh stream on each card (bypasses the muted-track problem
-    // that happens when AVAudioSession transitions after TTS playback).
-    if (!iosPermissionGrantedRef.current && !gesture) throw new Error(NEEDS_GESTURE);
+    // iOS only requires a gesture for the first permission dialog; subsequent
+    // getUserMedia calls work without one once permission is granted.
+    if (!_iosPermissionGranted && !gesture) throw new Error(NEEDS_GESTURE);
 
+    // Fresh stream — bypasses the muted-track issue after AVAudioSession
+    // switches to playback mode during TTS then back.
     warm?.getTracks().forEach(t => t.stop());
+    _iosStream = null;
     iosStreamRef.current = null;
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    iosPermissionGrantedRef.current = true;
+    _iosPermissionGranted = true;
+    _iosStream = stream;
     iosStreamRef.current = stream;
     setReady(true);
     return stream;
@@ -264,10 +275,14 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult, handsFree = false }
   useEffect(() => {
     if (!_isIOS) return;
     return () => {
+      // Stop recorder/VAD on unmount but keep _iosStream alive in the module-level
+      // singleton so the next card's hook instance can reuse it without needing
+      // another user gesture. The stream is released when the page unloads.
       if (iosSafetyRef.current) clearTimeout(iosSafetyRef.current);
-      if (iosVadStopRef.current) iosVadStopRef.current();
-      iosStreamRef.current?.getTracks().forEach(t => t.stop());
-      iosStreamRef.current = null;
+      if (iosVadStopRef.current) { iosVadStopRef.current(); iosVadStopRef.current = null; }
+      const rec = iosRecorderRef.current;
+      iosRecorderRef.current = null;
+      if (rec?.state !== "inactive") { try { rec?.stop(); } catch { /**/ } }
     };
   }, []);
 

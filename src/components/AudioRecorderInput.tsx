@@ -40,14 +40,14 @@ async function denoiseAudio(blob: Blob): Promise<Blob> {
     hp.frequency.value = 80;
     hp.Q.value = 0.7;
 
-    // Dynamics compressor: normalises loud/soft passages, makes background
-    // noise less prominent relative to the voice signal
+    // Dynamics compressor: normalises loud/soft passages, pushes background
+    // noise further below the voice signal
     const comp = offline.createDynamicsCompressor();
-    comp.threshold.value = -24;
-    comp.knee.value = 30;
-    comp.ratio.value = 12;
-    comp.attack.value = 0.003;
-    comp.release.value = 0.25;
+    comp.threshold.value = -30;
+    comp.knee.value = 20;
+    comp.ratio.value = 20;
+    comp.attack.value = 0.001;
+    comp.release.value = 0.15;
 
     src.connect(hp);
     hp.connect(comp);
@@ -56,6 +56,22 @@ async function denoiseAudio(blob: Blob): Promise<Blob> {
 
     const rendered = await offline.startRendering();
     const samples  = rendered.getChannelData(0);
+
+    // Noise gate with smooth attack/release — silences passages that are
+    // quieter than typical speech (background hiss, room noise, etc.)
+    const SR = rendered.sampleRate;
+    const ATK = SR * 0.005;   // 5 ms open
+    const REL = SR * 0.15;    // 150 ms close (avoids clipping mid-word)
+    const GATE_OPEN  = 0.018; // ~-35 dBFS: voice above this opens gate
+    const GATE_CLOSE = 0.007; // ~-43 dBFS: noise below this closes gate
+    let gv = 0, gateOpen = false;
+    for (let i = 0; i < samples.length; i++) {
+      const abs = Math.abs(samples[i]);
+      if (!gateOpen && abs > GATE_OPEN)  gateOpen = true;
+      if (gateOpen  && abs < GATE_CLOSE) gateOpen = false;
+      gv += ((gateOpen ? 1 : 0) - gv) * (gateOpen ? 1 / ATK : 1 / REL);
+      samples[i] *= Math.min(1, Math.max(0, gv));
+    }
 
     // Encode to 16-bit PCM WAV (mono, same sample rate)
     const dataLen = samples.length * 2;
