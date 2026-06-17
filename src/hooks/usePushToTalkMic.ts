@@ -139,7 +139,18 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult, handsFree = false }
   const iosEnsureStream = useCallback(async (gesture: boolean): Promise<MediaStream> => {
     const warm  = iosStreamRef.current;
     const track = warm?.getAudioTracks()[0];
-    if (warm?.active && track && track.readyState === "live" && !track.muted) return warm;
+
+    if (warm?.active && track && track.readyState === "live") {
+      // iOS temporarily mutes the mic track while AVAudioSession is in playback mode
+      // (e.g. during TTS). Wait up to 700 ms for the unmute event before proceeding.
+      if (track.muted) {
+        await new Promise<void>(resolve => {
+          const timeout = setTimeout(resolve, 700);
+          track.addEventListener('unmute', () => { clearTimeout(timeout); resolve(); }, { once: true });
+        });
+      }
+      return warm;
+    }
 
     if (!gesture) throw new Error(NEEDS_GESTURE);
 

@@ -5,7 +5,7 @@ import type { LanguageConfig } from "@/lib/languageConfig";
 import { LANGUAGE_CONFIGS } from "@/lib/languageConfig";
 import { usePushToTalkMic } from "@/hooks/usePushToTalkMic";
 import { RipplePattern } from "./LevelSelect";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, SkipForward, Star, Lightbulb } from "lucide-react";
 import logoLight from "@/assets/logo-light.png";
 
 function vibrate(pattern: number | number[]) {
@@ -134,6 +134,7 @@ export function Flashcard({
   const [cardAnim, setCardAnim]     = useState<string>("");
   const [isExiting, setIsExiting]   = useState(false);
   const [showSparkle, setShowSparkle] = useState(false);
+  const [showHint, setShowHint]       = useState(false);
 
   const stateRef      = useRef<CardState>("QUESTION");
   const targetRef     = useRef(targetWord);
@@ -304,6 +305,7 @@ export function Flashcard({
     setState("QUESTION");
     setSpokenText("");
     setShowSparkle(false);
+    setShowHint(false);
     // Brief suppress so the tail of the previous card's audio isn't misheard
     ignoreUntilRef.current = Date.now() + 600;
     lastProcessedRef.current = "";
@@ -335,6 +337,12 @@ export function Flashcard({
     speakGated(targetRef.current, () => {
       animateAndAdvance("animate-slide-up", { failed: false, requeue: true });
     });
+  };
+
+  const handleHint = () => {
+    if (isSpeaking || isExiting) return;
+    setShowHint(true);
+    speakGated(targetRef.current);
   };
 
   const handleKnewItAfterFinal = () => animateAndAdvance("animate-slide-up", { failed: true, requeue: false });
@@ -418,6 +426,22 @@ export function Flashcard({
                 <img src={logoLight} alt="" style={{ height: 19, width: 'auto', opacity: 0.95, marginTop: 9 }} />
               </div>
 
+              {/* Bookmark star — top-left corner */}
+              {onToggleBookmark && (
+                <button
+                  onClick={onToggleBookmark}
+                  className="absolute top-3 left-3 z-20 w-7 h-7 flex items-center justify-center rounded-full"
+                  style={{ background: 'rgba(0,0,0,0.15)' }}
+                >
+                  <Star
+                    className="w-3.5 h-3.5"
+                    fill={isBookmarked ? '#FFD700' : 'none'}
+                    stroke={isBookmarked ? '#FFD700' : 'rgba(255,255,255,0.5)'}
+                    strokeWidth={2}
+                  />
+                </button>
+              )}
+
               {/* Streak fire badge */}
               {streak >= 2 && (
                 <div className="absolute top-3 right-3 z-20 flex items-center gap-0.5 px-2 py-1 rounded-full"
@@ -443,12 +467,28 @@ export function Flashcard({
 
                 {/* QUESTION */}
                 {isQuestion && (
-                  <h2
-                    className="font-black text-[1.5rem] text-center leading-snug tracking-tight"
-                    style={{ color: 'rgba(255,255,255,0.96)' }}
-                  >
-                    {card.english}
-                  </h2>
+                  <div className="flex flex-col items-center gap-3">
+                    <h2
+                      className="font-black text-[1.5rem] text-center leading-snug tracking-tight"
+                      style={{ color: 'rgba(255,255,255,0.96)' }}
+                    >
+                      {card.english}
+                    </h2>
+                    {showHint && card.transliteration && (
+                      <p dir={targetDir} className={`text-sm font-medium tracking-wide text-center animate-pop-in ${targetFontClass}`}
+                        style={{ color: 'rgba(255,255,255,0.55)' }}>
+                        {card.transliteration}
+                      </p>
+                    )}
+                    <button
+                      onClick={handleHint}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all active:scale-95"
+                      style={{ background: 'rgba(0,0,0,0.18)', color: 'rgba(255,255,255,0.45)' }}
+                    >
+                      <Lightbulb className="w-3 h-3" />
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.12em]">Hint</span>
+                    </button>
+                  </div>
                 )}
 
                 {/* WRONG_FIRST — reveal target as hint */}
@@ -512,11 +552,11 @@ export function Flashcard({
           {/* Replay / reveal button */}
           <button
             onClick={() => {
-              if (!isAnswerVisible) { handleDontKnow(); return; }
-              if (hasCustomAudio && useCustomAudio) speakAudioUrl(card.audioUrl!);
-              else speakFrench(targetWord, undefined, lc);
+              if (!isAnswerVisible) return;
+              speakGated(targetRef.current);
             }}
             className="w-[50px] h-[50px] rounded-full bg-[#252f45] flex items-center justify-center shadow-[0_4px_0_#171e30] active:shadow-[0_2px_0_#171e30] active:translate-y-[2px] transition-all flex-shrink-0"
+            style={{ opacity: isAnswerVisible ? 1 : 0.3 }}
           >
             <RefreshCw className="w-4 h-4 text-white/40" />
           </button>
@@ -596,16 +636,15 @@ export function Flashcard({
             </button>
           </div>
 
-          {/* Spacer — mirrors the replay button for visual balance */}
-          <div className="w-[50px] h-[50px] flex-shrink-0" />
+          {/* Advance — hear the word, move card to back of queue */}
+          <button
+            onClick={handleDontKnow}
+            className="w-[50px] h-[50px] rounded-full bg-[#252f45] flex items-center justify-center shadow-[0_4px_0_#171e30] active:shadow-[0_2px_0_#171e30] active:translate-y-[2px] transition-all flex-shrink-0"
+            style={{ opacity: (isQuestion || isWrongFirst) ? 1 : 0.25 }}
+          >
+            <SkipForward className="w-4 h-4 text-white/40" />
+          </button>
         </div>
-
-        <button
-          onClick={handleDontKnow}
-          className="text-[10px] uppercase tracking-[0.18em] text-white/25 font-medium hover:text-white/45 transition-colors"
-        >
-          Can't speak now
-        </button>
       </div>
     </div>
   );
