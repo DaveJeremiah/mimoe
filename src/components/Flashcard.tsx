@@ -4,7 +4,6 @@ import type { FlashcardItem } from "@/lib/flashcardData";
 import type { LanguageConfig } from "@/lib/languageConfig";
 import { LANGUAGE_CONFIGS } from "@/lib/languageConfig";
 import { usePushToTalkMic } from "@/hooks/usePushToTalkMic";
-import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { RipplePattern } from "./LevelSelect";
 import { RefreshCw } from "lucide-react";
 import logoLight from "@/assets/logo-light.png";
@@ -121,7 +120,7 @@ function CardPattern() {
 
 export function Flashcard({
   card, onAdvance, total, remaining, streak = 0,
-  isBookmarked, onToggleBookmark, isMicOn = true,
+  isBookmarked, onToggleBookmark,
   onAnimateAdvance, langConfig, bandStyle = DEFAULT_BAND_STYLE,
   customAudioEnabled = true,
 }: FlashcardProps) {
@@ -147,13 +146,8 @@ export function Flashcard({
   const gateSafetyRef     = useRef<number | null>(null);
   const processAnswerRef  = useRef<(answer: string) => void>();
 
-  // Track whether TTS is actively playing (used to disable the PTT button)
+  // Track whether TTS is actively playing (used to dim the mic button)
   const [isSpeaking, setIsSpeaking] = useState(false);
-
-  // Mic mode: "ptt" = hold to talk, "hands-free" = auto-start after TTS
-  const [micMode, setMicMode] = useLocalStorage<"ptt" | "hands-free">("mimoe-mic-mode", "ptt");
-  const micModeRef = useRef(micMode);
-  useEffect(() => { micModeRef.current = micMode; }, [micMode]);
 
   // Custom-audio source: the card has user audio AND the parent (via the
   // deck's 3-dot menu) hasn't switched to the generated voice.
@@ -162,11 +156,11 @@ export function Flashcard({
   const useCustomAudioRef = useRef(useCustomAudio);
   useEffect(() => { useCustomAudioRef.current = useCustomAudio; }, [useCustomAudio]);
 
-  // ── Push-to-talk recognition ─────────────────────────────────────────────
-  const { status: pttStatus, start: startPTT, stop: stopPTT, cancel: cancelPTT } =
+  // ── Hands-free speech recognition (always on) ────────────────────────────
+  const { status: pttStatus, ready: micReady, start: startPTT, stop: stopPTT, cancel: cancelPTT } =
     usePushToTalkMic({
       lang: lc.sttLang,
-      handsFree: micMode === "hands-free",
+      handsFree: true,
       onResult: useCallback((text: string) => {
         if (ttsGateRef.current) return;                   // TTS playing — ignore
         if (Date.now() < ignoreUntilRef.current) return;  // card just switched
@@ -178,21 +172,20 @@ export function Flashcard({
     });
 
   const startPTTRef = useRef(startPTT);
+  const micReadyRef = useRef(micReady);
   useEffect(() => { startPTTRef.current = startPTT; }, [startPTT]);
+  useEffect(() => { micReadyRef.current = micReady; }, [micReady]);
 
-  // ── Hands-free: auto-start mic when TTS gate releases ────────────────────
-  // Watches isSpeaking: when it drops to false (TTS done + 1.5 s drain),
-  // auto-starts listening if the card state still expects an answer.
+  // ── Auto-start mic when TTS gate releases (after a wrong answer) ──────────
   const prevIsSpeakingRef = useRef(false);
   useEffect(() => {
     const wasPlaying = prevIsSpeakingRef.current;
     prevIsSpeakingRef.current = isSpeaking;
-    if (wasPlaying && !isSpeaking && micModeRef.current === "hands-free") {
+    if (wasPlaying && !isSpeaking && micReadyRef.current) {
       const s = stateRef.current;
       if (s === "QUESTION" || s === "WRONG_FIRST") {
         setTimeout(() => {
-          if (micModeRef.current === "hands-free" &&
-              (stateRef.current === "QUESTION" || stateRef.current === "WRONG_FIRST")) {
+          if (micReadyRef.current && (stateRef.current === "QUESTION" || stateRef.current === "WRONG_FIRST")) {
             startPTTRef.current();
           }
         }, 50);
@@ -212,9 +205,10 @@ export function Flashcard({
       if (finished) return;
       finished = true;
       if (gateSafetyRef.current) { window.clearTimeout(gateSafetyRef.current); gateSafetyRef.current = null; }
-      // iOS holds the AVAudioSession for up to ~1.2 s after audio ends.
-      // 1500 ms gives a comfortable margin before SpeechRecognition starts.
-      const postDelay = _isIOS ? 1500 : 200;
+      // The warm getUserMedia stream keeps iOS in .playAndRecord, so TTS and the
+      // mic coexist — no long AVAudioSession drain needed. A short gap just lets
+      // the TTS tail clear the speaker before we re-listen.
+      const postDelay = _isIOS ? 450 : 200;
       window.setTimeout(() => {
         setIsSpeaking(false);
         ttsGateRef.current = false;
@@ -317,14 +311,13 @@ export function Flashcard({
     setTimeout(() => setEnterAnim(""), 420);
 
     // No auto-speak on card appear — TTS only fires after the user speaks.
-    // In hands-free mode, auto-start mic after the ignore window clears.
+    // Auto-start the mic as soon as the ignore window clears (only once a warm
+    // stream exists; before the first tap, the button invites the gesture).
     let hfTimer: ReturnType<typeof setTimeout> | null = null;
-    if (micModeRef.current === "hands-free") {
+    if (micReadyRef.current) {
       hfTimer = setTimeout(() => {
-        if (micModeRef.current === "hands-free" && stateRef.current === "QUESTION") {
-          startPTTRef.current();
-        }
-      }, 700);
+        if (micReadyRef.current && stateRef.current === "QUESTION") startPTTRef.current();
+      }, 250);
     }
     return () => { if (hfTimer) clearTimeout(hfTimer); };
   }, [card.id, cancelPTT]);
@@ -414,9 +407,15 @@ export function Flashcard({
               <div className="absolute inset-0 rounded-[24px] pointer-events-none"
                 style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.14) 0%, transparent 55%)' }} />
 
-              {/* Logo at top-center */}
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 select-none pointer-events-none flex items-center justify-center z-20">
-                <img src={logoLight} alt="" style={{ height: 20, width: 'auto', opacity: 0.9 }} />
+              {/* Dark header arc with logo resting at center */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 select-none pointer-events-none flex items-start justify-center z-20"
+                style={{
+                  width: 150, height: 54,
+                  background: 'linear-gradient(180deg, #1b1726 0%, #15131f 100%)',
+                  borderRadius: '0 0 80px 80px',
+                  boxShadow: '0 5px 14px rgba(0,0,0,0.30), inset 0 -1px 1px rgba(255,255,255,0.05)',
+                }}>
+                <img src={logoLight} alt="" style={{ height: 19, width: 'auto', opacity: 0.95, marginTop: 9 }} />
               </div>
 
               {/* Streak fire badge */}
@@ -438,9 +437,9 @@ export function Flashcard({
                 </>
               )}
 
-              {/* ── Card content — perfectly centered in front card face ── */}
+              {/* ── Card content — centered below the header arc ── */}
               <div className="absolute inset-0 flex flex-col items-center justify-center z-10"
-                style={{ padding: '12px 28px 44px 28px' }}>
+                style={{ padding: '60px 28px 44px 28px' }}>
 
                 {/* QUESTION */}
                 {isQuestion && (
@@ -532,19 +531,19 @@ export function Flashcard({
                 <div className="absolute w-[78px] h-[78px] animate-ping" style={{ borderRadius: 26, transform: "rotate(45deg)", background: "rgba(236,72,153,0.18)", animationDuration: "1.1s", animationDelay: "560ms" }} />
               </>
             )}
+            {/* Idle-but-armed: gentle breathing ring so it reads as "ready" */}
+            {pttStatus !== "listening" && !isSpeaking && micReady && (
+              <div className="absolute w-[78px] h-[78px] animate-pulse" style={{ borderRadius: 26, transform: "rotate(45deg)", boxShadow: "0 0 0 2px rgba(167,139,250,0.25)" }} />
+            )}
             <button
-              onPointerDown={(e) => {
-                e.preventDefault();
-                if (!isMicOn || isSpeaking) return;
+              onClick={() => {
+                if (isSpeaking) return;
+                if (pttStatus === "listening") { stopPTT(); return; } // finalize early
                 unlockAudio();
-                startPTT();
+                startPTT({ gesture: true });
               }}
-              onPointerUp={() => stopPTT()}
-              onPointerLeave={() => stopPTT()}
-              onPointerCancel={() => cancelPTT()}
-              onTouchEnd={(e) => { e.preventDefault(); stopPTT(); }}
               onContextMenu={(e) => e.preventDefault()}
-              className="relative z-10 w-[78px] h-[78px] flex items-center justify-center select-none touch-none transition-all duration-150 active:scale-[0.9]"
+              className="relative z-10 w-[78px] h-[78px] flex items-center justify-center select-none touch-none transition-all duration-150 active:scale-[0.92]"
               style={{
                 borderRadius: 26,
                 transform: pttStatus === "listening" ? "rotate(45deg) scale(0.94)" : "rotate(45deg)",
@@ -553,10 +552,8 @@ export function Flashcard({
                   : "#15131f",
                 boxShadow: pttStatus === "listening"
                   ? "0 0 30px rgba(192,38,211,0.6)"
-                  : isMicOn
-                    ? "inset 0 0 0 2px rgba(167,139,250,0.55), 0 8px 22px rgba(124,58,237,0.28)"
-                    : "inset 0 0 0 2px rgba(255,255,255,0.06)",
-                opacity: isSpeaking ? 0.55 : !isMicOn ? 0.35 : 1,
+                  : "inset 0 0 0 2px rgba(167,139,250,0.55), 0 8px 22px rgba(124,58,237,0.28)",
+                opacity: isSpeaking ? 0.55 : 1,
                 cursor: isSpeaking ? "default" : "pointer",
                 WebkitUserSelect: "none", userSelect: "none", WebkitTouchCallout: "none",
               } as React.CSSProperties}
@@ -575,64 +572,32 @@ export function Flashcard({
                     <path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="rgba(255,255,255,0.55)" strokeWidth="2" />
                     <path d="M19.07 4.93a10 10 0 0 1 0 14.14" stroke="rgba(255,255,255,0.3)" strokeWidth="2" />
                   </svg>
-                ) : micMode === "hands-free" ? (
+                ) : !micReady ? (
                   <>
-                    {/* Waveform / auto-listen icon */}
-                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-                      <path d="M2 12 h2 M6 8 v8 M10 5 v14 M14 8 v8 M18 10 v4 M22 12 h2" stroke="rgba(196,181,253,0.95)" strokeWidth="2" strokeLinecap="round"/>
-                    </svg>
-                    <span className="text-[8px] font-bold uppercase tracking-[0.12em] leading-none" style={{ color: "rgba(167,139,250,0.85)" }}>Auto</span>
-                  </>
-                ) : (
-                  <>
+                    {/* First listen needs a tap to grant mic (iOS) */}
                     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
                       <rect x="9" y="2" width="6" height="12" rx="3" fill="rgba(196,181,253,0.95)" />
                       <path d="M5 10a7 7 0 0 0 14 0" stroke="rgba(196,181,253,0.95)" strokeWidth="2" />
                       <line x1="12" y1="17" x2="12" y2="21" stroke="rgba(196,181,253,0.95)" strokeWidth="2" />
                       <line x1="9" y1="21" x2="15" y2="21" stroke="rgba(196,181,253,0.95)" strokeWidth="2" />
                     </svg>
-                    <span className="text-[8px] font-bold uppercase tracking-[0.12em] leading-none" style={{ color: "rgba(167,139,250,0.85)" }}>Hold</span>
+                    <span className="text-[8px] font-bold uppercase tracking-[0.12em] leading-none" style={{ color: "rgba(167,139,250,0.85)" }}>Tap</span>
+                  </>
+                ) : (
+                  <>
+                    {/* Armed / auto-listen waveform */}
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
+                      <path d="M2 12 h2 M6 8 v8 M10 5 v14 M14 8 v8 M18 10 v4 M22 12 h2" stroke="rgba(196,181,253,0.95)" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                    <span className="text-[8px] font-bold uppercase tracking-[0.12em] leading-none" style={{ color: "rgba(167,139,250,0.85)" }}>Auto</span>
                   </>
                 )}
               </div>
             </button>
           </div>
 
-          {/* Mode toggle — mirrors replay button for visual balance */}
-          <button
-            onClick={async () => {
-              const next = micMode === "ptt" ? "hands-free" : "ptt";
-              if (next === "hands-free") {
-                // Use this gesture to pre-acquire mic permission on iOS
-                try {
-                  const s = await navigator.mediaDevices.getUserMedia({ audio: true });
-                  s.getTracks().forEach(t => t.stop());
-                } catch { return; }
-              }
-              cancelPTT();
-              setMicMode(next);
-            }}
-            className="w-[50px] h-[50px] flex-shrink-0 flex flex-col items-center justify-center gap-[3px] rounded-full transition-all duration-200 hover:bg-white/5 active:scale-90"
-            title={micMode === "ptt" ? "Switch to hands-free" : "Switch to push-to-talk"}
-          >
-            {micMode === "hands-free" ? (
-              <>
-                {/* Hands-free active — show PTT icon to switch back */}
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-                  <path d="M2 12 h2 M6 8 v8 M10 5 v14 M14 8 v8 M18 10 v4 M22 12 h2" stroke="rgba(167,139,250,0.7)" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-                <span className="text-[7px] font-bold uppercase tracking-[0.1em] leading-none" style={{ color: "rgba(167,139,250,0.7)" }}>Auto</span>
-              </>
-            ) : (
-              <>
-                {/* PTT active — show waveform to switch to hands-free */}
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-                  <path d="M2 12 h2 M6 8 v8 M10 5 v14 M14 8 v8 M18 10 v4 M22 12 h2" stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-                <span className="text-[7px] font-bold uppercase tracking-[0.1em] leading-none text-white/20">Auto</span>
-              </>
-            )}
-          </button>
+          {/* Spacer — mirrors the replay button for visual balance */}
+          <div className="w-[50px] h-[50px] flex-shrink-0" />
         </div>
 
         <button

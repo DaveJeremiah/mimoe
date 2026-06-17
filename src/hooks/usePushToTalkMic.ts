@@ -8,6 +8,8 @@ interface Options {
   handsFree?: boolean;
 }
 
+interface StartOpts { gesture?: boolean }
+
 // ── Platform detection ────────────────────────────────────────────────────────
 
 const _isIOS = typeof navigator !== "undefined" && (
@@ -47,16 +49,13 @@ function encodeWavPcm16(samples: Float32Array, sampleRate: number): ArrayBuffer 
   return buf;
 }
 
-// Decode MP4/AAC blob → 16-bit PCM WAV at 16 kHz.
-// Uses a singleton AudioContext + JS linear interpolation instead of
-// OfflineAudioContext, cutting conversion time from ~300 ms to ~30 ms.
+// Decode MP4/AAC blob → 16-bit PCM WAV at 16 kHz (synchronous resample, ~30ms).
 async function blobToWav16k(blob: Blob): Promise<Blob> {
   const TARGET_SR = 16000;
   const ctx = getDecodeCtx();
   if (ctx.state === "suspended") { try { await ctx.resume(); } catch { /**/ } }
   const decoded = await ctx.decodeAudioData(await blob.arrayBuffer());
 
-  // Mix all channels to mono
   let samples: Float32Array;
   if (decoded.numberOfChannels === 1) {
     samples = decoded.getChannelData(0);
@@ -70,17 +69,12 @@ async function blobToWav16k(blob: Blob): Promise<Blob> {
     for (let i = 0; i < samples.length; i++) samples[i] /= n;
   }
 
-  // Downsample to 16 kHz via linear interpolation (synchronous, no extra context needed)
   if (decoded.sampleRate !== TARGET_SR) {
     const ratio = decoded.sampleRate / TARGET_SR;
     const out = new Float32Array(Math.round(samples.length / ratio));
     for (let i = 0; i < out.length; i++) {
-      const pos = i * ratio;
-      const lo  = Math.floor(pos);
-      const frac = pos - lo;
-      out[i] = lo + 1 < samples.length
-        ? samples[lo] * (1 - frac) + samples[lo + 1] * frac
-        : samples[lo];
+      const pos = i * ratio, lo = Math.floor(pos), frac = pos - lo;
+      out[i] = lo + 1 < samples.length ? samples[lo] * (1 - frac) + samples[lo + 1] * frac : samples[lo];
     }
     samples = out;
   }
@@ -90,28 +84,14 @@ async function blobToWav16k(blob: Blob): Promise<Blob> {
 
 async function transcribeViaAzure(blob: Blob, langCode: string): Promise<string | null> {
   try {
-    console.log("[PTT] transcribeViaAzure size=", blob.size, "lang=", langCode);
     let audioBlob: Blob;
-    try {
-      audioBlob = await blobToWav16k(blob);
-      console.log("[PTT] WAV size=", audioBlob.size);
-    } catch (e) {
-      console.error("[PTT] WAV conversion failed, using original:", e);
-      audioBlob = blob;
-    }
+    try { audioBlob = await blobToWav16k(blob); }
+    catch (e) { console.error("[PTT] WAV conversion failed:", e); audioBlob = blob; }
     const form = new FormData();
     form.append("file", audioBlob, "audio.wav");
     form.append("language", langCode);
-    const res = await fetch(AZURE_STT_URL, {
-      method: "POST",
-      headers: { apikey: AZURE_STT_KEY },
-      body: form,
-    });
-    console.log("[PTT] azure-stt status=", res.status);
-    if (!res.ok) {
-      console.error("[PTT] azure-stt error=", await res.text().catch(() => ""));
-      return null;
-    }
+    const res = await fetch(AZURE_STT_URL, { method: "POST", headers: { apikey: AZURE_STT_KEY }, body: form });
+    if (!res.ok) { console.error("[PTT] azure-stt error=", await res.text().catch(() => "")); return null; }
     const json = await res.json() as { text?: string };
     console.log("[PTT] azure-stt result=", json.text);
     return json.text?.trim() || null;
@@ -121,42 +101,63 @@ async function transcribeViaAzure(blob: Blob, langCode: string): Promise<string 
   }
 }
 
-// ── Non-iOS: Web Speech API ───────────────────────────────────────────────────
+// ── Tunables ──────────────────────────────────────────────────────────────────
 
-const MAX_RETRIES = 8;
+const MAX_RETRIES   = 8;
+const VAD_SILENCE_TICKS = 7;     // 7 × 100 ms = 700 ms of silence ends the utterance
+const VAD_SPEECH_RMS    = 0.022; // ~-33 dBFS threshold for "speaking"
+const ONSTOP_TIMEOUT_MS = 800;   // fallback if MediaRecorder.onstop never fires
+
+const NEEDS_GESTURE = "NEEDS_GESTURE";
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function usePushToTalkMic({ lang = "fr-FR", onResult, handsFree = false }: Options) {
   const [status, setStatus] = useState<PTTStatus>("idle");
+  // On iOS the first mic acquisition must come from a user gesture (otherwise the
+  // track is muted). `ready` tells the UI whether a warm stream exists so it can
+  // auto-listen, or whether it must prompt for one tap first.
+  const [ready, setReady] = useState<boolean>(!_isIOS);
 
-  const onResultRef   = useRef(onResult);
-  const langRef       = useRef(lang);
-  const handsFreeRef  = useRef(handsFree);
+  const onResultRef  = useRef(onResult);
+  const langRef      = useRef(lang);
+  const handsFreeRef = useRef(handsFree);
   useEffect(() => { onResultRef.current  = onResult;  }, [onResult]);
   useEffect(() => { langRef.current      = lang;       }, [lang]);
   useEffect(() => { handsFreeRef.current = handsFree;  }, [handsFree]);
 
   // ── iOS refs ──────────────────────────────────────────────────────────────
-  const iosStreamRef   = useRef<MediaStream | null>(null);
+  const iosStreamRef   = useRef<MediaStream | null>(null); // warm — kept open all session
   const iosRecorderRef = useRef<MediaRecorder | null>(null);
   const iosChunksRef   = useRef<Blob[]>([]);
   const iosGenRef      = useRef(0);
+  const iosSafetyRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const iosVadStopRef  = useRef<(() => void) | null>(null);
 
-  useEffect(() => {
-    if (!_isIOS) return;
-    return () => {
-      iosStreamRef.current?.getTracks().forEach(t => t.stop());
-      iosStreamRef.current = null;
-    };
+  // Acquire (or reuse) the warm mic stream. Throws NEEDS_GESTURE if a fresh
+  // acquisition is required but this call isn't from a user gesture.
+  const iosEnsureStream = useCallback(async (gesture: boolean): Promise<MediaStream> => {
+    const warm  = iosStreamRef.current;
+    const track = warm?.getAudioTracks()[0];
+    if (warm?.active && track && track.readyState === "live" && !track.muted) return warm;
+
+    if (!gesture) throw new Error(NEEDS_GESTURE);
+
+    warm?.getTracks().forEach(t => t.stop());
+    iosStreamRef.current = null;
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    iosStreamRef.current = stream;
+    setReady(true);
+    return stream;
   }, []);
 
   const iosStop = useCallback(async () => {
+    if (iosSafetyRef.current) { clearTimeout(iosSafetyRef.current); iosSafetyRef.current = null; }
+    if (iosVadStopRef.current) { iosVadStopRef.current(); iosVadStopRef.current = null; }
+
     const gen      = iosGenRef.current;
     const recorder = iosRecorderRef.current;
     iosRecorderRef.current = null;
-    console.log("[PTT] iosStop gen=", gen, "state=", recorder?.state);
-
     if (!recorder || recorder.state === "inactive") { setStatus("idle"); return; }
 
     const chunks = await Promise.race([
@@ -166,126 +167,100 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult, handsFree = false }
         recorder.onstop = () => resolve([...collected]);
         try { recorder.stop(); } catch { resolve([...iosChunksRef.current]); }
       }),
-      new Promise<Blob[]>(resolve =>
-        setTimeout(() => {
-          console.log("[PTT] onstop timeout, using buffered chunks");
-          resolve([...iosChunksRef.current]);
-        }, 1500)
-      ),
+      new Promise<Blob[]>(resolve => setTimeout(() => resolve([...iosChunksRef.current]), ONSTOP_TIMEOUT_MS)),
     ]);
-
     iosChunksRef.current = [];
-    iosStreamRef.current?.getTracks().forEach(t => t.stop());
-    iosStreamRef.current = null;
+    // NOTE: stream tracks are intentionally NOT stopped — kept warm for instant
+    // re-listen on the next card. Cleanup happens on unmount.
 
-    const totalBytes = chunks.reduce((s, c) => s + c.size, 0);
-    console.log("[PTT] chunks=", chunks.length, "totalBytes=", totalBytes);
     setStatus("idle");
-
     if (gen !== iosGenRef.current || chunks.length === 0) return;
 
-    const mimeType = chunks[0]?.type || "audio/mp4";
-    const blob = new Blob(chunks, { type: mimeType });
+    const blob = new Blob(chunks, { type: chunks[0]?.type || "audio/mp4" });
     const text = await transcribeViaAzure(blob, langRef.current);
-    console.log("[PTT] final text=", text);
     if (text && gen === iosGenRef.current) onResultRef.current(text);
   }, []);
 
-  const iosStart = useCallback(async () => {
+  const iosStart = useCallback(async (gesture: boolean) => {
     const gen = ++iosGenRef.current;
-    console.log("[PTT] iosStart gen=", gen, "handsFree=", handsFreeRef.current);
-
-    iosStreamRef.current?.getTracks().forEach(t => t.stop());
-    iosStreamRef.current = null;
 
     let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const track = stream.getAudioTracks()[0];
-      console.log("[PTT] getUserMedia OK, muted=", track?.muted, "enabled=", track?.enabled);
-      if (iosGenRef.current !== gen) { stream.getTracks().forEach(t => t.stop()); return; }
-      iosStreamRef.current = stream;
+      stream = await iosEnsureStream(gesture);
     } catch (err: any) {
+      if (err?.message === NEEDS_GESTURE) { setReady(false); setStatus("idle"); return; }
       console.error("[PTT] getUserMedia error:", err?.name);
       if (err?.name === "NotAllowedError" || err?.name === "PermissionDeniedError") setStatus("denied");
       return;
     }
+    if (iosGenRef.current !== gen) return;
 
     const mimeType =
       MediaRecorder.isTypeSupported("audio/mp4")              ? "audio/mp4" :
-      MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" :
-      undefined;
+      MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : undefined;
 
     const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
     iosChunksRef.current = [];
     recorder.ondataavailable = (e) => { if (e.data.size > 0) iosChunksRef.current.push(e.data); };
     iosRecorderRef.current = recorder;
     recorder.start(100);
-    console.log("[PTT] recording started mimeType=", mimeType);
     if (iosGenRef.current === gen) setStatus("listening");
 
-    // Safety auto-stop (15 s for PTT, 10 s for hands-free)
-    const maxMs = handsFreeRef.current ? 10000 : 15000;
-    setTimeout(() => { if (iosGenRef.current === gen) void iosStop(); }, maxMs);
+    if (iosSafetyRef.current) clearTimeout(iosSafetyRef.current);
+    iosSafetyRef.current = setTimeout(() => { if (iosGenRef.current === gen) void iosStop(); }, 10000);
 
-    // ── Hands-free VAD ────────────────────────────────────────────────────
-    // AnalyserNode monitors audio levels; auto-stops when speech is detected
-    // then followed by 1.5 s of silence.
-    if (handsFreeRef.current) {
-      try {
-        const vadCtx     = new AudioContext();
-        const source     = vadCtx.createMediaStreamSource(stream);
-        const analyser   = vadCtx.createAnalyser();
-        analyser.fftSize = 512;
-        analyser.smoothingTimeConstant = 0.4;
-        source.connect(analyser);
-        const buf = new Float32Array(analyser.fftSize);
+    // ── Voice-activity detection: stop after VAD_SILENCE_TICKS of silence ──
+    try {
+      const vadCtx   = new AudioContext();
+      const source   = vadCtx.createMediaStreamSource(stream);
+      const analyser = vadCtx.createAnalyser();
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.3;
+      source.connect(analyser);
+      const buf = new Float32Array(analyser.fftSize);
+      let spoken = false, silence = 0;
 
-        let spoken       = false;
-        let silenceCount = 0;
-        const SPEECH_RMS  = 0.025; // ~-32 dBFS — clearly audible speech
-        const SILENCE_MAX = 15;    // 15 × 100 ms = 1.5 s silence cutoff
+      const timer = setInterval(() => {
+        if (iosGenRef.current !== gen) { cleanup(); return; }
+        analyser.getFloatTimeDomainData(buf);
+        let rms = 0;
+        for (let i = 0; i < buf.length; i++) rms += buf[i] * buf[i];
+        rms = Math.sqrt(rms / buf.length);
+        if (rms > VAD_SPEECH_RMS) { spoken = true; silence = 0; }
+        else if (spoken && ++silence >= VAD_SILENCE_TICKS) { cleanup(); void iosStop(); }
+      }, 100);
 
-        const vadTimer = setInterval(() => {
-          if (iosGenRef.current !== gen) {
-            clearInterval(vadTimer);
-            source.disconnect();
-            vadCtx.close();
-            return;
-          }
-          analyser.getFloatTimeDomainData(buf);
-          let rms = 0;
-          for (let i = 0; i < buf.length; i++) rms += buf[i] * buf[i];
-          rms = Math.sqrt(rms / buf.length);
-
-          if (rms > SPEECH_RMS) {
-            spoken = true;
-            silenceCount = 0;
-          } else if (spoken) {
-            silenceCount++;
-            if (silenceCount >= SILENCE_MAX) {
-              clearInterval(vadTimer);
-              source.disconnect();
-              vadCtx.close();
-              void iosStop();
-            }
-          }
-        }, 100);
-      } catch (vadErr) {
-        console.warn("[PTT] VAD setup failed:", vadErr);
-      }
+      const cleanup = () => {
+        clearInterval(timer);
+        try { source.disconnect(); } catch { /**/ }
+        try { vadCtx.close(); } catch { /**/ }
+      };
+      iosVadStopRef.current = cleanup;
+    } catch (e) {
+      console.warn("[PTT] VAD setup failed:", e);
     }
-  }, [iosStop]);
+  }, [iosEnsureStream, iosStop]);
 
   const iosCancel = useCallback(() => {
     iosGenRef.current++;
+    if (iosSafetyRef.current) { clearTimeout(iosSafetyRef.current); iosSafetyRef.current = null; }
+    if (iosVadStopRef.current) { iosVadStopRef.current(); iosVadStopRef.current = null; }
     const recorder = iosRecorderRef.current;
     iosRecorderRef.current = null;
     iosChunksRef.current = [];
     if (recorder && recorder.state !== "inactive") { try { recorder.stop(); } catch { /**/ } }
-    iosStreamRef.current?.getTracks().forEach(t => t.stop());
-    iosStreamRef.current = null;
+    // keep stream warm
     setStatus("idle");
+  }, []);
+
+  useEffect(() => {
+    if (!_isIOS) return;
+    return () => {
+      if (iosSafetyRef.current) clearTimeout(iosSafetyRef.current);
+      if (iosVadStopRef.current) iosVadStopRef.current();
+      iosStreamRef.current?.getTracks().forEach(t => t.stop());
+      iosStreamRef.current = null;
+    };
   }, []);
 
   // ── Non-iOS: Web Speech API ───────────────────────────────────────────────
@@ -295,22 +270,18 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult, handsFree = false }
   const isHoldingRef = useRef(false);
 
   const doStart = useCallback((attempt: number) => {
-    // PTT: must be holding; hands-free: always allowed
     if (!handsFreeRef.current && !isHoldingRef.current) return;
-
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) { setStatus("unsupported"); return; }
 
     latestRef.current = "";
     const rec = new SR();
-    rec.lang           = langRef.current;
-    // PTT: continuous (accumulate while holding); hands-free: stop after first utterance
-    rec.continuous     = !handsFreeRef.current;
-    rec.interimResults = true;
+    rec.lang            = langRef.current;
+    rec.continuous      = !handsFreeRef.current; // hands-free: end after one utterance
+    rec.interimResults  = true;
     rec.maxAlternatives = 1;
 
-    rec.onstart = () => { setStatus("listening"); };
-
+    rec.onstart  = () => setStatus("listening");
     rec.onresult = (event: any) => {
       let text = "";
       for (let i = 0; i < event.results.length; i++) text += event.results[i][0].transcript;
@@ -320,11 +291,8 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult, handsFree = false }
     let permissionDenied = false;
     rec.onerror = (event: any) => {
       if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-        permissionDenied = true;
-        setStatus("denied");
-        isHoldingRef.current = false;
-        recRef.current = null;
-        latestRef.current = "";
+        permissionDenied = true; setStatus("denied");
+        isHoldingRef.current = false; recRef.current = null; latestRef.current = "";
       }
     };
 
@@ -336,38 +304,31 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult, handsFree = false }
       if (text) {
         setStatus("idle");
         onResultRef.current(text);
-        // In hands-free: don't auto-restart here; Flashcard re-triggers after TTS finishes
       } else if ((handsFreeRef.current || isHoldingRef.current) && attempt < MAX_RETRIES) {
         setStatus("idle");
-        const delay = attempt === 0 ? 1200 : attempt < 3 ? 800 : 600;
-        setTimeout(() => {
-          if (handsFreeRef.current || isHoldingRef.current) doStart(attempt + 1);
-        }, delay);
+        const delay = attempt === 0 ? 800 : attempt < 3 ? 600 : 500;
+        setTimeout(() => { if (handsFreeRef.current || isHoldingRef.current) doStart(attempt + 1); }, delay);
       } else {
         setStatus("idle");
       }
     };
 
     recRef.current = rec;
-    try {
-      rec.start();
-    } catch {
+    try { rec.start(); }
+    catch {
       recRef.current = null;
       if ((handsFreeRef.current || isHoldingRef.current) && attempt < MAX_RETRIES) {
-        const delay = attempt === 0 ? 1200 : attempt < 3 ? 800 : 600;
-        setTimeout(() => {
-          if (handsFreeRef.current || isHoldingRef.current) doStart(attempt + 1);
-        }, delay);
-      } else {
-        setStatus("idle");
-      }
+        const delay = attempt === 0 ? 800 : attempt < 3 ? 600 : 500;
+        setTimeout(() => { if (handsFreeRef.current || isHoldingRef.current) doStart(attempt + 1); }, delay);
+      } else { setStatus("idle"); }
     }
   }, []);
 
   // ── Public API ────────────────────────────────────────────────────────────
 
-  const start = useCallback(() => {
-    if (_isIOS) { void iosStart(); return; }
+  const start = useCallback((opts?: StartOpts) => {
+    const gesture = !!opts?.gesture;
+    if (_isIOS) { void iosStart(gesture); return; }
     if (recRef.current) return;
     isHoldingRef.current = true;
     doStart(0);
@@ -375,7 +336,12 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult, handsFree = false }
 
   const stop = useCallback(() => {
     if (_isIOS) { void iosStop(); return; }
-    if (handsFreeRef.current) return; // in hands-free, VAD / recognition ends itself
+    if (handsFreeRef.current) {
+      // finalize the current utterance immediately on a manual tap
+      const rec = recRef.current;
+      if (rec) { try { rec.stop(); } catch { /**/ } }
+      return;
+    }
     isHoldingRef.current = false;
     const rec = recRef.current;
     if (!rec) return;
@@ -400,5 +366,5 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult, handsFree = false }
     };
   }, []);
 
-  return { status, start, stop, cancel };
+  return { status, ready, start, stop, cancel };
 }
