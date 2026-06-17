@@ -247,9 +247,13 @@ export function Flashcard({
   ) => {
     if (isExiting) return;
     setIsExiting(true);
-    setExitAnim("animate-card-flip-out");
+    // Requeued (fail/advance) → card goes to back of stack
+    // Correct → card flies off screen
+    const exitClass = opts.requeue ? "animate-card-send-back" : "animate-card-fly-off";
+    const duration  = opts.requeue ? 450 : 350;
+    setExitAnim(exitClass);
     if (advanceTimerRef.current) { window.clearTimeout(advanceTimerRef.current); advanceTimerRef.current = null; }
-    setTimeout(() => { setIsExiting(false); setExitAnim(""); onAdvance(opts); }, 220);
+    setTimeout(() => { setIsExiting(false); setExitAnim(""); onAdvance(opts); }, duration);
   }, [isExiting, onAdvance]);
 
   useEffect(() => { if (onAnimateAdvance) onAnimateAdvance(animateAndAdvance); }, [onAnimateAdvance, animateAndAdvance]);
@@ -378,29 +382,33 @@ export function Flashcard({
             style={{ aspectRatio: '570/438', transformOrigin: 'center center' }}
           >
 
-            {/* ── Ghost card 2 (back) ── */}
-            <div
-              className="absolute rounded-[20px]"
-              style={{
-                left: '14%', right: '14%', top: 0, height: '90%',
-                background: bandStyle.ghost2,
-                boxShadow: '0 6px 22px rgba(0,0,0,0.22)',
-                opacity: exitAnim ? 0 : 1,
-                transition: 'opacity 0.1s ease',
-              }}
-            />
+            {/* ── Ghost card 2 (back) — visible when 3+ cards remain ── */}
+            {remaining >= 3 && (
+              <div
+                className="absolute rounded-[20px]"
+                style={{
+                  left: '14%', right: '14%', top: 0, height: '90%',
+                  background: bandStyle.ghost2,
+                  boxShadow: '0 6px 22px rgba(0,0,0,0.22)',
+                  opacity: exitAnim ? 0 : 1,
+                  transition: 'opacity 0.25s ease',
+                }}
+              />
+            )}
 
-            {/* ── Ghost card 1 (middle) ── */}
-            <div
-              className="absolute rounded-[22px]"
-              style={{
-                left: '11%', right: '11%', top: '4%', height: '90%',
-                background: bandStyle.ghost1,
-                boxShadow: '0 6px 18px rgba(0,0,0,0.16)',
-                opacity: exitAnim ? 0 : 1,
-                transition: 'opacity 0.1s ease',
-              }}
-            />
+            {/* ── Ghost card 1 (middle) — visible when 2+ cards remain ── */}
+            {remaining >= 2 && (
+              <div
+                className="absolute rounded-[22px]"
+                style={{
+                  left: '11%', right: '11%', top: '4%', height: '90%',
+                  background: bandStyle.ghost1,
+                  boxShadow: '0 6px 18px rgba(0,0,0,0.16)',
+                  opacity: exitAnim ? 0 : 1,
+                  transition: 'opacity 0.25s ease',
+                }}
+              />
+            )}
 
             {/* ── Front card ── */}
             <div

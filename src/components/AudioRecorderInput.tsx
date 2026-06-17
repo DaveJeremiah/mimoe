@@ -20,6 +20,68 @@ function blobToDataUri(blob: Blob): Promise<string> {
   });
 }
 
+// Apply high-pass filter + dynamic compression to reduce background noise and
+// normalise volume. Processes offline (no real-time playback), returns WAV.
+// Falls back to the original blob if anything goes wrong.
+async function denoiseAudio(blob: Blob): Promise<Blob> {
+  let ctx: AudioContext | null = null;
+  try {
+    ctx = new AudioContext();
+    const decoded = await ctx.decodeAudioData(await blob.arrayBuffer());
+    // Mono output — voice doesn't need stereo and halves the file size
+    const offline = new OfflineAudioContext(1, decoded.length, decoded.sampleRate);
+
+    const src = offline.createBufferSource();
+    src.buffer = decoded;
+
+    // High-pass at 80 Hz: cuts room rumble and low-frequency handling noise
+    const hp = offline.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 80;
+    hp.Q.value = 0.7;
+
+    // Dynamics compressor: normalises loud/soft passages, makes background
+    // noise less prominent relative to the voice signal
+    const comp = offline.createDynamicsCompressor();
+    comp.threshold.value = -24;
+    comp.knee.value = 30;
+    comp.ratio.value = 12;
+    comp.attack.value = 0.003;
+    comp.release.value = 0.25;
+
+    src.connect(hp);
+    hp.connect(comp);
+    comp.connect(offline.destination);
+    src.start();
+
+    const rendered = await offline.startRendering();
+    const samples  = rendered.getChannelData(0);
+
+    // Encode to 16-bit PCM WAV (mono, same sample rate)
+    const dataLen = samples.length * 2;
+    const buf = new ArrayBuffer(44 + dataLen);
+    const dv  = new DataView(buf);
+    const ws  = (o: number, s: string) => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
+    ws(0, 'RIFF'); dv.setUint32(4, 36 + dataLen, true);
+    ws(8, 'WAVE'); ws(12, 'fmt ');
+    dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+    dv.setUint32(24, rendered.sampleRate, true); dv.setUint32(28, rendered.sampleRate * 2, true);
+    dv.setUint16(32, 2, true); dv.setUint16(34, 16, true);
+    ws(36, 'data'); dv.setUint32(40, dataLen, true);
+    let off = 44;
+    for (let i = 0; i < samples.length; i++) {
+      const x = Math.max(-1, Math.min(1, samples[i]));
+      dv.setInt16(off, x < 0 ? x * 0x8000 : x * 0x7FFF, true);
+      off += 2;
+    }
+    return new Blob([buf], { type: 'audio/wav' });
+  } catch {
+    return blob;
+  } finally {
+    try { ctx?.close(); } catch { /* ignore */ }
+  }
+}
+
 export function AudioRecorderInput({ value, onChange, disabled }: Props) {
   const [recording, setRecording] = useState(false);
   const [err, setErr] = useState("");
@@ -36,7 +98,9 @@ export function AudioRecorderInput({ value, onChange, disabled }: Props) {
   const startRecording = async () => {
     setErr("");
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { noiseSuppression: true, echoCancellation: true, autoGainControl: true },
+      });
       streamRef.current = stream;
       const mime = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm"
         : MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4" : "";
@@ -46,8 +110,9 @@ export function AudioRecorderInput({ value, onChange, disabled }: Props) {
       rec.onstop = async () => {
         stream.getTracks().forEach(t => t.stop());
         streamRef.current = null;
-        const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
-        if (blob.size > MAX_BYTES) { setErr("Recording too long — keep it short"); return; }
+        const raw = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
+        if (raw.size > MAX_BYTES) { setErr("Recording too long — keep it short"); return; }
+        const blob = await denoiseAudio(raw);
         onChange(await blobToDataUri(blob));
       };
       recorderRef.current = rec;
@@ -77,7 +142,8 @@ export function AudioRecorderInput({ value, onChange, disabled }: Props) {
       AUDIO_EXT.test(file.name);
     if (!looksAudio) { setErr("Pick an audio file"); return; }
     if (file.size > MAX_BYTES) { setErr("File too large (max 5 MB)"); return; }
-    onChange(await blobToDataUri(file));
+    const blob = await denoiseAudio(file);
+    onChange(await blobToDataUri(blob));
   };
 
   const preview = () => { if (value) new Audio(value).play().catch(() => {}); };
