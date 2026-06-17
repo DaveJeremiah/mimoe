@@ -149,6 +149,7 @@ export function NewCollectionModal({
   };
 
   const handleClose = () => {
+    (document.activeElement as HTMLElement)?.blur();
     setTitle(""); setImportText(""); setError(""); setIsSaving(false);
     setSelectedCategory(undefined); setPairs([{ english: "", target: "" }]); onClose();
   };

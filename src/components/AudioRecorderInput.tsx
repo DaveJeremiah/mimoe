@@ -27,6 +27,7 @@ async function denoiseAudio(blob: Blob): Promise<Blob> {
   let ctx: AudioContext | null = null;
   try {
     ctx = new AudioContext();
+    if (ctx.state === "suspended") await ctx.resume();
     const decoded = await ctx.decodeAudioData(await blob.arrayBuffer());
     // Mono output — voice doesn't need stereo and halves the file size
     const offline = new OfflineAudioContext(1, decoded.length, decoded.sampleRate);
@@ -100,6 +101,7 @@ async function denoiseAudio(blob: Blob): Promise<Blob> {
 
 export function AudioRecorderInput({ value, onChange, disabled }: Props) {
   const [recording, setRecording] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const [err, setErr] = useState("");
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -128,8 +130,13 @@ export function AudioRecorderInput({ value, onChange, disabled }: Props) {
         streamRef.current = null;
         const raw = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" });
         if (raw.size > MAX_BYTES) { setErr("Recording too long — keep it short"); return; }
-        const blob = await denoiseAudio(raw);
-        onChange(await blobToDataUri(blob));
+        setProcessing(true);
+        try {
+          const blob = await denoiseAudio(raw);
+          onChange(await blobToDataUri(blob));
+        } finally {
+          setProcessing(false);
+        }
       };
       recorderRef.current = rec;
       rec.start();
@@ -158,8 +165,13 @@ export function AudioRecorderInput({ value, onChange, disabled }: Props) {
       AUDIO_EXT.test(file.name);
     if (!looksAudio) { setErr("Pick an audio file"); return; }
     if (file.size > MAX_BYTES) { setErr("File too large (max 5 MB)"); return; }
-    const blob = await denoiseAudio(file);
-    onChange(await blobToDataUri(blob));
+    setProcessing(true);
+    try {
+      const blob = await denoiseAudio(file);
+      onChange(await blobToDataUri(blob));
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const preview = () => { if (value) new Audio(value).play().catch(() => {}); };
@@ -167,7 +179,15 @@ export function AudioRecorderInput({ value, onChange, disabled }: Props) {
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-2">
-        {value ? (
+        {processing ? (
+          <span
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold animate-pulse"
+            style={{ background: "rgba(139,92,246,0.14)", color: "rgba(196,181,253,0.9)", border: "1px solid rgba(139,92,246,0.25)" }}
+          >
+            <span className="w-2.5 h-2.5 rounded-full border-2 border-violet-400 border-t-transparent animate-spin inline-block" />
+            Processing audio…
+          </span>
+        ) : value ? (
           <>
             <button
               type="button" onClick={preview} disabled={disabled}

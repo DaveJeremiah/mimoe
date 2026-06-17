@@ -68,6 +68,17 @@
     font-family: 'DM Sans', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Prevent accidental text selection (and iOS copy/keyboard toolbar) on tap */
+    -webkit-user-select: none;
+    user-select: none;
+    /* Remove 300 ms tap delay on iOS */
+    touch-action: manipulation;
+  }
+
+  /* Re-enable selection inside inputs and textareas */
+  input, textarea, [contenteditable] {
+    -webkit-user-select: text;
+    user-select: text;
   }
 }
 

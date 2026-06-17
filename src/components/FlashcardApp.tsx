@@ -896,7 +896,12 @@ export function FlashcardApp() {
     setCollectionQueue(prev => [lastCardId, ...prev]);
   }, [collectionHistory]);
 
-  const handleCollectionAdvance = useCallback(({ failed }: { failed: boolean; requeue: boolean }) => {
+  const handleCollectionAdvance = useCallback(({ failed, requeue }: { failed: boolean; requeue: boolean }) => {
+    if (requeue) {
+      // Advance/skip: move card to back of queue without marking correct or failed
+      setCollectionQueue(q => (q.length > 0 ? [...q.slice(1), q[0]] : q));
+      return;
+    }
     // Single pass: every card is removed once answered. Missed cards are
     // recorded for the performance screen instead of looping forever.
     const currentId = collectionQueue[0];
