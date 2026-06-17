@@ -501,6 +501,7 @@ export function Flashcard({
               onPointerUp={() => stopPTT()}
               onPointerLeave={() => stopPTT()}
               onPointerCancel={() => cancelPTT()}
+              onTouchEnd={(e) => { e.preventDefault(); stopPTT(); }}
               onContextMenu={(e) => e.preventDefault()}
               className="relative z-10 w-[78px] h-[78px] flex items-center justify-center select-none touch-none transition-all duration-150 active:scale-[0.9]"
               style={{

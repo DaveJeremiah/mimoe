@@ -11,11 +11,11 @@ interface Options {
 
 const _isIOS = typeof navigator !== "undefined" && (
   /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  // iPad in "Request Desktop Website" mode: MacIntel UA + touch points
   (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ||
-  (typeof window !== "undefined" && (
-    (window.navigator as any).standalone === true ||
-    window.matchMedia?.("(display-mode: standalone)").matches
-  ))
+  // iOS Safari PWA (window.navigator.standalone is iOS-only — Android doesn't have it)
+  (window as any).navigator?.standalone === true
+  // NOTE: display-mode: standalone intentionally excluded — Android PWAs match it too
 );
 
 // ── iOS: getUserMedia + MediaRecorder + Whisper ───────────────────────────────
@@ -146,6 +146,9 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult }: Options) {
     recorder.start(100); // 100 ms timeslice so chunks accumulate on short presses
     console.log("[PTT] MediaRecorder started, state=", recorder.state);
     if (iosGenRef.current === gen) setStatus("listening");
+
+    // Safety: auto-stop after 15 s so the mic never runs away
+    setTimeout(() => { if (iosGenRef.current === gen) void iosStop(); }, 15000);
   }, []);
 
   const iosStop = useCallback(async () => {
@@ -156,12 +159,22 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult }: Options) {
 
     if (!recorder || recorder.state === "inactive") { setStatus("idle"); return; }
 
-    const chunks = await new Promise<Blob[]>(resolve => {
-      const collected = iosChunksRef.current;
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) collected.push(e.data); };
-      recorder.onstop = () => resolve([...collected]);
-      try { recorder.stop(); } catch { resolve([...iosChunksRef.current]); }
-    });
+    // iOS Safari sometimes doesn't fire onstop — race with a 1.5 s timeout
+    // so the button never stays stuck in "listening" state.
+    const chunks = await Promise.race([
+      new Promise<Blob[]>(resolve => {
+        const collected = iosChunksRef.current;
+        recorder.ondataavailable = (e) => { if (e.data.size > 0) collected.push(e.data); };
+        recorder.onstop = () => resolve([...collected]);
+        try { recorder.stop(); } catch { resolve([...iosChunksRef.current]); }
+      }),
+      new Promise<Blob[]>(resolve =>
+        setTimeout(() => {
+          console.log("[PTT] onstop timeout — using buffered chunks");
+          resolve([...iosChunksRef.current]);
+        }, 1500)
+      ),
+    ]);
     iosChunksRef.current = [];
     console.log("[PTT] chunks=", chunks.length, "totalBytes=", chunks.reduce((s, c) => s + c.size, 0));
 
