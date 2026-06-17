@@ -156,6 +156,10 @@ export function stopAudio(): void {
       sharedAudio.onerror = null
       sharedAudio.pause()
       sharedAudio.currentTime = 0
+      // Release the audio element so iOS frees the AVAudioSession immediately
+      // rather than holding .playback mode during teardown (which blocks the mic).
+      sharedAudio.removeAttribute('src')
+      sharedAudio.load()
     } catch { /* ignore */ }
   }
 }
