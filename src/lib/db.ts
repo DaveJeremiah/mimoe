@@ -45,6 +45,30 @@ export async function listAdminCards(levelId: string): Promise<FlashcardItem[]> 
   }));
 }
 
+// ── Builtin overrides (public-read: apply these on top of hardcoded levels) ──
+
+export interface BuiltinOverrideRow {
+  id: string;
+  builtin_level_id: string;
+  card_id: string;
+  english: string;
+  target: string;
+  alternatives: string[];
+  transliteration: string | null;
+  position: number;
+  hidden: boolean;
+}
+
+export async function listAllBuiltinOverrides(): Promise<BuiltinOverrideRow[]> {
+  const { data, error } = await supabase
+    .from("admin_builtin_overrides")
+    .select("*")
+    .order("builtin_level_id", { ascending: true })
+    .order("position", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as BuiltinOverrideRow[];
+}
+
 async function uid(): Promise<string | null> {
   const { data } = await supabase.auth.getUser();
   return data.user?.id ?? null;

@@ -14,7 +14,7 @@ import { ProfileModal, dicebearUrl } from "./ProfileModal";
 import { OnboardingModal } from "./OnboardingModal";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { db, listAdminLevels, listAdminCards, type AdminLevelRow } from "@/lib/db";
+import { db, listAdminLevels, listAdminCards, listAllBuiltinOverrides, type AdminLevelRow, type BuiltinOverrideRow } from "@/lib/db";
 import { vocabularyLevels, phraseLevels, arabicVocabularyLevels, arabicPhraseLevels, type FlashcardItem } from "@/lib/flashcardData";
 import { type Collection, CollectionFormData, COLLECTION_CATEGORIES } from "@/lib/collectionTypes";
 import { prefetchAudio, unlockAudio } from "@/lib/speechUtils";
@@ -133,6 +133,8 @@ export function FlashcardApp() {
   const [adminPhraseLevels, setAdminPhraseLevels] = useState<AdminLevelRow[]>([]);
   const [adminVocab, setAdminVocab] = useState<Record<string, FlashcardItem[]>>({});
   const [adminPhrases, setAdminPhrases] = useState<Record<string, FlashcardItem[]>>({});
+  // Admin overrides for hardcoded built-in levels
+  const [builtinOverrides, setBuiltinOverrides] = useState<BuiltinOverrideRow[]>([]);
 
   // Track which cards were answered correctly on FIRST attempt in current session
   const [firstAttemptCorrect, setFirstAttemptCorrect] = useState<Set<string>>(new Set());
@@ -172,6 +174,54 @@ export function FlashcardApp() {
   const adminCards = activeTab === "vocabulary" ? adminVocab : adminPhrases;
 
   const levels = useMemo(() => {
+    // Group builtin overrides by level ID for fast lookup
+    const overridesByLevel = new Map<string, BuiltinOverrideRow[]>();
+    for (const o of builtinOverrides) {
+      const arr = overridesByLevel.get(o.builtin_level_id) ?? [];
+      arr.push(o);
+      overridesByLevel.set(o.builtin_level_id, arr);
+    }
+
+    // Apply overrides to hardcoded base levels
+    const patchedBase = baseLevels.map(level => {
+      const levelOverrides = overridesByLevel.get(level.id);
+      if (!levelOverrides || levelOverrides.length === 0) return level;
+
+      const overrideMap = new Map(levelOverrides.map(o => [o.card_id, o]));
+      const existingIds = new Set(level.cards.map(c => c.id));
+
+      const patchedCards = level.cards
+        .map(card => {
+          const o = overrideMap.get(card.id);
+          if (!o) return card;
+          if (o.hidden) return null;
+          return {
+            ...card,
+            english: o.english || card.english,
+            target: o.target || card.target,
+            french: o.target || card.target,
+            ...(o.alternatives?.length ? { alternatives: o.alternatives } : {}),
+            ...(o.transliteration != null ? { transliteration: o.transliteration } : {}),
+          };
+        })
+        .filter((c): c is FlashcardItem => c !== null);
+
+      // Append new cards from overrides (card_ids not in the original level)
+      const addedCards = levelOverrides
+        .filter(o => !o.hidden && !existingIds.has(o.card_id))
+        .sort((a, b) => a.position - b.position)
+        .map(o => ({
+          id: o.card_id,
+          english: o.english,
+          target: o.target,
+          french: o.target,
+          ...(o.alternatives?.length ? { alternatives: o.alternatives } : {}),
+          ...(o.transliteration ? { transliteration: o.transliteration } : {}),
+        } as FlashcardItem));
+
+      return { ...level, cards: [...patchedCards, ...addedCards] };
+    });
+
     const adminAsLevels = adminLevelsList.map((al) => ({
       id: al.id,
       title: al.title,
@@ -183,7 +233,7 @@ export function FlashcardApp() {
       title: cl.title,
       cards: customCards[cl.id] || [],
     }));
-    const merged = [...baseLevels, ...adminAsLevels, ...customAsLevels];
+    const merged = [...patchedBase, ...adminAsLevels, ...customAsLevels];
 
     const nickname = (user?.user_metadata?.nickname as string | undefined) ?? "";
     const country  = (user?.user_metadata?.country  as string | undefined) ?? "";
@@ -207,7 +257,7 @@ export function FlashcardApp() {
         return patch ? { ...card, ...patch } : card;
       }),
     }));
-  }, [baseLevels, adminLevelsList, adminCards, customLevelsList, customCards, user]);
+  }, [baseLevels, builtinOverrides, adminLevelsList, adminCards, customLevelsList, customCards, user]);
 
   // Build a synthetic "bookmarked" level pulling cards from every level (current tab)
   const bookmarkedLevel = useMemo(() => {
@@ -414,6 +464,14 @@ export function FlashcardApp() {
       }
     })();
   }, [user, activeTab, activeLanguage]);
+
+  // Load admin overrides for built-in levels (once per user session)
+  useEffect(() => {
+    if (!user) return;
+    listAllBuiltinOverrides()
+      .then(setBuiltinOverrides)
+      .catch(e => console.error("Failed to load builtin overrides", e));
+  }, [user]);
 
   // Restore progress on component mount
   const hasRestoredRef = useRef(false);
@@ -1567,6 +1625,7 @@ export function FlashcardApp() {
                       }
                     }
                     if (uncategorized.length > 0) groups.push({ cat: null, items: uncategorized });
+                    const indexById = new Map(visibleCollections.map((c, i) => [c.id, i]));
                     return (
                       <div className="space-y-6">
                         {groups.map(({ cat, items }) => (
@@ -1582,6 +1641,7 @@ export function FlashcardApp() {
                                 <CollectionCard
                                   key={collection.id}
                                   collection={collection}
+                                  index={indexById.get(collection.id) ?? 0}
                                   onStudy={handleStudyCollection}
                                   onEdit={handleEditCollection}
                                   onDelete={handleDeleteCollection}

@@ -1,5 +1,6 @@
 import type { Level } from "@/lib/flashcardData";
 import { Check, Heart, ArrowLeft, ChevronRight } from "lucide-react";
+import { BLOB_RADII } from "@/lib/blobShapes";
 
 // Concentric ripple rings — SVG circles expanding from a bottom-center origin.
 // Light-hit overlay — top-left highlight + bottom-right shadow gives cards
@@ -334,7 +335,7 @@ export function LevelSelect({
               }`}
               style={{
                 background: b.bg,
-                borderRadius: isHero ? "36px" : "30px",
+                borderRadius: isHero ? "36px" : BLOB_RADII[i % BLOB_RADII.length],
                 boxShadow: `0 ${isHero ? 6 : 5}px 0 ${b.shadow}, 0 ${isHero ? 12 : 10}px ${isHero ? 32 : 24}px rgba(0,0,0,${isHero ? 0.35 : 0.3})`,
                 minHeight: isHero ? "clamp(220px, 52vw, 340px)" : "clamp(160px, 24vw, 220px)",
               }}

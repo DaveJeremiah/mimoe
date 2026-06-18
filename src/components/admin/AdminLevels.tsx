@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { adminDb, type AdminLevelRow } from "@/lib/adminDb";
 import { vocabularyLevels, phraseLevels, arabicVocabularyLevels, arabicPhraseLevels } from "@/lib/flashcardData";
 import { GlobalLevelEditor } from "./GlobalLevelEditor";
+import { BuiltinLevelEditor } from "./BuiltinLevelEditor";
 import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, Globe } from "lucide-react";
 
 // ── Built-in levels viewer ────────────────────────────────────────────────────
@@ -13,9 +14,12 @@ const ALL_BUILTIN = [
   ...arabicPhraseLevels.map(l => ({ ...l, language: "arabic", tab: "phrases" })),
 ];
 
+type BuiltinLevel = typeof ALL_BUILTIN[0];
+
 function BuiltInLevels() {
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<"all" | "french" | "arabic">("all");
+  const [editing, setEditing] = useState<BuiltinLevel | null>(null);
 
   const levels = filter === "all" ? ALL_BUILTIN : ALL_BUILTIN.filter(l => l.language === filter);
 
@@ -32,7 +36,7 @@ function BuiltInLevels() {
             {f}
           </button>
         ))}
-        <span className="text-white/25 text-xs ml-auto">{levels.length} levels · read-only</span>
+        <span className="text-white/25 text-xs ml-auto">{levels.length} levels</span>
       </div>
 
       <div className="rounded-2xl overflow-hidden divide-y divide-white/5" style={{ background: "#111111", border: "1px solid rgba(255,255,255,0.07)" }}>
@@ -40,16 +44,25 @@ function BuiltInLevels() {
           const isOpen = open.has(level.id);
           return (
             <div key={level.id}>
-              <button
-                className="w-full flex items-center gap-3 px-5 py-3 hover:bg-white/3 transition-colors text-left"
-                onClick={() => setOpen(prev => { const n = new Set(prev); isOpen ? n.delete(level.id) : n.add(level.id); return n; })}
-              >
-                {isOpen ? <ChevronDown className="w-4 h-4 text-white/30 flex-shrink-0" /> : <ChevronRight className="w-4 h-4 text-white/30 flex-shrink-0" />}
-                <span className="flex-1 text-white/80 text-sm font-medium">{level.title}</span>
-                <span className="text-white/25 text-xs">{level.language} · {level.tab}</span>
-                {level.cefr && <span className="text-[11px] font-bold text-white/40 bg-white/5 rounded px-1.5 py-0.5">{level.cefr}</span>}
-                <span className="text-white/30 text-xs ml-2">{level.cards.length} cards</span>
-              </button>
+              <div className="flex items-center gap-3 px-5 py-3">
+                <button
+                  className="flex-1 flex items-center gap-3 text-left hover:bg-white/3 transition-colors rounded"
+                  onClick={() => setOpen(prev => { const n = new Set(prev); isOpen ? n.delete(level.id) : n.add(level.id); return n; })}
+                >
+                  {isOpen ? <ChevronDown className="w-4 h-4 text-white/30 flex-shrink-0" /> : <ChevronRight className="w-4 h-4 text-white/30 flex-shrink-0" />}
+                  <span className="flex-1 text-white/80 text-sm font-medium">{level.title}</span>
+                  <span className="text-white/25 text-xs">{level.language} · {level.tab}</span>
+                  {level.cefr && <span className="text-[11px] font-bold text-white/40 bg-white/5 rounded px-1.5 py-0.5">{level.cefr}</span>}
+                  <span className="text-white/30 text-xs ml-2">{level.cards.length} cards</span>
+                </button>
+                <button
+                  onClick={() => setEditing(level)}
+                  className="p-1.5 rounded-lg hover:bg-white/6 transition-colors text-white/30 hover:text-white/70 flex-shrink-0"
+                  title="Edit cards"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              </div>
               {isOpen && (
                 <div className="px-5 pb-3">
                   <table className="w-full text-xs">
@@ -76,6 +89,13 @@ function BuiltInLevels() {
           );
         })}
       </div>
+
+      {editing && (
+        <BuiltinLevelEditor
+          level={editing}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </div>
   );
 }

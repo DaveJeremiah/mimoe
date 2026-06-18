@@ -50,6 +50,18 @@ export interface CardPair {
   position: number;
 }
 
+export interface BuiltinOverrideRow {
+  id: string;
+  builtin_level_id: string;
+  card_id: string;
+  english: string;
+  target: string;
+  alternatives: string[];
+  transliteration: string | null;
+  position: number;
+  hidden: boolean;
+}
+
 export const adminDb = {
   async getStats(): Promise<AdminStats> {
     const { data, error } = await supabase.rpc("get_admin_stats");
@@ -146,6 +158,34 @@ export const adminDb = {
         alternatives: c.alternatives,
         transliteration: c.transliteration,
         position: i,
+      })),
+    });
+    if (error) throw error;
+  },
+
+  // ── Built-in level card overrides ──────────────────────────────────────
+
+  async listBuiltinOverrides(levelId: string): Promise<BuiltinOverrideRow[]> {
+    const { data, error } = await supabase
+      .from("admin_builtin_overrides")
+      .select("*")
+      .eq("builtin_level_id", levelId)
+      .order("position", { ascending: true });
+    if (error) throw error;
+    return (data ?? []) as BuiltinOverrideRow[];
+  },
+
+  async saveBuiltinOverrides(levelId: string, cards: BuiltinOverrideRow[]): Promise<void> {
+    const { error } = await supabase.rpc("admin_save_builtin_overrides", {
+      p_level_id: levelId,
+      p_overrides: cards.map((c, i) => ({
+        card_id: c.card_id,
+        english: c.english,
+        target: c.target,
+        alternatives: c.alternatives ?? [],
+        transliteration: c.transliteration ?? null,
+        position: i,
+        hidden: c.hidden,
       })),
     });
     if (error) throw error;
