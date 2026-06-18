@@ -2,7 +2,7 @@ import { useState } from "react";
 import { MoreVertical, Edit, Trash2 } from "lucide-react";
 import type { Collection } from "@/lib/collectionTypes";
 import { COLLECTION_CATEGORIES } from "@/lib/collectionTypes";
-import { BLOB_RADII } from "@/lib/blobShapes";
+import { AMOEBA_COUNT } from "@/lib/blobShapes";
 
 interface CollectionCardProps {
   collection: Collection;
@@ -15,7 +15,7 @@ interface CollectionCardProps {
 export function CollectionCard({ collection, index = 0, onStudy, onEdit, onDelete }: CollectionCardProps) {
   const [showMenu, setShowMenu] = useState(false);
   const catInfo = COLLECTION_CATEGORIES.find(c => c.value === collection.category);
-  const blobRadius = BLOB_RADII[index % BLOB_RADII.length];
+  const amoebaId = `amoeba-${index % AMOEBA_COUNT}`;
 
   const handleEdit = () => { setShowMenu(false); onEdit(collection); };
   const handleDelete = () => {
@@ -24,22 +24,25 @@ export function CollectionCard({ collection, index = 0, onStudy, onEdit, onDelet
   };
 
   return (
-    // Outer container: no overflow-hidden so the dropdown menu can escape the blob clip.
-    // The blob shape is rendered as a separate background layer.
-    <div className="relative" style={{ minHeight: 180 }}>
-      {/* Blob background — clips visually to the organic shape */}
+    // Outer container: no overflow so dropdown and Study button escape the blob clip.
+    <div className="relative" style={{ minHeight: 168 }}>
+
+      {/* Amoeba background — clips to organic shape, pointer-events none */}
       <div
-        className="absolute inset-0 overflow-hidden pointer-events-none"
+        className="absolute pointer-events-none"
         style={{
-          borderRadius: blobRadius,
+          inset: 0,
+          bottom: '14%',  // leave gap so Study button protrudes below the blob
           background: '#0E0E14',
-          border: '1px solid rgba(255,255,255,0.07)',
+          border: '1px solid rgba(255,255,255,0.09)',
+          clipPath: `url(#${amoebaId})`,
         }}
       />
 
       {/* Content layer — sits above the blob bg, not clipped */}
-      <div className="relative flex flex-col p-4" style={{ minHeight: 180 }}>
-        {/* Top row: menu button */}
+      <div className="relative flex flex-col px-4 pt-3 pb-0" style={{ minHeight: 168 }}>
+
+        {/* Menu button — top-right */}
         <div className="flex items-start justify-end mb-1 flex-shrink-0">
           <button
             onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
@@ -50,8 +53,8 @@ export function CollectionCard({ collection, index = 0, onStudy, onEdit, onDelet
         </div>
 
         {/* Emoji */}
-        <div className="flex-1 flex items-center min-h-[44px]">
-          <span style={{ fontSize: 32, lineHeight: 1 }}>{catInfo?.emoji ?? "📚"}</span>
+        <div className="flex-1 flex items-center min-h-[40px]">
+          <span style={{ fontSize: 30, lineHeight: 1 }}>{catInfo?.emoji ?? "📚"}</span>
         </div>
 
         {/* Title + count */}
@@ -72,7 +75,7 @@ export function CollectionCard({ collection, index = 0, onStudy, onEdit, onDelet
           </p>
         </div>
 
-        {/* Study button */}
+        {/* Study button — sticks out below the amoeba blob */}
         <button
           onClick={() => onStudy(collection)}
           className="w-full py-2.5 rounded-full font-bold text-xs flex-shrink-0 transition-opacity hover:opacity-85 active:opacity-70"
@@ -81,7 +84,7 @@ export function CollectionCard({ collection, index = 0, onStudy, onEdit, onDelet
           Study
         </button>
 
-        {/* Dropdown menu — lives outside the blob clip, renders over anything */}
+        {/* Dropdown — renders outside the blob, unclipped */}
         {showMenu && (
           <>
             <div className="fixed inset-0 z-0" onClick={() => setShowMenu(false)} />

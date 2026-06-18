@@ -1,6 +1,6 @@
 import type { Level } from "@/lib/flashcardData";
 import { Check, Heart, ArrowLeft, ChevronRight } from "lucide-react";
-import { BLOB_RADII } from "@/lib/blobShapes";
+import { AMOEBA_COUNT } from "@/lib/blobShapes";
 
 // Concentric ripple rings — SVG circles expanding from a bottom-center origin.
 // Light-hit overlay — top-left highlight + bottom-right shadow gives cards
@@ -326,21 +326,37 @@ export function LevelSelect({
           const pct = decks.length > 0 ? (completed / decks.length) * 100 : 0;
           const isHero = i === 0;
 
+          // Non-hero band cards use amoeba SVG clip-path with drop-shadow (box-shadow
+          // doesn't follow clip-path shapes; filter: drop-shadow does).
+          const amoebaId = !isHero ? `amoeba-${i % AMOEBA_COUNT}` : null;
+
           return (
             <button
               key={b.id}
               onClick={() => onSelectBand(b.id)}
-              className={`relative overflow-hidden text-left active:scale-[0.97] transition-transform ${
-                isHero ? "col-span-2 md:col-span-1 md:row-span-2" : "col-span-1"
+              className={`relative text-left active:scale-[0.97] transition-transform ${
+                isHero ? "overflow-hidden col-span-2 md:col-span-1 md:row-span-2" : "col-span-1"
               }`}
               style={{
-                background: b.bg,
-                borderRadius: isHero ? "36px" : BLOB_RADII[i % BLOB_RADII.length],
-                boxShadow: `0 ${isHero ? 6 : 5}px 0 ${b.shadow}, 0 ${isHero ? 12 : 10}px ${isHero ? 32 : 24}px rgba(0,0,0,${isHero ? 0.35 : 0.3})`,
+                background: isHero ? b.bg : "transparent",
+                borderRadius: isHero ? "36px" : undefined,
+                boxShadow: isHero ? `0 6px 0 ${b.shadow}, 0 12px 32px rgba(0,0,0,0.35)` : undefined,
+                filter: !isHero ? `drop-shadow(0 5px 0 ${b.shadow}) drop-shadow(0 8px 20px rgba(0,0,0,0.35))` : undefined,
                 minHeight: isHero ? "clamp(220px, 52vw, 340px)" : "clamp(160px, 24vw, 220px)",
               }}
             >
-              {/* A1 scenic background image (mobile hero only) */}
+              {/* Non-hero: amoeba-clipped background + shine layer */}
+              {!isHero && (
+                <div
+                  className="absolute inset-0 pointer-events-none overflow-hidden"
+                  style={{ clipPath: `url(#${amoebaId})` }}
+                >
+                  <div className="absolute inset-0" style={{ background: b.bg }} />
+                  <CardShine />
+                </div>
+              )}
+
+              {/* A1 scenic background image (hero only) */}
               {isHero && b.id === "A1" && (
                 <img
                   src={activeLanguage === "arabic" ? "/images/ar-a1-bg.png" : "/images/a1-bg.png"}
@@ -351,7 +367,8 @@ export function LevelSelect({
                 />
               )}
 
-              <CardShine strong={isHero} />
+              {/* Hero gets its shine separately (not amoeba-clipped) */}
+              {isHero && <CardShine strong />}
 
               <div className={`absolute inset-0 flex flex-col justify-between ${isHero ? "p-5" : "p-4"}`}>
                 {/* Top row */}

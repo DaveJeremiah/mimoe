@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Trash2, Plus, Check, Upload, Pencil, GripVertical, X } from "lucide-react";
+import { Plus, Check, Upload, GripVertical, X, Flag } from "lucide-react";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { FlashcardItem } from "@/lib/flashcardData";
 import { BulkImportModal } from "./BulkImportModal";
+
+const SUGGEST_EMAIL = "davejayden49@gmail.com";
 
 interface WordBankProps {
   items: FlashcardItem[];
@@ -22,13 +24,89 @@ function targetOf(item: FlashcardItem): string {
   return item.target ?? item.french ?? "";
 }
 
+function SuggestRow({ item, rtl }: { item: FlashcardItem; rtl?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const target = targetOf(item);
+
+  const send = () => {
+    const subject = encodeURIComponent(`Card suggestion: ${item.english} → ${target}`);
+    const body = encodeURIComponent(
+      `Card: ${item.english} → ${target}\n\nMy suggestion:\n${text}`
+    );
+    window.open(`mailto:${SUGGEST_EMAIL}?subject=${subject}&body=${body}`);
+    setText("");
+    setOpen(false);
+  };
+
+  return (
+    <div
+      style={{
+        background: open ? 'rgba(155,92,246,0.08)' : '#111111',
+        border: open ? '1px solid rgba(155,92,246,0.3)' : '1px solid rgba(255,255,255,0.07)',
+        transition: 'background 0.15s, border-color 0.15s',
+      }}
+      className="flex flex-col rounded-2xl overflow-hidden"
+    >
+      <div className="flex items-center gap-2 p-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm text-white/85 font-medium">{item.english}</span>
+            <span className="text-white/25 text-xs">→</span>
+            <span dir={rtl ? "rtl" : "ltr"} className="text-sm font-bold" style={{ color: '#c4b5fd' }}>{target}</span>
+          </div>
+          {item.transliteration && (
+            <div className="text-[11px] text-white/40 italic mt-0.5">{item.transliteration}</div>
+          )}
+          {item.alternatives && item.alternatives.length > 0 && (
+            <div className="text-[11px] text-white/35 mt-0.5">alt: {item.alternatives.join(' · ')}</div>
+          )}
+        </div>
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="p-2 text-white/25 hover:text-violet-400 transition-colors flex-shrink-0"
+          title="Suggest a change"
+        >
+          <Flag className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {open && (
+        <div className="px-3 pb-3 flex flex-col gap-2">
+          <textarea
+            value={text}
+            onChange={e => setText(e.target.value)}
+            placeholder="Describe what should change…"
+            rows={2}
+            className="w-full rounded-xl px-3 py-2 text-xs text-white placeholder:text-white/25 outline-none resize-none"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
+          />
+          <div className="flex gap-2 justify-end">
+            <button
+              onClick={() => { setOpen(false); setText(""); }}
+              className="text-xs text-white/35 hover:text-white/60 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={send}
+              disabled={!text.trim()}
+              className="text-xs font-bold text-white px-4 py-1.5 rounded-full transition-opacity disabled:opacity-40"
+              style={{ background: 'linear-gradient(135deg,#9b5cf6,#ec4899)' }}
+            >
+              Send suggestion
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SortableRow({
-  item, editingId, onEdit, onDelete, rtl,
+  item, rtl,
 }: {
   item: FlashcardItem;
-  editingId: string | null;
-  onEdit: (item: FlashcardItem) => void;
-  onDelete: (id: string) => void;
   rtl?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
@@ -36,50 +114,20 @@ function SortableRow({
     transform: CSS.Transform.toString(transform),
     transition,
     zIndex: isDragging ? 2 : 1,
+    opacity: isDragging ? 0.85 : 1,
   };
-  const isEditing = editingId === item.id;
-  const target = targetOf(item);
 
   return (
-    <div
-      ref={setNodeRef}
-      style={{
-        ...style,
-        background: isEditing ? 'rgba(155,92,246,0.12)' : '#111111',
-        border: isEditing ? '1px solid rgba(155,92,246,0.4)' : '1px solid rgba(255,255,255,0.07)',
-        boxShadow: isDragging ? '0 12px 28px rgba(0,0,0,0.5)' : undefined,
-      }}
-      className="flex items-center gap-2 p-3 rounded-2xl"
-    >
+    <div ref={setNodeRef} style={style} className="flex items-start gap-2">
       <button
         {...attributes} {...listeners}
-        className="cursor-grab active:cursor-grabbing text-white/20 hover:text-white/40 touch-none flex-shrink-0"
+        className="cursor-grab active:cursor-grabbing text-white/20 hover:text-white/40 touch-none flex-shrink-0 mt-3.5"
         aria-label="Reorder"
       >
         <GripVertical className="w-4 h-4" />
       </button>
-
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm text-white/85 font-medium">{item.english}</span>
-          <span className="text-white/25 text-xs">→</span>
-          <span dir={rtl ? "rtl" : "ltr"} className="text-sm font-bold" style={{ color: '#c4b5fd' }}>{target}</span>
-        </div>
-        {item.transliteration && (
-          <div className="text-[11px] text-white/40 italic mt-0.5">{item.transliteration}</div>
-        )}
-        {item.alternatives && item.alternatives.length > 0 && (
-          <div className="text-[11px] text-white/35 mt-0.5">alt: {item.alternatives.join(' · ')}</div>
-        )}
-      </div>
-
-      <div className="flex items-center gap-0.5 flex-shrink-0">
-        <button onClick={() => onEdit(item)} className="p-2 text-white/35 hover:text-white/80 transition-colors" title="Edit">
-          <Pencil className="w-3.5 h-3.5" />
-        </button>
-        <button onClick={() => onDelete(item.id)} className="p-2 text-red-400/50 hover:text-red-400 transition-colors" title="Delete">
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
+        <SuggestRow item={item} rtl={rtl} />
       </div>
     </div>
   );
@@ -121,18 +169,11 @@ export function WordBank({ items, onAdd, onUpdate, onDelete, onBulkAdd, onReorde
     setTarget("");
   };
 
-  const startEdit = (item: FlashcardItem) => {
-    setEditingId(item.id);
-    setEnglish(item.english);
-    const t = targetOf(item);
-    setTarget(item.alternatives?.length ? `${t} / ${item.alternatives.join(" / ")}` : t);
-  };
-
   const cancelEdit = () => { setEditingId(null); setEnglish(""); setTarget(""); };
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Pair list */}
+      {/* Pair list with drag-to-reorder + suggest per card */}
       {items.length === 0 ? (
         <div className="text-center py-8 text-white/35 text-sm">
           No pairs yet — add one below.
@@ -145,9 +186,6 @@ export function WordBank({ items, onAdd, onUpdate, onDelete, onBulkAdd, onReorde
                 <SortableRow
                   key={item.id}
                   item={item}
-                  editingId={editingId}
-                  onEdit={startEdit}
-                  onDelete={onDelete}
                   rtl={rtl}
                 />
               ))}

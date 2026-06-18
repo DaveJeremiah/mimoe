@@ -15,6 +15,7 @@ import { OnboardingModal } from "./OnboardingModal";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { db, listAdminLevels, listAdminCards, listAllBuiltinOverrides, type AdminLevelRow, type BuiltinOverrideRow } from "@/lib/db";
+import { AmoebaDefs } from "./AmoebaDefs";
 import { vocabularyLevels, phraseLevels, arabicVocabularyLevels, arabicPhraseLevels, type FlashcardItem } from "@/lib/flashcardData";
 import { type Collection, CollectionFormData, COLLECTION_CATEGORIES } from "@/lib/collectionTypes";
 import { prefetchAudio, unlockAudio } from "@/lib/speechUtils";
@@ -1238,6 +1239,8 @@ export function FlashcardApp() {
   const completedInBand = decksInBand.filter(d => completedIds.includes(d.id)).length;
 
   return (
+    <>
+    <AmoebaDefs />
     <div
       className={`min-h-screen flex flex-col items-center w-full max-w-[480px] md:max-w-[860px] xl:max-w-[1100px] mx-auto ${selectedLevelId ? 'pt-[61px]' : 'pt-0'} px-[15px] md:px-6 ${selectedLevelId ? 'pb-36' : 'pb-24'}`}
       onTouchStart={handleSessionTouchStart}
@@ -1884,5 +1887,6 @@ export function FlashcardApp() {
 
       {shareToastEl}
     </div>
+    </>
   );
 }
