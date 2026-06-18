@@ -14,7 +14,7 @@ import { ProfileModal, dicebearUrl } from "./ProfileModal";
 import { OnboardingModal } from "./OnboardingModal";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { db } from "@/lib/db";
+import { db, listAdminLevels, listAdminCards, type AdminLevelRow } from "@/lib/db";
 import { vocabularyLevels, phraseLevels, arabicVocabularyLevels, arabicPhraseLevels, type FlashcardItem } from "@/lib/flashcardData";
 import { type Collection, CollectionFormData, COLLECTION_CATEGORIES } from "@/lib/collectionTypes";
 import { prefetchAudio, unlockAudio } from "@/lib/speechUtils";
@@ -128,6 +128,12 @@ export function FlashcardApp() {
   const [customPhraseLevels, setCustomPhraseLevels] = useState<{ id: string; title: string; dialect?: string }[]>([]);
   const [isNewLevelModalOpen, setIsNewLevelModalOpen] = useState(false);
 
+  // Admin-managed global levels (visible to all users)
+  const [adminVocabLevels, setAdminVocabLevels] = useState<AdminLevelRow[]>([]);
+  const [adminPhraseLevels, setAdminPhraseLevels] = useState<AdminLevelRow[]>([]);
+  const [adminVocab, setAdminVocab] = useState<Record<string, FlashcardItem[]>>({});
+  const [adminPhrases, setAdminPhrases] = useState<Record<string, FlashcardItem[]>>({});
+
   // Track which cards were answered correctly on FIRST attempt in current session
   const [firstAttemptCorrect, setFirstAttemptCorrect] = useState<Set<string>>(new Set());
   const [failedCards, setFailedCards] = useState<Set<string>>(new Set());
@@ -162,13 +168,22 @@ export function FlashcardApp() {
   // Merge built-in levels with user-created custom levels, then
   // personalize the two "My name is…" / "I am from…" cards with the user's
   // actual name and country stored in their profile.
+  const adminLevelsList = activeTab === "vocabulary" ? adminVocabLevels : adminPhraseLevels;
+  const adminCards = activeTab === "vocabulary" ? adminVocab : adminPhrases;
+
   const levels = useMemo(() => {
+    const adminAsLevels = adminLevelsList.map((al) => ({
+      id: al.id,
+      title: al.title,
+      cefr: al.cefr as "A1" | "A2" | "B1" | undefined,
+      cards: adminCards[al.id] || [],
+    }));
     const customAsLevels = customLevelsList.map((cl) => ({
       id: cl.id,
       title: cl.title,
       cards: customCards[cl.id] || [],
     }));
-    const merged = [...baseLevels, ...customAsLevels];
+    const merged = [...baseLevels, ...adminAsLevels, ...customAsLevels];
 
     const nickname = (user?.user_metadata?.nickname as string | undefined) ?? "";
     const country  = (user?.user_metadata?.country  as string | undefined) ?? "";
@@ -192,7 +207,7 @@ export function FlashcardApp() {
         return patch ? { ...card, ...patch } : card;
       }),
     }));
-  }, [baseLevels, customLevelsList, customCards, user]);
+  }, [baseLevels, adminLevelsList, adminCards, customLevelsList, customCards, user]);
 
   // Build a synthetic "bookmarked" level pulling cards from every level (current tab)
   const bookmarkedLevel = useMemo(() => {
@@ -378,6 +393,24 @@ export function FlashcardApp() {
         else setCustomPhrases(cardsByLevel);
       } catch (e) {
         console.error("Failed to load custom levels", e);
+      }
+    })();
+  }, [user, activeTab, activeLanguage]);
+
+  // Load admin (global) levels for the current tab+language
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      try {
+        const rows = await listAdminLevels(activeTab, activeLanguage);
+        if (activeTab === "vocabulary") setAdminVocabLevels(rows);
+        else setAdminPhraseLevels(rows);
+        const cardsByLevel: Record<string, FlashcardItem[]> = {};
+        await Promise.all(rows.map(async (r) => { cardsByLevel[r.id] = await listAdminCards(r.id); }));
+        if (activeTab === "vocabulary") setAdminVocab(cardsByLevel);
+        else setAdminPhrases(cardsByLevel);
+      } catch (e) {
+        console.error("Failed to load admin levels", e);
       }
     })();
   }, [user, activeTab, activeLanguage]);

@@ -5,6 +5,46 @@ import type { Language } from "./languageConfig";
 
 type Tab = "vocabulary" | "phrases";
 
+// ── Admin Levels (public-read: all authenticated users can see these) ──────────
+
+export interface AdminLevelRow {
+  id: string;
+  title: string;
+  tab: Tab;
+  language: string;
+  dialect: string | null;
+  cefr: "A1" | "A2" | "B1" | null;
+  position: number;
+}
+
+export async function listAdminLevels(tab: Tab, language: Language): Promise<AdminLevelRow[]> {
+  const { data, error } = await supabase
+    .from("admin_levels")
+    .select("id, title, tab, language, dialect, cefr, position")
+    .eq("tab", tab)
+    .eq("language", language)
+    .order("position", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as AdminLevelRow[];
+}
+
+export async function listAdminCards(levelId: string): Promise<FlashcardItem[]> {
+  const { data, error } = await supabase
+    .from("admin_cards")
+    .select("id, english, target, alternatives, transliteration, position")
+    .eq("level_id", levelId)
+    .order("position", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map((r: any) => ({
+    id: r.id as string,
+    english: r.english as string,
+    french: r.target as string,
+    target: r.target as string,
+    ...(Array.isArray(r.alternatives) && r.alternatives.length > 0 ? { alternatives: r.alternatives as string[] } : {}),
+    ...(r.transliteration ? { transliteration: r.transliteration as string } : {}),
+  }));
+}
+
 async function uid(): Promise<string | null> {
   const { data } = await supabase.auth.getUser();
   return data.user?.id ?? null;
