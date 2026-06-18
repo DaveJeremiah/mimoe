@@ -37,7 +37,6 @@ export function CollectionCard({ collection, index = 0, onStudy, onEdit, onDelet
           className="absolute"
           style={{
             background: '#0E0E14',
-            border: '1px solid rgba(255,255,255,0.09)',
             left: '-25%', right: '-25%', top: '-25%', bottom: '-25%',
           }}
         />

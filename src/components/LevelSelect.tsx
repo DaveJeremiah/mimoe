@@ -319,39 +319,47 @@ export function LevelSelect({
         - Mobile  : 2 columns — A1 spans both (col-span-2), A2 + B1 each take 1
         - md+     : 2 columns — A1 spans 2 rows (tall left), A2 + B1 stack on right
       */}
-      <div className="grid grid-cols-2 gap-4">
+      {/* No row-gap so A2/B1 can tuck slightly under A1 via negative margin */}
+      <div className="grid grid-cols-2 gap-x-4">
         {BAND_CARDS.map((b, i) => {
           const decks = grouped[b.id] ?? [];
           const completed = decks.filter(d => completedLevelIds.includes(d.id)).length;
           const pct = decks.length > 0 ? (completed / decks.length) * 100 : 0;
           const isHero = i === 0;
-
-          // Non-hero band cards use amoeba SVG clip-path with drop-shadow (box-shadow
-          // doesn't follow clip-path shapes; filter: drop-shadow does).
           const amoebaId = !isHero ? `amoeba-${i % AMOEBA_COUNT}` : null;
+
+          // Slight tilt per card for a "creatively pieced" assembled look
+          const tiltDeg = i === 1 ? -4 : i === 2 ? 3 : 0;
 
           return (
             <button
               key={b.id}
               onClick={() => onSelectBand(b.id)}
-              className={`relative text-left active:scale-[0.97] transition-transform ${
+              className={`relative text-left outline-none transition-transform active:scale-[0.97] ${
                 isHero ? "overflow-hidden col-span-2 md:col-span-1 md:row-span-2" : "col-span-1"
               }`}
               style={{
                 background: isHero ? b.bg : "transparent",
                 borderRadius: isHero ? "36px" : undefined,
                 boxShadow: isHero ? `0 6px 0 ${b.shadow}, 0 12px 32px rgba(0,0,0,0.35)` : undefined,
-                filter: !isHero ? `drop-shadow(0 5px 0 ${b.shadow}) drop-shadow(0 8px 20px rgba(0,0,0,0.35))` : undefined,
-                minHeight: isHero ? "clamp(220px, 52vw, 340px)" : "clamp(160px, 24vw, 220px)",
+                minHeight: isHero ? "clamp(200px, 46vw, 300px)" : "clamp(155px, 26vw, 210px)",
+                // A2/B1 tuck under A1 with slight rotation — drop-shadow moved to clip div
+                transform: !isHero ? `rotate(${tiltDeg}deg)` : undefined,
+                marginTop: !isHero ? (i === 1 ? '-20px' : '-12px') : undefined,
+                zIndex: !isHero ? 2 : 1,
+                position: 'relative',
               }}
             >
-              {/* Non-hero: amoeba-clipped background + shine layer.
-                  No overflow-hidden — background overshoots by 25% so the extending
-                  path lobes have paint to show. clip-path itself defines the visible edge. */}
+              {/* Non-hero: amoeba-clipped background + drop-shadow + shine.
+                  drop-shadow on the clip div so it follows the organic shape only.
+                  Background overshoots 25% so extending lobes have paint. */}
               {!isHero && (
                 <div
                   className="absolute inset-0 pointer-events-none"
-                  style={{ clipPath: `url(#${amoebaId})` }}
+                  style={{
+                    clipPath: `url(#${amoebaId})`,
+                    filter: `drop-shadow(0 6px 0 ${b.shadow}) drop-shadow(0 10px 24px rgba(0,0,0,0.4))`,
+                  }}
                 >
                   <div
                     className="absolute"
