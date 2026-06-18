@@ -27,17 +27,21 @@ export function CollectionCard({ collection, index = 0, onStudy, onEdit, onDelet
     // Outer container: no overflow so dropdown and Study button escape the blob clip.
     <div className="relative" style={{ minHeight: 168 }}>
 
-      {/* Amoeba background — clips to organic shape, pointer-events none */}
+      {/* Amoeba background — clips to organic shape, pointer-events none.
+          Inner div overshoots by 25% so extending lobes have paint to show. */}
       <div
         className="absolute pointer-events-none"
-        style={{
-          inset: 0,
-          bottom: '14%',  // leave gap so Study button protrudes below the blob
-          background: '#0E0E14',
-          border: '1px solid rgba(255,255,255,0.09)',
-          clipPath: `url(#${amoebaId})`,
-        }}
-      />
+        style={{ inset: 0, bottom: '14%', clipPath: `url(#${amoebaId})` }}
+      >
+        <div
+          className="absolute"
+          style={{
+            background: '#0E0E14',
+            border: '1px solid rgba(255,255,255,0.09)',
+            left: '-25%', right: '-25%', top: '-25%', bottom: '-25%',
+          }}
+        />
+      </div>
 
       {/* Content layer — sits above the blob bg, not clipped */}
       <div className="relative flex flex-col px-4 pt-3 pb-0" style={{ minHeight: 168 }}>

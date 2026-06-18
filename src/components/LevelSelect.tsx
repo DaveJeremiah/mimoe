@@ -345,13 +345,18 @@ export function LevelSelect({
                 minHeight: isHero ? "clamp(220px, 52vw, 340px)" : "clamp(160px, 24vw, 220px)",
               }}
             >
-              {/* Non-hero: amoeba-clipped background + shine layer */}
+              {/* Non-hero: amoeba-clipped background + shine layer.
+                  No overflow-hidden — background overshoots by 25% so the extending
+                  path lobes have paint to show. clip-path itself defines the visible edge. */}
               {!isHero && (
                 <div
-                  className="absolute inset-0 pointer-events-none overflow-hidden"
+                  className="absolute inset-0 pointer-events-none"
                   style={{ clipPath: `url(#${amoebaId})` }}
                 >
-                  <div className="absolute inset-0" style={{ background: b.bg }} />
+                  <div
+                    className="absolute"
+                    style={{ background: b.bg, left: '-25%', right: '-25%', top: '-25%', bottom: '-25%' }}
+                  />
                   <CardShine />
                 </div>
               )}
