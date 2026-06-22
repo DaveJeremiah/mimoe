@@ -1242,7 +1242,7 @@ export function FlashcardApp() {
     <>
     <AmoebaDefs />
     <div
-      className={`min-h-screen flex flex-col items-center w-full max-w-[480px] md:max-w-[860px] xl:max-w-[1100px] mx-auto ${selectedLevelId ? 'pt-[61px]' : 'pt-0'} px-[15px] md:px-6 ${selectedLevelId ? 'pb-36' : 'pb-24'}`}
+      className={`h-[100dvh] overflow-y-hidden flex flex-col items-center w-full max-w-[480px] md:max-w-[860px] xl:max-w-[1100px] mx-auto ${selectedLevelId ? 'pt-[61px]' : 'pt-0'} px-[15px] md:px-6 ${selectedLevelId ? 'pb-36' : 'pb-24'}`}
       onTouchStart={handleSessionTouchStart}
       onTouchEnd={handleSessionTouchEnd}
     >

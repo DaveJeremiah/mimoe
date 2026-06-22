@@ -1,15 +1,14 @@
-// Generates smooth closed SVG paths for clipPathUnits="objectBoundingBox".
-// Uses Catmull-Rom → Bezier interpolation through 8 radial knot points.
-// cx=0.5, cy=0.60 — vertical center shifted down so blobs sit in the lower
-// portion of each card and don't extend above the card's top edge.
-// Radii: [right, lower-right, bottom, lower-left, left, upper-left, TOP, upper-right]
-// Top (index 6) capped at 0.42 to prevent blobs climbing above the card.
+// Six chunky organic blob shapes — "inflated polygon" style (smooth, mostly convex,
+// like rounded triangles/ovals/squares). Catmull-Rom → Bezier, 8 radial knots.
+// Knot order: [E, SE, S, SW, W, NW, N, NE] (SVG y-axis, so "S" = bottom).
+// All radii in 0.34–0.52 range: no deep concavities, gentle lobe variation.
+// Background overshoots 25% so values slightly outside 0–1 are fine.
 
 function amoebaPath(radii: readonly number[]): string {
   const n = radii.length;
   const pts = radii.map((r, i) => {
     const a = (i * 2 * Math.PI) / n;
-    return { x: +(0.5 + r * Math.cos(a)).toFixed(3), y: +(0.60 + r * Math.sin(a)).toFixed(3) };
+    return { x: +(0.5 + r * Math.cos(a)).toFixed(3), y: +(0.5 + r * Math.sin(a)).toFixed(3) };
   });
   const t = 1 / 6;
   const segs = pts.map((_, i) => {
@@ -27,12 +26,18 @@ function amoebaPath(radii: readonly number[]): string {
 }
 
 const RADII_SETS = [
-  [0.58, 0.48, 0.63, 0.38, 0.56, 0.32, 0.40, 0.44],  // 0: lobes right+bottom; dips upper-left
-  [0.44, 0.56, 0.38, 0.64, 0.48, 0.60, 0.42, 0.34],  // 1: lower-left lobe; dip upper-right
-  [0.63, 0.40, 0.55, 0.50, 0.66, 0.37, 0.38, 0.52],  // 2: wide left+right lobes; narrow top
-  [0.50, 0.67, 0.44, 0.56, 0.31, 0.58, 0.42, 0.62],  // 3: lobes lower-right+upper-right; narrow left
-  [0.65, 0.54, 0.40, 0.62, 0.48, 0.34, 0.40, 0.44],  // 4: wide right lobe + lower-left
-  [0.42, 0.58, 0.64, 0.48, 0.57, 0.66, 0.38, 0.36],  // 5: lobes upper-left+bottom; dip upper-right
+  // 0 — horizontal oval: wide & low, slight asymmetry
+  [0.50, 0.43, 0.38, 0.45, 0.48, 0.43, 0.38, 0.44],
+  // 1 — rounded triangle: three equal bumps at E / SW / N
+  [0.50, 0.38, 0.37, 0.50, 0.36, 0.38, 0.50, 0.37],
+  // 2 — wide bean: fat sides, bottom-right stretch
+  [0.52, 0.45, 0.40, 0.44, 0.50, 0.42, 0.37, 0.46],
+  // 3 — vertical oval: taller than wide
+  [0.38, 0.44, 0.52, 0.46, 0.36, 0.44, 0.52, 0.43],
+  // 4 — squircle: cardinal bumps, corners pulled in
+  [0.48, 0.37, 0.47, 0.39, 0.48, 0.37, 0.47, 0.39],
+  // 5 — rounded pear: bottom-heavy drop shape
+  [0.46, 0.49, 0.52, 0.47, 0.42, 0.36, 0.34, 0.40],
 ] as const;
 
 export const AMOEBA_PATHS = RADII_SETS.map(amoebaPath);

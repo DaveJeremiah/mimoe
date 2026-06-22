@@ -1,5 +1,6 @@
+import { useState, useMemo } from "react";
 import type { Level } from "@/lib/flashcardData";
-import { Check, Heart, ArrowLeft, ChevronRight } from "lucide-react";
+import { Check, Star, ArrowLeft, ChevronRight } from "lucide-react";
 import { AMOEBA_COUNT } from "@/lib/blobShapes";
 
 // Concentric ripple rings — SVG circles expanding from a bottom-center origin.
@@ -38,6 +39,28 @@ export function WavyLine({ className = "", colors = ["#e05070", "#e07030"] }: { 
         d="M0 18 C40 5, 80 26, 120 18 C160 9, 200 26, 240 18 C270 10, 300 22, 320 14"
         stroke={`url(#${id})`} strokeWidth="2.5" strokeLinecap="round" fill="none"
       />
+    </svg>
+  );
+}
+
+function ProgressRing({ pct }: { pct: number }) {
+  const r = 14;
+  const circ = 2 * Math.PI * r;
+  return (
+    <svg viewBox="0 0 34 34" width={36} height={36} style={{ flexShrink: 0 }} aria-hidden="true">
+      <circle cx="17" cy="17" r={r} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="2.5" />
+      <circle
+        cx="17" cy="17" r={r}
+        fill="none"
+        stroke="rgba(255,255,255,0.85)"
+        strokeWidth="2.5"
+        strokeDasharray={`${circ * pct / 100} ${circ}`}
+        strokeLinecap="round"
+        style={{ transform: "rotate(-90deg)", transformOrigin: "17px 17px", transition: "stroke-dasharray 0.5s ease" }}
+      />
+      <text x="17" y="21" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold" opacity="0.9">
+        {Math.round(pct)}%
+      </text>
     </svg>
   );
 }
@@ -183,9 +206,9 @@ export function LevelSelect({
     const completedInBand = decks.filter(d => completedLevelIds.includes(d.id)).length;
 
     return (
-      <div className="w-full pt-6">
-        {/* Deck list — single col on mobile, 2-col on sm+ */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <div className="w-full pt-2">
+        {/* Deck list — always 2-col grid, compact cards */}
+        <div className="grid grid-cols-2 gap-2">
           {decks.map((deck, i) => {
             const isCompleted = completedLevelIds.includes(deck.id);
             const title = stripCefrPrefix(deck.title);
@@ -193,30 +216,30 @@ export function LevelSelect({
               <button
                 key={deck.id}
                 onClick={() => onSelectLevel(deck.id)}
-                className={`w-full flex items-center gap-3 p-4 rounded-3xl transition-all duration-200 text-left active:scale-[0.97] ${
+                className={`w-full flex items-center gap-2.5 p-3 rounded-2xl transition-all duration-200 text-left active:scale-[0.97] ${
                   isCompleted ? `${band.accentBorder} ${band.accentBg} border` : "bg-card hover:bg-muted"
                 }`}
                 style={!isCompleted ? { border: '1px solid rgba(255,255,255,0.07)' } : undefined}
               >
-                <span className={`text-xs font-bold w-5 text-center flex-shrink-0 ${isCompleted ? band.accentText : "text-muted-foreground"}`}>
+                <span className={`text-xs font-bold w-4 text-center flex-shrink-0 ${isCompleted ? band.accentText : "text-muted-foreground"}`}>
                   {i + 1}
                 </span>
                 <img
                   src={DECK_IMGS[deck.id] ?? DEFAULT_DECK_IMG}
                   alt=""
-                  className="w-8 h-8 object-contain flex-shrink-0"
+                  className="w-7 h-7 object-contain flex-shrink-0"
                   onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "0"; }}
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground leading-tight truncate">{title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{deck.cards.length} cards</p>
+                  <p className="text-xs font-semibold text-foreground leading-tight truncate">{title}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{deck.cards.length} cards</p>
                 </div>
                 {isCompleted ? (
-                  <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: band.accentBar }}>
-                    <Check className="w-3 h-3 text-white" />
+                  <div className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: band.accentBar }}>
+                    <Check className="w-2.5 h-2.5 text-white" />
                   </div>
                 ) : (
-                  <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                 )}
               </button>
             );
@@ -224,7 +247,7 @@ export function LevelSelect({
 
           {grouped.custom.length > 0 && (
             <>
-              <div className="pt-2 pb-1 sm:col-span-2">
+              <div className="pt-2 pb-1 col-span-2">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">My levels</p>
               </div>
               {grouped.custom.map((deck, i) => {
@@ -233,25 +256,25 @@ export function LevelSelect({
                   <button
                     key={deck.id}
                     onClick={() => onSelectLevel(deck.id)}
-                    className={`w-full flex items-center gap-3 p-4 rounded-3xl transition-all duration-200 text-left active:scale-[0.97] ${
+                    className={`w-full flex items-center gap-2.5 p-3 rounded-2xl transition-all duration-200 text-left active:scale-[0.97] ${
                       isCompleted ? "border border-success/30 bg-success/10" : "bg-card hover:bg-muted"
                     }`}
                     style={!isCompleted ? { border: '1px solid rgba(255,255,255,0.07)' } : undefined}
                   >
-                    <span className="text-xs font-bold w-5 text-center flex-shrink-0 text-muted-foreground">{i + 1}</span>
+                    <span className="text-xs font-bold w-4 text-center flex-shrink-0 text-muted-foreground">{i + 1}</span>
                     <img
                       src={FE("Memo/3D/memo_3d.png")}
                       alt=""
-                      className="w-8 h-8 object-contain flex-shrink-0"
+                      className="w-7 h-7 object-contain flex-shrink-0"
                       onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "0"; }}
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground leading-tight truncate">{deck.title}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{deck.cards.length} cards</p>
+                      <p className="text-xs font-semibold text-foreground leading-tight truncate">{deck.title}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{deck.cards.length} cards</p>
                     </div>
                     {isCompleted
-                      ? <div className="w-5 h-5 rounded-full bg-success flex items-center justify-center flex-shrink-0"><Check className="w-3 h-3 text-white" /></div>
-                      : <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      ? <div className="w-4 h-4 rounded-full bg-success flex items-center justify-center flex-shrink-0"><Check className="w-2.5 h-2.5 text-white" /></div>
+                      : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
                     }
                   </button>
                 );
@@ -295,6 +318,13 @@ export function LevelSelect({
     },
   ];
 
+  // Pick a random shape for each band card once per mount — stable during the session.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const bandShapeIndices = useMemo(
+    () => Array.from({ length: 3 }, () => Math.floor(Math.random() * AMOEBA_COUNT)),
+    [],
+  );
+
   return (
     <div className="w-full flex flex-col gap-5">
 
@@ -303,9 +333,9 @@ export function LevelSelect({
         <button
           onClick={onStudyBookmarked}
           className="w-full flex items-center gap-3 p-3.5 rounded-2xl active:scale-[0.98] transition-transform"
-          style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }}
+          style={{ background: "rgba(251,191,36,0.10)", border: "1px solid rgba(251,191,36,0.28)" }}
         >
-          <Heart className="w-5 h-5 text-red-400 fill-red-400 flex-shrink-0" />
+          <Star className="w-5 h-5 text-amber-400 fill-amber-400 flex-shrink-0" />
           <div className="flex-1 text-left">
             <p className="text-sm font-semibold text-foreground">Favorites</p>
             <p className="text-xs text-muted-foreground">{bookmarkedCount} saved cards</p>
@@ -319,16 +349,15 @@ export function LevelSelect({
         - Mobile  : 2 columns — A1 spans both (col-span-2), A2 + B1 each take 1
         - md+     : 2 columns — A1 spans 2 rows (tall left), A2 + B1 stack on right
       */}
-      {/* No row-gap so A2/B1 can tuck slightly under A1 via negative margin */}
-      <div className="grid grid-cols-2 gap-x-4">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-4">
         {BAND_CARDS.map((b, i) => {
           const decks = grouped[b.id] ?? [];
           const completed = decks.filter(d => completedLevelIds.includes(d.id)).length;
           const pct = decks.length > 0 ? (completed / decks.length) * 100 : 0;
           const isHero = i === 0;
-          const amoebaId = !isHero ? `amoeba-${i % AMOEBA_COUNT}` : null;
+          const amoebaId = !isHero ? `amoeba-${bandShapeIndices[i]}` : null;
 
-          // Slight tilt per card for a "creatively pieced" assembled look
+          // Subtle tilt for "creatively pieced" feel
           const tiltDeg = i === 1 ? -4 : i === 2 ? 3 : 0;
 
           return (
@@ -336,18 +365,14 @@ export function LevelSelect({
               key={b.id}
               onClick={() => onSelectBand(b.id)}
               className={`relative text-left outline-none transition-transform active:scale-[0.97] ${
-                isHero ? "overflow-hidden col-span-2 md:col-span-1 md:row-span-2" : "col-span-1"
+                isHero ? "overflow-hidden col-span-2" : "col-span-1"
               }`}
               style={{
                 background: isHero ? b.bg : "transparent",
                 borderRadius: isHero ? "36px" : undefined,
                 boxShadow: isHero ? `0 6px 0 ${b.shadow}, 0 12px 32px rgba(0,0,0,0.35)` : undefined,
-                minHeight: isHero ? "clamp(200px, 46vw, 300px)" : "clamp(155px, 26vw, 210px)",
-                // A2/B1 tuck under A1 with slight rotation — drop-shadow moved to clip div
+                minHeight: isHero ? "clamp(165px, 38vw, 240px)" : "clamp(130px, 22vw, 170px)",
                 transform: !isHero ? `rotate(${tiltDeg}deg)` : undefined,
-                marginTop: !isHero ? (i === 1 ? '-20px' : '-12px') : undefined,
-                zIndex: !isHero ? 2 : 1,
-                position: 'relative',
               }}
             >
               {/* Non-hero: amoeba-clipped background + drop-shadow + shine.
@@ -391,8 +416,8 @@ export function LevelSelect({
                     <img
                       src={b.img3d}
                       alt=""
-                      className="w-14 h-14 object-contain"
-                      style={{ filter: "drop-shadow(0 6px 12px rgba(0,0,0,0.4))" }}
+                      className="w-11 h-11 object-contain"
+                      style={{ filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.4))" }}
                       onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "0"; }}
                     />
                   )}
@@ -412,18 +437,30 @@ export function LevelSelect({
                       onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "0"; }}
                     />
                   )}
-                  <p
-                    className={`text-white font-black leading-tight ${isHero ? "text-2xl" : "text-lg"}`}
-                    style={{ textShadow: `0 1px ${isHero ? 6 : 4}px rgba(0,0,0,0.25)` }}
-                  >
-                    {b.title}
-                  </p>
-                  <p className={`text-white/70 mt-0.5 mb-2 ${isHero ? "text-xs" : "text-[10px]"}`}>
-                    {isHero ? b.subtitle : `${completed}/${decks.length} decks`}
-                  </p>
-                  <div className={`${isHero ? "h-1.5" : "h-1"} rounded-full bg-black/20 overflow-hidden`}>
-                    <div className="h-full rounded-full bg-white/80 transition-all duration-500" style={{ width: `${pct}%` }} />
-                  </div>
+                  {isHero ? (
+                    <>
+                      <p
+                        className="text-white font-black leading-tight text-2xl"
+                        style={{ textShadow: "0 1px 6px rgba(0,0,0,0.25)" }}
+                      >
+                        {b.title}
+                      </p>
+                      <p className="text-white/70 mt-0.5 mb-2 text-xs">{b.subtitle}</p>
+                      <div className="h-1.5 rounded-full bg-black/20 overflow-hidden">
+                        <div className="h-full rounded-full bg-white/80 transition-all duration-500" style={{ width: `${pct}%` }} />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex items-end justify-between">
+                      <p
+                        className="text-white font-black leading-tight text-base"
+                        style={{ textShadow: "0 1px 4px rgba(0,0,0,0.25)" }}
+                      >
+                        {b.title}
+                      </p>
+                      <ProgressRing pct={pct} />
+                    </div>
+                  )}
                 </div>
               </div>
             </button>
