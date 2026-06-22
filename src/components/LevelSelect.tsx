@@ -371,7 +371,7 @@ export function LevelSelect({
                 background: isHero ? b.bg : "transparent",
                 borderRadius: isHero ? "36px" : undefined,
                 boxShadow: isHero ? `0 6px 0 ${b.shadow}, 0 12px 32px rgba(0,0,0,0.35)` : undefined,
-                minHeight: isHero ? "clamp(165px, 38vw, 240px)" : "clamp(130px, 22vw, 170px)",
+                minHeight: isHero ? "clamp(200px, 46vw, 290px)" : "clamp(130px, 22vw, 170px)",
                 transform: !isHero ? `rotate(${tiltDeg}deg)` : undefined,
               }}
             >
