@@ -1,7 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import type { Level } from "@/lib/flashcardData";
 import { Check, Star, ArrowLeft, ChevronRight } from "lucide-react";
-import { AMOEBA_COUNT } from "@/lib/blobShapes";
 
 // Concentric ripple rings — SVG circles expanding from a bottom-center origin.
 // Light-hit overlay — top-left highlight + bottom-right shadow gives cards
@@ -286,49 +285,64 @@ export function LevelSelect({
     );
   }
 
-  // ── HOME VIEW — 3 big vivid band cards ───────────────────────────────
-  const BAND_CARDS = [
+  // ── HOME VIEW — Microsoft-style glass tiles ──────────────────────────
+  const ALL_TILES = [
     {
       id: "A1" as const,
-      bg: activeLanguage === "arabic"
-        ? "linear-gradient(140deg, #E8A020 0%, #F5C842 55%, #C86428 100%)"
-        : "linear-gradient(140deg, #E8D5B0 0%, #ECBEB4 55%, #519E8A 100%)",
-      shadow: activeLanguage === "arabic" ? "#A0601A" : "#B8956A",
-      img3d: BAND_IMGS.A1,
       title: "Beginner",
       subtitle: "Greetings, numbers, core verbs",
+      c: activeLanguage === "arabic"
+        ? ["#C86428", "#E8A020", "#F5C842"]
+        : ["#C9856A", "#ECBEB4", "#4A9E8A"],
+      active: true,
+      wide: true,
     },
     {
       id: "A2" as const,
-      // Deep emerald → sky blue → vivid indigo — 3 distinct hues, all punchy
-      bg: "linear-gradient(140deg, #059669 0%, #0EA5E9 50%, #6366F1 100%)",
-      shadow: "#047857",
-      img3d: BAND_IMGS.A2,
       title: "Elementary",
       subtitle: "Routines, travel, past tense",
+      c: ["#047857", "#0EA5E9", "#6366F1"],
+      active: true,
+      wide: false,
     },
     {
       id: "B1" as const,
-      // Deep indigo → rich violet → electric magenta — 3 vivid stops
-      bg: "linear-gradient(140deg, #4F46E5 0%, #7C3AED 50%, #C026D3 100%)",
-      shadow: "#3730A3",
-      img3d: BAND_IMGS.B1,
       title: "Intermediate",
-      subtitle: "Opinions, work, storytelling",
+      subtitle: "Opinions, storytelling",
+      c: ["#4F46E5", "#7C3AED", "#C026D3"],
+      active: true,
+      wide: false,
+    },
+    {
+      id: "B2",
+      title: "Upper-Inter.",
+      subtitle: "Nuance & debate",
+      c: ["#334155", "#475569", "#64748B"],
+      active: false,
+      wide: false,
+    },
+    {
+      id: "C1",
+      title: "Advanced",
+      subtitle: "Fluency & professional",
+      c: ["#1E293B", "#334155", "#475569"],
+      active: false,
+      wide: false,
+    },
+    {
+      id: "C2",
+      title: "Mastery",
+      subtitle: "Near-native proficiency",
+      c: ["#0F172A", "#1E293B", "#334155"],
+      active: false,
+      wide: true,
     },
   ];
 
-  // Pick a random shape for each band card once per mount — stable during the session.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const bandShapeIndices = useMemo(
-    () => Array.from({ length: 3 }, () => Math.floor(Math.random() * AMOEBA_COUNT)),
-    [],
-  );
-
   return (
-    <div className="w-full flex flex-col gap-5">
+    <div className="w-full flex flex-col gap-4">
 
-      {/* Bookmarked row */}
+      {/* Favorites */}
       {bookmarkedCount > 0 && onStudyBookmarked && (
         <button
           onClick={onStudyBookmarked}
@@ -344,123 +358,101 @@ export function LevelSelect({
         </button>
       )}
 
-      {/*
-        Responsive band-card grid (bento layout):
-        - Mobile  : 2 columns — A1 spans both (col-span-2), A2 + B1 each take 1
-        - md+     : 2 columns — A1 spans 2 rows (tall left), A2 + B1 stack on right
-      */}
-      <div className="grid grid-cols-2 gap-x-4 gap-y-4">
-        {BAND_CARDS.map((b, i) => {
-          const decks = grouped[b.id] ?? [];
+      {/* Tile grid */}
+      <div className="grid grid-cols-2 gap-3">
+        {ALL_TILES.map((tile) => {
+          const decks = tile.active ? (grouped[tile.id as "A1" | "A2" | "B1"] ?? []) : [];
           const completed = decks.filter(d => completedLevelIds.includes(d.id)).length;
           const pct = decks.length > 0 ? (completed / decks.length) * 100 : 0;
-          const isHero = i === 0;
-          const amoebaId = !isHero ? `amoeba-${bandShapeIndices[i]}` : null;
-
-          // Subtle tilt for "creatively pieced" feel
-          const tiltDeg = i === 1 ? -4 : i === 2 ? 3 : 0;
+          const [c0, c1, c2] = tile.c;
 
           return (
             <button
-              key={b.id}
-              onClick={() => onSelectBand(b.id)}
-              className={`relative text-left outline-none transition-transform active:scale-[0.97] ${
-                isHero ? "overflow-hidden col-span-2" : "col-span-1"
-              }`}
+              key={tile.id}
+              onClick={() => { if (tile.active) onSelectBand(tile.id as "A1" | "A2" | "B1"); }}
+              className={`relative overflow-hidden transition-transform outline-none ${
+                tile.wide ? "col-span-2" : "col-span-1"
+              } ${tile.active ? "active:scale-[0.97]" : "cursor-default"}`}
               style={{
-                background: isHero ? b.bg : "transparent",
-                borderRadius: isHero ? "36px" : undefined,
-                boxShadow: isHero ? `0 6px 0 ${b.shadow}, 0 12px 32px rgba(0,0,0,0.35)` : undefined,
-                minHeight: isHero ? "clamp(200px, 46vw, 290px)" : "clamp(130px, 22vw, 170px)",
-                transform: !isHero ? `rotate(${tiltDeg}deg)` : undefined,
+                borderRadius: 20,
+                minHeight: tile.wide
+                  ? "clamp(88px, 19vw, 118px)"
+                  : "clamp(115px, 27vw, 158px)",
               }}
             >
-              {/* Non-hero: amoeba-clipped background + drop-shadow + shine.
-                  drop-shadow on the clip div so it follows the organic shape only.
-                  Background overshoots 25% so extending lobes have paint. */}
-              {!isHero && (
-                <div
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    clipPath: `url(#${amoebaId})`,
-                    filter: `drop-shadow(0 6px 0 ${b.shadow}) drop-shadow(0 10px 24px rgba(0,0,0,0.4))`,
-                  }}
-                >
-                  <div
-                    className="absolute"
-                    style={{ background: b.bg, left: '-25%', right: '-25%', top: '-25%', bottom: '-25%' }}
-                  />
-                  <CardShine />
-                </div>
+              {/* Bokeh background */}
+              <div
+                className="absolute pointer-events-none"
+                style={{
+                  inset: "-50%",
+                  background: `
+                    radial-gradient(ellipse at 22% 30%, ${c0}dd 0%, transparent 52%),
+                    radial-gradient(ellipse at 75% 20%, ${c1}cc 0%, transparent 48%),
+                    radial-gradient(ellipse at 55% 82%, ${c2}bb 0%, transparent 52%),
+                    ${c0}88
+                  `,
+                  filter: "blur(26px)",
+                }}
+              />
+
+              {/* Darken for coming-soon */}
+              {!tile.active && (
+                <div className="absolute inset-0 pointer-events-none" style={{ background: "rgba(0,0,0,0.55)" }} />
               )}
 
-              {/* A1 scenic background image (hero only) */}
-              {isHero && b.id === "A1" && (
-                <img
-                  src={activeLanguage === "arabic" ? "/images/ar-a1-bg.png" : "/images/a1-bg.png"}
-                  alt=""
-                  aria-hidden="true"
-                  className="absolute bottom-0 left-0 w-full pointer-events-none"
-                  style={{ opacity: 1, mixBlendMode: "normal", transform: "translateY(calc(22% - 4px))" }}
-                />
-              )}
+              {/* Glass edge */}
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  borderRadius: 20,
+                  border: `1px solid ${tile.active ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.06)"}`,
+                  boxShadow: tile.active ? "inset 0 1px 0 rgba(255,255,255,0.13), 0 8px 28px rgba(0,0,0,0.4)" : "none",
+                }}
+              />
 
-              {/* Hero gets its shine separately (not amoeba-clipped) */}
-              {isHero && <CardShine strong />}
+              {/* Shine on active tiles */}
+              {tile.active && <CardShine />}
 
-              <div className={`absolute inset-0 flex flex-col justify-between ${isHero ? "p-5" : "p-4"}`}>
-                {/* Top row */}
-                <div className={`flex items-start ${isHero ? "justify-end" : "justify-between"}`}>
-                  {/* Small cards: illustration top-left */}
-                  {!isHero && (
-                    <img
-                      src={b.img3d}
-                      alt=""
-                      className="w-11 h-11 object-contain"
-                      style={{ filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.4))" }}
-                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "0"; }}
-                    />
-                  )}
-                  <span className={`text-white/70 font-bold px-2 py-0.5 rounded-full bg-black/20 ${isHero ? "text-xs" : "text-[10px]"}`}>
-                    {b.id} {isHero ? `· ${completed}/${decks.length}` : ""}
+              {/* Content */}
+              <div className="relative z-10 p-4 h-full flex flex-col justify-between" style={{ minHeight: "inherit" }}>
+                {/* Top: band code + count / soon badge */}
+                <div className="flex items-start justify-between">
+                  <span
+                    className="font-black tracking-[0.22em] uppercase"
+                    style={{
+                      fontFamily: "'Courier New', monospace",
+                      fontSize: 10,
+                      color: tile.active ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.28)",
+                    }}
+                  >
+                    {tile.id}
                   </span>
+                  {tile.active ? (
+                    <span className="text-[10px] font-medium" style={{ color: "rgba(255,255,255,0.38)" }}>
+                      {completed}/{decks.length}
+                    </span>
+                  ) : (
+                    <span
+                      className="text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full"
+                      style={{ color: "rgba(255,255,255,0.28)", border: "1px solid rgba(255,255,255,0.1)" }}
+                    >
+                      Soon
+                    </span>
+                  )}
                 </div>
 
-                {/* Bottom: illustration (hero) + text + bar */}
-                <div>
-                  {isHero && (
-                    <img
-                      src={b.img3d}
-                      alt=""
-                      className="w-20 h-20 object-contain mb-2"
-                      style={{ filter: "drop-shadow(0 8px 18px rgba(0,0,0,0.4))" }}
-                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "0"; }}
-                    />
-                  )}
-                  {isHero ? (
-                    <>
-                      <p
-                        className="text-white font-black leading-tight text-2xl"
-                        style={{ textShadow: "0 1px 6px rgba(0,0,0,0.25)" }}
-                      >
-                        {b.title}
-                      </p>
-                      <p className="text-white/70 mt-0.5 mb-2 text-xs">{b.subtitle}</p>
-                      <div className="h-1.5 rounded-full bg-black/20 overflow-hidden">
-                        <div className="h-full rounded-full bg-white/80 transition-all duration-500" style={{ width: `${pct}%` }} />
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex items-end justify-between">
-                      <p
-                        className="text-white font-black leading-tight text-base"
-                        style={{ textShadow: "0 1px 4px rgba(0,0,0,0.25)" }}
-                      >
-                        {b.title}
-                      </p>
-                      <ProgressRing pct={pct} />
-                    </div>
-                  )}
+                {/* Bottom: title + progress ring */}
+                <div className="flex items-end justify-between">
+                  <p
+                    className="font-black leading-tight"
+                    style={{
+                      fontSize: tile.wide ? 17 : 14,
+                      color: tile.active ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.3)",
+                    }}
+                  >
+                    {tile.title}
+                  </p>
+                  {tile.active && <ProgressRing pct={pct} />}
                 </div>
               </div>
             </button>
