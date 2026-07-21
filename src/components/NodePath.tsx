@@ -29,8 +29,19 @@ export function NodePath({ levels, completedLevelIds, onStartLevel, bandTitle, o
   const activeGroups = ALL_TILES.filter(tile => tile.active && grouped[tile.id]?.length > 0);
 
   return (
-    <div className="w-full min-h-[100dvh] flex flex-col items-center pt-0 pb-24 relative gap-16">
+    <div className="w-full min-h-[100dvh] flex flex-col items-center pt-0 pb-24 relative gap-10">
       
+      {/* Sticky Header */}
+      <div className="sticky top-0 w-full z-50 bg-[#0f0f13]/80 backdrop-blur-xl border-b border-white/5 py-4 px-5 flex items-center justify-center mb-2">
+        <div className="flex flex-col items-center text-center">
+          <h2 className="text-white/50 font-bold uppercase tracking-widest text-[10px] mb-0.5">Current Path</h2>
+          <h1 className="text-white font-black text-xl relative">
+            {bandTitle}
+            <WavyLine className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-32 opacity-80" />
+          </h1>
+        </div>
+      </div>
+
       {activeGroups.map((tile, groupIdx) => {
         const groupLevels = grouped[tile.id];
         const completed = groupLevels.filter(d => completedLevelIds.includes(d.id)).length;
@@ -42,14 +53,14 @@ export function NodePath({ levels, completedLevelIds, onStartLevel, bandTitle, o
         if (activeIndex === -1) activeIndex = groupLevels.length; // all completed
 
         return (
-          <div key={tile.id} className="w-full flex flex-col items-center px-1 mt-6">
+          <div key={tile.id} className="w-full flex flex-col items-center px-4">
             
             {/* The Huge Gradient Card */}
             <div
               className={`relative overflow-hidden outline-none transition-opacity shadow-2xl w-full mb-8`}
               style={{
-                borderRadius: 32,
-                minHeight: 280,
+                borderRadius: 24,
+                minHeight: 160,
               }}
             >
               {/* Bokeh gradient */}
