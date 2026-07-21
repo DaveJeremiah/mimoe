@@ -380,42 +380,40 @@ export function Flashcard({
           */}
           <div
             className={`relative ${enterAnim} ${exitAnim}`}
-            style={{ aspectRatio: '6/5', transformOrigin: 'center center' }}
+            style={{ aspectRatio: '1/1', transformOrigin: 'center center' }}
           >
 
             {/* ── Ghost card 2 (back) — visible when 3+ cards remain ── */}
-            {remaining >= 3 && (
-              <div
-                className="absolute rounded-[20px]"
-                style={{
-                  left: '14%', right: '14%', top: 0, height: '90%',
-                  background: 'hsl(var(--background))',
-                  border: `2px solid ${bandStyle.ghost2}`,
-                  boxShadow: '0 6px 22px rgba(0,0,0,0.22)',
-                  opacity: exitAnim ? 0 : 1,
-                  transition: 'opacity 0.25s ease',
-                }}
-              />
-            )}
+            {remaining >= 3 &&                <div
+                  className="absolute rounded-[16px]"
+                  style={{
+                    left: '14%', right: '14%', top: 0, height: '90%',
+                    background: 'hsl(var(--background))',
+                    border: `2px solid rgba(255, 255, 255, 0.08)`,
+                    boxShadow: '0 6px 22px rgba(0,0,0,0.22)',
+                    opacity: exitAnim ? 0 : 1,
+                    transition: 'opacity 0.25s ease',
+                  }}
+                />
+            }
 
             {/* ── Ghost card 1 (middle) — visible when 2+ cards remain ── */}
-            {remaining >= 2 && (
-              <div
-                className="absolute rounded-[22px]"
-                style={{
-                  left: '11%', right: '11%', top: '4%', height: '90%',
-                  background: 'hsl(var(--background))',
-                  border: `2px solid ${bandStyle.ghost1}`,
-                  boxShadow: '0 6px 18px rgba(0,0,0,0.16)',
-                  opacity: exitAnim ? 0 : 1,
-                  transition: 'opacity 0.25s ease',
-                }}
-              />
-            )}
+            {remaining >= 2 &&                <div
+                  className="absolute rounded-[18px]"
+                  style={{
+                    left: '11%', right: '11%', top: '4%', height: '90%',
+                    background: 'hsl(var(--background))',
+                    border: `2px solid rgba(255, 255, 255, 0.12)`,
+                    boxShadow: '0 6px 18px rgba(0,0,0,0.16)',
+                    opacity: exitAnim ? 0 : 1,
+                    transition: 'opacity 0.25s ease',
+                  }}
+                />
+            }
 
             {/* ── Front card ── */}
             <div
-              className="absolute rounded-[24px]"
+              className="absolute rounded-[20px]"
               style={{
                 left: '8%', right: '8%', top: '8%', bottom: 0,
                 background: 'hsl(var(--background))',
@@ -467,7 +465,7 @@ export function Flashcard({
                   <div className="flex flex-col items-center gap-2 animate-fade-in z-10 px-4 mt-6">
                     <h2
                       className={`font-bold text-[2rem] text-center leading-snug lowercase`}
-                      style={{ color: '#ffffff', textShadow: '0 2px 12px rgba(0,0,0,0.4)' }}
+                      style={{ color: '#ffffff' }}
                     >
                       {card.english}
                     </h2>
