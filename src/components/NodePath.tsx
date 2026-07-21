@@ -29,7 +29,7 @@ export function NodePath({ levels, completedLevelIds, onStartLevel, bandTitle, o
   const activeGroups = ALL_TILES.filter(tile => tile.active && grouped[tile.id]?.length > 0);
 
   return (
-    <div className="w-full min-h-[100dvh] flex flex-col items-center pt-0 pb-24 relative gap-10">
+    <div className="w-full flex flex-col items-center pt-0 pb-6 relative gap-10">
       
       {/* Sticky Header */}
       <div className="sticky top-0 w-full z-50 bg-[#0f0f13]/80 backdrop-blur-xl border-b border-white/5 py-4 px-5 flex items-center justify-center mb-2">
