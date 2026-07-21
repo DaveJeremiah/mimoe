@@ -1501,7 +1501,7 @@ export function FlashcardApp() {
               />
             )}
             {activeNavTab === "wordbank" && (
-              <div className="w-full flex flex-col pt-12 pb-32 px-5 min-h-[100dvh]">
+              <div className="w-full flex flex-col pt-6 pb-24 px-5 min-h-[100dvh]">
                 <div className="flex items-center justify-between mb-8">
                   <h1 className="text-white text-3xl font-bold">Word Bank</h1>
                   <button onClick={() => setActiveNavTab("personal")} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-full text-xs font-bold text-white transition-colors">Back</button>

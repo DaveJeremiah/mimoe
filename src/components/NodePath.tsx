@@ -20,7 +20,7 @@ export function NodePath({ levels, completedLevelIds, onStartLevel, bandTitle, o
   if (activeIndex === -1) activeIndex = levels.length; // all completed
 
   return (
-    <div className="w-full min-h-[100dvh] flex flex-col items-center pt-0 pb-32 relative">
+    <div className="w-full min-h-[100dvh] flex flex-col items-center pt-0 pb-24 relative">
       <div className="w-full mb-6 px-5 flex items-center justify-between">
         {onBack ? (
           <button onClick={onBack} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-full text-xs font-bold text-white transition-colors">
