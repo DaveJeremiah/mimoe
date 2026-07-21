@@ -423,8 +423,6 @@ export function Flashcard({
                 boxShadow: '0 16px 44px rgba(0,0,0,0.38), 0 2px 8px rgba(0,0,0,0.18)',
               }}
             >
-              <img src={logoLight} alt="" style={{ height: 19, width: 'auto', opacity: 0.95, marginTop: 9 }} />
-
               {/* Bookmark star — top-left corner */}
               {onToggleBookmark && (
                 <button
