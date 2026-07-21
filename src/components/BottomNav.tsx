@@ -40,6 +40,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
           </button>
         );
       })}
+      </div>
     </div>
   );
 }

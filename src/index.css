@@ -63,6 +63,13 @@
     background: #121215;
     overflow: hidden;
     height: 100dvh;
+    /* Deep iPhone fixes */
+    height: -webkit-fill-available;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    left: 0;
+    overscroll-behavior: none;
   }
 
   body {
@@ -71,7 +78,15 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow: hidden;
-    height: 100%;
+    /* Deep iPhone fixes */
+    height: 100dvh;
+    height: -webkit-fill-available;
+    min-height: -webkit-fill-available;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    left: 0;
+    overscroll-behavior: none;
     /* Prevent accidental text selection (and iOS copy/keyboard toolbar) on tap */
     -webkit-user-select: none;
     user-select: none;
