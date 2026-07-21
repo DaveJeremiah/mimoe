@@ -12,7 +12,7 @@
 
     --card: 0 0% 7%;              /* #111111 */
     --card-foreground: 0 0% 90%;
-
+    
     --popover: 0 0% 9%;           /* #171717 */
     --popover-foreground: 0 0% 90%;
 
@@ -27,13 +27,20 @@
 
     --accent: 270 60% 55%;
     --accent-foreground: 0 0% 100%;
-
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 0 0% 14%;           /* #242424 — matches rgba(255,255,255,0.08) on black */
     --input: 0 0% 11%;
     --ring: 270 60% 55%;
+  }
+
+  body {
+    background-color: #121215;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+}
 
     --radius: 1rem;
 
