@@ -78,7 +78,7 @@ interface LevelSelectProps {
 }
 
 // Colors match the home band cards exactly
-const BANDS = [
+export const BANDS = [
   {
     id: "A1" as const,
     label: "A1",
