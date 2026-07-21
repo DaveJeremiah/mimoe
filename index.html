@@ -24,9 +24,25 @@
     <meta name="twitter:title" content="Mimoe — French Flashcard Trainer">
     <meta property="og:description" content="Learn French vocabulary and phrases with speech recognition flashcards">
     <meta name="twitter:description" content="Learn French vocabulary and phrases with speech recognition flashcards">
+    <style>
+      /* Absolute nuclear option for iOS Safari background bleeding */
+      :root, html, body {
+        background-color: #121215 !important;
+      }
+      /* Ensure nothing causes overflow */
+      html, body {
+        overflow: hidden !important;
+        position: fixed !important; /* Lock the viewport */
+        width: 100% !important;
+        height: 100% !important;
+      }
+    </style>
   </head>
 
   <body>
+    <!-- Absolute nuclear background fill -->
+    <div style="position: fixed; top: -50vh; left: -50vw; width: 200vw; height: 200vh; background-color: #121215 !important; z-index: -999999; pointer-events: none;"></div>
+    
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
