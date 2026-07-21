@@ -17,8 +17,12 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
 
   return (
     <div 
-      className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around pt-2 pb-1 px-4 bg-[#121215]/95 backdrop-blur-md"
-      style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
+      className="fixed z-50 flex items-center justify-around py-2 px-2 bg-[#121215]/95 backdrop-blur-md rounded-full shadow-2xl border border-white/10"
+      style={{ 
+        bottom: "max(env(safe-area-inset-bottom, 16px), 16px)",
+        left: "16px",
+        right: "16px"
+      }}
     >
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
