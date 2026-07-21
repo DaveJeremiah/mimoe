@@ -7,7 +7,7 @@ export function useAppUpdate() {
     // Check for updates every minute by comparing the latest commit SHA from GitHub API
     const checkUpdate = async () => {
       try {
-        const res = await fetch("https://api.github.com/repos/DaveJeremiah/mimoe/commits/main");
+        const res = await fetch("https://api.github.com/repos/DaveJeremiah/mimoe/commits/main", { cache: "no-store" });
         const data = await res.json();
         const latestSha = data.sha;
         
