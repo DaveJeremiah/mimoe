@@ -42,7 +42,7 @@ export function WavyLine({ className = "", colors = ["#e05070", "#e07030"] }: { 
   );
 }
 
-function ProgressRing({ pct }: { pct: number }) {
+export function ProgressRing({ pct }: { pct: number }) {
   const r = 14;
   const circ = 2 * Math.PI * r;
   return (
@@ -317,8 +317,9 @@ export function LevelSelect({
 
   // ── HOME VIEW — Microsoft-style glass tiles ──────────────────────────
   const scenicBg = activeLanguage === "arabic" ? "/images/ar-a1-bg.png" : "/images/a1-bg.png";
-
-  const ALL_TILES = [
+  const ALL_TILES = getAllTiles(activeLanguage);
+export function getAllTiles(activeLanguage?: string) {
+  return [
     {
       id: "A1" as const,
       title: "Beginner",
@@ -349,6 +350,7 @@ export function LevelSelect({
     { id: "C1", title: "Advanced",      c: ["#1E293B", "#334155", "#475569"], active: false, wide: false, img3d: undefined },
     { id: "C2", title: "Mastery",       c: ["#0F172A", "#1E293B", "#334155"], active: false, wide: true,  img3d: undefined },
   ];
+}
 
   return (
     <div className="w-full flex flex-col gap-4">

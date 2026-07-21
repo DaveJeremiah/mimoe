@@ -1465,14 +1465,10 @@ export function FlashcardApp() {
           <div className="w-full overflow-x-hidden">
             {activeNavTab === "home" && (
               <NodePath
-                levels={selectedBand ? levels.filter(l => l.cefr === selectedBand) : levels}
+                levels={levels}
                 completedLevelIds={completedIds}
                 onStartLevel={(levelId) => startLevel(levelId)}
-                bandTitle={selectedBand ? BANDS.find(b=>b.id === selectedBand)?.title || selectedBand : "All Levels"}
-                onBack={selectedBand ? () => {
-                  setSelectedBand(null);
-                  setActiveNavTab("library");
-                } : undefined}
+                bandTitle="All Levels"
               />
             )}
             {activeNavTab === "library" && (
