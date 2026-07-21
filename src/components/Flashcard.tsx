@@ -198,6 +198,7 @@ export function Flashcard({
   // With PTT there's no continuous mic to pause — just gate the ttsRef and
   // optionally advance when done.
   const speakGated = useCallback((text: string, onDone?: () => void) => {
+    cancelPTT(); // Stop mic so TTS doesn't trigger VAD and kill it permanently
     setIsSpeaking(true);
     ttsGateRef.current = true;
     if (gateSafetyRef.current) window.clearTimeout(gateSafetyRef.current);
@@ -225,7 +226,7 @@ export function Flashcard({
     } else {
       speakFrench(text, onFinish, lcRef.current);
     }
-  }, []);
+  }, [cancelPTT]);
 
   useEffect(() => { stateRef.current = state; },       [state]);
   useEffect(() => { targetRef.current = targetWord; }, [targetWord]);
@@ -388,7 +389,7 @@ export function Flashcard({
                 className="absolute rounded-[20px]"
                 style={{
                   left: '14%', right: '14%', top: 0, height: '90%',
-                  background: '#121215',
+                  background: 'hsl(var(--background))',
                   border: `2px solid ${bandStyle.ghost2}`,
                   boxShadow: '0 6px 22px rgba(0,0,0,0.22)',
                   opacity: exitAnim ? 0 : 1,
@@ -403,7 +404,7 @@ export function Flashcard({
                 className="absolute rounded-[22px]"
                 style={{
                   left: '11%', right: '11%', top: '4%', height: '90%',
-                  background: '#121215',
+                  background: 'hsl(var(--background))',
                   border: `2px solid ${bandStyle.ghost1}`,
                   boxShadow: '0 6px 18px rgba(0,0,0,0.16)',
                   opacity: exitAnim ? 0 : 1,
@@ -417,34 +418,12 @@ export function Flashcard({
               className="absolute rounded-[24px]"
               style={{
                 left: '8%', right: '8%', top: '8%', bottom: 0,
-                background: '#121215',
+                background: 'hsl(var(--background))',
                 border: `2px solid ${bandStyle.cardBg}`,
                 boxShadow: '0 16px 44px rgba(0,0,0,0.38), 0 2px 8px rgba(0,0,0,0.18)',
               }}
             >
-              {/* Subtle top-left sheen */}
-              <div className="absolute inset-0 rounded-[24px] pointer-events-none"
-                style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.14) 0%, transparent 55%)' }} />
-
-              {/* ── Ruled lines background ── */}
-              <div
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                  background: `repeating-linear-gradient(to bottom, transparent, transparent 39px, rgba(255,255,255,0.05) 39px, rgba(255,255,255,0.05) 40px)`,
-                  backgroundPosition: '0 60px'
-                }}
-              />
-
-              {/* Dark header arc with logo resting at center */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 select-none pointer-events-none flex items-start justify-center z-20"
-                style={{
-                  width: 150, height: 54,
-                  background: 'linear-gradient(180deg, #1b1726 0%, #15131f 100%)',
-                  borderRadius: '0 0 80px 80px',
-                  boxShadow: '0 5px 14px rgba(0,0,0,0.30), inset 0 -1px 1px rgba(255,255,255,0.05)',
-                }}>
-                <img src={logoLight} alt="" style={{ height: 19, width: 'auto', opacity: 0.95, marginTop: 9 }} />
-              </div>
+              <img src={logoLight} alt="" style={{ height: 19, width: 'auto', opacity: 0.95, marginTop: 9 }} />
 
               {/* Bookmark star — top-left corner */}
               {onToggleBookmark && (
