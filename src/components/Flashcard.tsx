@@ -386,7 +386,7 @@ export function Flashcard({
 
             {/* ── Ghost card 2 (back) — visible when 3+ cards remain ── */}
             {remaining >= 3 &&                <div
-                  className="absolute rounded-[16px]"
+                  className="absolute rounded-[28px]"
                   style={{
                     left: '14%', right: '14%', top: 0, height: '90%',
                     background: 'hsl(var(--background))',
@@ -398,7 +398,7 @@ export function Flashcard({
 
             {/* ── Ghost card 1 (middle) — visible when 2+ cards remain ── */}
             {remaining >= 2 &&                <div
-                  className="absolute rounded-[18px]"
+                  className="absolute rounded-[30px]"
                   style={{
                     left: '11%', right: '11%', top: '4%', height: '90%',
                     background: 'hsl(var(--background))',
@@ -410,7 +410,7 @@ export function Flashcard({
 
             {/* ── Front card ── */}
             <div
-              className={`absolute rounded-[20px] ${enterAnim} ${exitAnim}`}
+              className={`absolute rounded-[32px] ${enterAnim} ${exitAnim}`}
               style={{
                 left: '8%', right: '8%', top: '8%', bottom: 0,
                 background: 'hsl(var(--background))',
