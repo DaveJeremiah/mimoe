@@ -388,7 +388,8 @@ export function Flashcard({
                 className="absolute rounded-[20px]"
                 style={{
                   left: '14%', right: '14%', top: 0, height: '90%',
-                  background: bandStyle.ghost2,
+                  background: '#121215',
+                  border: `2px solid ${bandStyle.ghost2}`,
                   boxShadow: '0 6px 22px rgba(0,0,0,0.22)',
                   opacity: exitAnim ? 0 : 1,
                   transition: 'opacity 0.25s ease',
@@ -402,7 +403,8 @@ export function Flashcard({
                 className="absolute rounded-[22px]"
                 style={{
                   left: '11%', right: '11%', top: '4%', height: '90%',
-                  background: bandStyle.ghost1,
+                  background: '#121215',
+                  border: `2px solid ${bandStyle.ghost1}`,
                   boxShadow: '0 6px 18px rgba(0,0,0,0.16)',
                   opacity: exitAnim ? 0 : 1,
                   transition: 'opacity 0.25s ease',
@@ -415,13 +417,23 @@ export function Flashcard({
               className="absolute rounded-[24px]"
               style={{
                 left: '8%', right: '8%', top: '8%', bottom: 0,
-                background: bandStyle.cardBg,
+                background: '#121215',
+                border: `2px solid ${bandStyle.cardBg}`,
                 boxShadow: '0 16px 44px rgba(0,0,0,0.38), 0 2px 8px rgba(0,0,0,0.18)',
               }}
             >
               {/* Subtle top-left sheen */}
               <div className="absolute inset-0 rounded-[24px] pointer-events-none"
                 style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.14) 0%, transparent 55%)' }} />
+
+              {/* ── Ruled lines background ── */}
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: `repeating-linear-gradient(to bottom, transparent, transparent 39px, rgba(255,255,255,0.05) 39px, rgba(255,255,255,0.05) 40px)`,
+                  backgroundPosition: '0 60px'
+                }}
+              />
 
               {/* Dark header arc with logo resting at center */}
               <div className="absolute top-0 left-1/2 -translate-x-1/2 select-none pointer-events-none flex items-start justify-center z-20"
@@ -475,10 +487,10 @@ export function Flashcard({
 
                 {/* QUESTION */}
                 {isQuestion && (
-                  <div className="flex flex-col items-center gap-3">
+                  <div className="flex flex-col items-center gap-2 animate-fade-in z-10 px-4 mt-6">
                     <h2
-                      className="font-black text-[1.5rem] text-center leading-snug tracking-tight"
-                      style={{ color: 'rgba(255,255,255,0.96)' }}
+                      className={`font-bold text-[2rem] text-center leading-snug lowercase`}
+                      style={{ color: '#ffffff', textShadow: '0 2px 12px rgba(0,0,0,0.4)' }}
                     >
                       {card.english}
                     </h2>
