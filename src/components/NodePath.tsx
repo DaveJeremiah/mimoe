@@ -122,8 +122,10 @@ export function NodePath({ levels, completedLevelIds, onStartLevel, bandTitle, o
                 const isLocked = i > activeIndex;
                 const offset = i % 2 === 0 ? -45 : 45;
 
+                const isVeryLastNode = groupIdx === activeGroups.length - 1 && i === groupLevels.length - 1;
+
                 return (
-                  <div key={level.id} className="relative z-10 w-full flex justify-center py-7">
+                  <div key={level.id} className={`relative z-10 w-full flex justify-center pt-7 ${isVeryLastNode ? 'pb-0' : 'pb-7'}`}>
                     <button
                       onClick={() => {
                         if (!isLocked) setSelectedNode(level);
