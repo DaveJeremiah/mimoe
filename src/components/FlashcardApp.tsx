@@ -631,8 +631,8 @@ export function FlashcardApp() {
     if (isDeckComplete && selectedLevelId && !isBookmarkedSession) {
       const allCorrectFirstTry = allCards.length > 0 && failedCards.size === 0;
 
-      // Only mark complete on a perfect run (zero mistakes)
-      if (allCorrectFirstTry && !completedIds.includes(selectedLevelId)) {
+      // Mark complete when the deck is finished (whether perfect or not)
+      if (!completedIds.includes(selectedLevelId)) {
         setCompletedIds((prev) => [...prev, selectedLevelId]);
       }
 
