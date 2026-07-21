@@ -17,16 +17,16 @@ export function CollectionCard({ collection, index = 0, onStudy, onEdit, onDelet
 
   return (
     <div 
-      className="relative w-full flex items-center gap-3 p-4 rounded-[28px] transition-all duration-200 text-left active:scale-[0.97] overflow-hidden"
+      className="relative w-full flex items-center gap-3 p-4 rounded-[28px] transition-all duration-200 text-left active:scale-[0.97]"
       style={{
-        background: "rgba(255,255,255,0.06)",
-        border: "1px solid rgba(255,255,255,0.08)",
+        background: "transparent",
+        border: "2px solid rgba(255,255,255,0.15)",
         boxShadow: "0 8px 32px rgba(0,0,0,0.2)"
       }}
       onClick={() => onStudy(collection)}
     >
       {/* Subtle glass reflection */}
-      <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 50%)" }} />
+      <div className="absolute inset-0 pointer-events-none rounded-[28px]" style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 50%)" }} />
       
       {/* Icon / Emoji */}
       <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 relative z-10 shadow-inner">
