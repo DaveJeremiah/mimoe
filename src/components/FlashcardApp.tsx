@@ -1269,7 +1269,7 @@ export function FlashcardApp() {
     )}
 
     <div
-      className={`h-[100dvh] overflow-y-hidden flex flex-col items-center w-full ${selectedLevelId ? 'pt-[61px] px-[15px] md:px-6 pb-36' : 'pt-0 px-0 pb-0'}`}
+      className={`h-full overflow-y-hidden flex flex-col items-center w-full ${selectedLevelId ? 'pt-[61px] px-[15px] md:px-6 pb-24' : 'pt-0 px-0 pb-0'}`}
       onTouchStart={handleSessionTouchStart}
       onTouchEnd={handleSessionTouchEnd}
     >
