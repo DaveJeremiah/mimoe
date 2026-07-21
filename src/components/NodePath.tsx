@@ -6,12 +6,12 @@ import { WavyLine, BANDS, ProgressRing, getAllTiles } from "./LevelSelect";
 
 function VerticalWavyLine({ className = "" }: { className?: string }) {
   return (
-    <div className={`absolute top-4 bottom-4 w-16 left-1/2 -translate-x-1/2 z-0 overflow-hidden ${className}`}>
+    <div className={`absolute top-4 bottom-4 w-32 left-1/2 -translate-x-1/2 z-0 overflow-hidden ${className}`}>
       <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <pattern id="wavePattern" x="0" y="0" width="64" height="240" patternUnits="userSpaceOnUse">
+          <pattern id="wavePattern" x="0" y="0" width="128" height="240" patternUnits="userSpaceOnUse">
             <path
-              d="M32 0 C72 60, -8 180, 32 240"
+              d="M64 0 C140 60, -12 180, 64 240"
               stroke="#B875FF"
               strokeWidth="6"
               strokeOpacity="0.3"
