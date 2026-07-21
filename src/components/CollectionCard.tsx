@@ -20,14 +20,11 @@ export function CollectionCard({ collection, index = 0, onStudy, onEdit, onDelet
       className="relative w-full flex items-center gap-3 p-4 rounded-[28px] transition-all duration-200 text-left active:scale-[0.97]"
       style={{
         background: "transparent",
-        border: "2px solid rgba(255,255,255,0.15)",
+        border: "2px solid rgba(184, 117, 255, 0.3)",
         boxShadow: "0 8px 32px rgba(0,0,0,0.2)"
       }}
       onClick={() => onStudy(collection)}
     >
-      {/* Subtle glass reflection */}
-      <div className="absolute inset-0 pointer-events-none rounded-[28px]" style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 50%)" }} />
-      
       {/* Icon / Emoji */}
       <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 relative z-10 shadow-inner">
         <span style={{ fontSize: 24, filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.3))' }}>{catInfo?.emoji ?? "📚"}</span>
