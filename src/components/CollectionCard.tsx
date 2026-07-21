@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MoreVertical, Edit, Trash2 } from "lucide-react";
+import { MoreVertical, Edit, Trash2, Play } from "lucide-react";
 import type { Collection } from "@/lib/collectionTypes";
 import { COLLECTION_CATEGORIES } from "@/lib/collectionTypes";
 
@@ -14,40 +14,65 @@ interface CollectionCardProps {
 export function CollectionCard({ collection, index = 0, onStudy, onEdit, onDelete }: CollectionCardProps) {
   const [showMenu, setShowMenu] = useState(false);
   const catInfo = COLLECTION_CATEGORIES.find(c => c.value === collection.category);
-  const gradients = [
-    "radial-gradient(circle at 20% 30%, #C86428 0%, transparent 60%), radial-gradient(circle at 80% 20%, #F5C842 0%, transparent 60%), radial-gradient(circle at 50% 80%, #E8A020 0%, transparent 60%), #1a1a24",
-    "radial-gradient(circle at 20% 30%, #047857 0%, transparent 60%), radial-gradient(circle at 80% 20%, #0EA5E9 0%, transparent 60%), radial-gradient(circle at 50% 80%, #6366F1 0%, transparent 60%), #1a1a24",
-    "radial-gradient(circle at 20% 30%, #4F46E5 0%, transparent 60%), radial-gradient(circle at 80% 20%, #7C3AED 0%, transparent 60%), radial-gradient(circle at 50% 80%, #C026D3 0%, transparent 60%), #1a1a24",
-  ];
-  const bgGradient = gradients[index % gradients.length];
 
   return (
-    <div className="relative overflow-hidden shadow-2xl transition-transform active:scale-[0.98]"
-         style={{ borderRadius: 32, minHeight: 160, transformOrigin: 'center center' }}>
+    <div 
+      className="relative w-full flex items-center gap-3 p-4 rounded-[28px] transition-all duration-200 text-left active:scale-[0.97] overflow-hidden"
+      style={{
+        background: "rgba(255,255,255,0.06)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.2)"
+      }}
+      onClick={() => onStudy(collection)}
+    >
+      {/* Subtle glass reflection */}
+      <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 50%)" }} />
       
-      {/* Background Pattern */}
-      <div className="absolute inset-0 pointer-events-none" style={{ background: bgGradient }} />
-
-      {/* Emoji top-left */}
-      <div className="absolute top-5 left-5 z-20 pointer-events-none">
-         <span style={{ fontSize: 48, filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.4))' }}>{catInfo?.emoji ?? "📚"}</span>
+      {/* Icon / Emoji */}
+      <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 relative z-10 shadow-inner">
+        <span style={{ fontSize: 24, filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.3))' }}>{catInfo?.emoji ?? "📚"}</span>
       </div>
 
-      {/* Menu button top-right */}
-      <button
-        onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
-        className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:bg-white/20 active:scale-95"
-        style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.15)' }}
-      >
-        <MoreVertical className="w-5 h-5 text-white" />
-      </button>
+      <div className="flex-1 min-w-0 relative z-10">
+        <p className="text-[15px] font-bold text-white leading-tight truncate pr-2">{collection.title}</p>
+        
+        {/* Pills */}
+        <div className="flex items-center gap-2 mt-2">
+          <div className="bg-black/40 border border-white/5 rounded-full px-2 py-0.5 flex items-center">
+            <span className="text-white/70 text-[10px] font-semibold">{collection.entries.length} cards</span>
+          </div>
+          {catInfo && (
+            <div className="bg-black/40 border border-white/5 rounded-full px-2 py-0.5 flex items-center">
+              <span className="text-white/70 text-[10px] font-semibold">{catInfo.label}</span>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {/* Actions */}
+      <div className="flex items-center gap-2 relative z-10 flex-shrink-0">
+        <button
+          onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
+          className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center backdrop-blur-md border border-white/10 hover:bg-white/10 transition-colors"
+        >
+          <MoreVertical className="w-4 h-4 text-white/50" />
+        </button>
+
+        <button
+          onClick={(e) => { e.stopPropagation(); onStudy(collection); }}
+          className="w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md transition-colors shadow-lg"
+          style={{ background: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)', border: '1px solid rgba(255,255,255,0.2)' }}
+        >
+          <Play className="w-3.5 h-3.5 text-white ml-0.5" fill="currentColor" />
+        </button>
+      </div>
 
       {/* Dropdown Menu */}
       {showMenu && (
         <>
           <div className="fixed inset-0 z-30" onClick={(e) => { e.stopPropagation(); setShowMenu(false); }} />
           <div
-            className="absolute right-4 top-16 w-32 rounded-xl overflow-hidden z-40"
+            className="absolute right-14 top-12 w-32 rounded-xl overflow-hidden z-40 animate-pop-in"
             style={{
               background: 'rgba(20,20,28,0.95)',
               backdropFilter: 'blur(16px)',
@@ -71,44 +96,7 @@ export function CollectionCard({ collection, index = 0, onStudy, onEdit, onDelet
           </div>
         </>
       )}
-
-      {/* Bottom Glass Pane */}
-      <div 
-        className="absolute bottom-0 left-0 right-0 flex flex-col justify-end p-5"
-        style={{
-          minHeight: "50%",
-          background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.85) 100%)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)"
-        }}
-      >
-        <div className="relative z-10 text-left">
-           <h3 className="text-white text-2xl font-bold tracking-tight line-clamp-2">{collection.title}</h3>
-           
-           {/* Badges / Pills row */}
-           <div className="flex flex-wrap items-center gap-2 mt-4">
-             {/* Count Pill */}
-             <div className="bg-white/10 border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-1.5">
-               <span className="text-white/90 text-xs font-semibold">{collection.entries.length} cards</span>
-             </div>
-             
-             {/* Category Pill */}
-             {catInfo && (
-               <div className="bg-white/10 border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-1.5">
-                 <span className="text-white/90 text-xs font-semibold">{catInfo.label}</span>
-               </div>
-             )}
-
-             {/* Study Button */}
-             <button
-                onClick={(e) => { e.stopPropagation(); onStudy(collection); }}
-                className="bg-white text-black rounded-full px-5 py-1.5 flex items-center gap-1.5 ml-auto hover:bg-white/90 active:scale-95 transition-all shadow-[0_0_15px_rgba(255,255,255,0.3)]"
-             >
-                <span className="text-sm font-bold">Study</span>
-             </button>
-           </div>
-        </div>
-      </div>
     </div>
   );
 }
+

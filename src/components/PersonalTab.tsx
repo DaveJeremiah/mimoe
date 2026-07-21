@@ -94,7 +94,7 @@ export function PersonalTab({
                       <span className="text-sm font-bold text-white/50 uppercase tracking-wider">{cat.label}</span>
                     </div>
                   )}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  <div className="flex flex-col gap-3">
                     {items.map((collection) => (
                       <CollectionCard
                         key={collection.id}
