@@ -2,6 +2,9 @@ import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import logoLight from "@/assets/logo-light.png";
 import { DeckComplete } from "./DeckComplete";
+import { DeckEditor } from "./DeckEditor";
+import { useAppUpdate } from "@/hooks/useAppUpdate";
+import { Toaster } from "sonner";
 import { encodeDeck, decodeDeck } from "@/lib/deckShare";
 import { Flashcard, type BandStyle } from "./Flashcard";
 import { WordBank } from "./WordBank";
@@ -123,6 +126,10 @@ export function FlashcardApp() {
   const [collectionModalMode, setCollectionModalMode] = useState<"notes" | "bulk">("bulk");
   const [showCollectionTooltip, setShowCollectionTooltip] = useState(false);
   const [editingCollection, setEditingCollection] = useState<Collection | undefined>();
+  const [collectionToEdit, setCollectionToEdit] = useState<string | null>(null);
+
+  const { hasUpdate, triggerUpdate } = useAppUpdate();
+
   const [collectionQueue, setCollectionQueue] = useState<string[]>([]);
   const [collectionComboCount, setCollectionComboCount] = useState(0);
   const collectionAnimateAdvanceRef = useRef<((exitClass: string, opts: { failed: boolean; requeue: boolean }) => void) | null>(null);
@@ -160,6 +167,7 @@ export function FlashcardApp() {
   const [langSplash, setLangSplash] = useState<Language | null>(null);
   const [activeNavTab, setActiveNavTab] = useState<NavTab>("home");
   const [onboardingDone, setOnboardingDone] = useState(false);
+  const [homeTab, setHomeTab] = useState<"levels" | "personal">("levels");
 
 
   const baseLevels = useMemo(() => {
@@ -1247,6 +1255,19 @@ export function FlashcardApp() {
   return (
     <>
     <AmoebaDefs />
+    <Toaster theme="dark" position="top-center" />
+
+    {hasUpdate && (
+      <div className="fixed top-12 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-top-4 fade-in duration-500">
+        <button 
+          onClick={triggerUpdate}
+          className="bg-[#B875FF] text-white px-5 py-2.5 rounded-full shadow-[0_0_20px_rgba(184,117,255,0.4)] font-bold text-sm flex items-center gap-2 transition-transform active:scale-95"
+        >
+          <span>✨</span> New update available! Tap to refresh
+        </button>
+      </div>
+    )}
+
     <div
       className={`h-[100dvh] overflow-y-hidden flex flex-col items-center w-full ${selectedLevelId ? 'pt-[61px] px-[15px] md:px-6 pb-36' : 'pt-0 px-0 pb-0'}`}
       onTouchStart={handleSessionTouchStart}
@@ -1460,7 +1481,7 @@ export function FlashcardApp() {
       )}
 
       {/* Content */}
-      <div className={`flex-1 w-full flex flex-col items-center min-h-0 scrollbar-none ${selectedLevelId ? 'justify-center' : 'justify-start overflow-y-auto pb-20'}`}>
+      <div className={`flex-1 w-full flex flex-col items-center min-h-0 scrollbar-none ${selectedLevelId ? 'justify-center' : 'justify-start overflow-y-auto pb-0'}`}>
         {!selectedLevelId ? (
           <div className="w-full overflow-x-hidden">
             {activeNavTab === "home" && (
@@ -1498,7 +1519,7 @@ export function FlashcardApp() {
               />
             )}
             {activeNavTab === "wordbank" && (
-              <div className="w-full flex flex-col pt-6 pb-24 px-5 min-h-[100dvh]">
+              <div className="w-full flex flex-col pt-6 pb-6 px-5 min-h-[100dvh]">
                 <div className="flex items-center justify-between mb-8">
                   <h1 className="text-white text-3xl font-bold">Word Bank</h1>
                   <button onClick={() => setActiveNavTab("personal")} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-full text-xs font-bold text-white transition-colors">Back</button>
