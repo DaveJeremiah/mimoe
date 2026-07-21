@@ -176,6 +176,40 @@ function stripCefrPrefix(title: string): string {
   return title.replace(/^[AB]\d\s*·\s*/i, "").trim();
 }
 
+export function getAllTiles(activeLanguage?: string) {
+  return [
+    {
+      id: "A1" as const,
+      title: "Beginner",
+      c: activeLanguage === "arabic"
+        ? ["#C86428", "#E8A020", "#F5C842"]
+        : ["#C9856A", "#ECBEB4", "#4A9E8A"],
+      active: true,
+      wide: true,
+      img3d: BAND_IMGS.A1 as string | undefined,
+    },
+    {
+      id: "A2" as const,
+      title: "Elementary",
+      c: ["#047857", "#0EA5E9", "#6366F1"],
+      active: true,
+      wide: false,
+      img3d: BAND_IMGS.A2 as string | undefined,
+    },
+    {
+      id: "B1" as const,
+      title: "Intermediate",
+      c: ["#4F46E5", "#7C3AED", "#C026D3"],
+      active: true,
+      wide: false,
+      img3d: BAND_IMGS.B1 as string | undefined,
+    },
+    { id: "B2", title: "Upper-Inter.",  c: ["#334155", "#475569", "#64748B"], active: false, wide: false, img3d: undefined },
+    { id: "C1", title: "Advanced",      c: ["#1E293B", "#334155", "#475569"], active: false, wide: false, img3d: undefined },
+    { id: "C2", title: "Mastery",       c: ["#0F172A", "#1E293B", "#334155"], active: false, wide: true,  img3d: undefined },
+  ];
+}
+
 export function LevelSelect({
   levels,
   completedLevelIds,
@@ -318,39 +352,6 @@ export function LevelSelect({
   // ── HOME VIEW — Microsoft-style glass tiles ──────────────────────────
   const scenicBg = activeLanguage === "arabic" ? "/images/ar-a1-bg.png" : "/images/a1-bg.png";
   const ALL_TILES = getAllTiles(activeLanguage);
-export function getAllTiles(activeLanguage?: string) {
-  return [
-    {
-      id: "A1" as const,
-      title: "Beginner",
-      c: activeLanguage === "arabic"
-        ? ["#C86428", "#E8A020", "#F5C842"]
-        : ["#C9856A", "#ECBEB4", "#4A9E8A"],
-      active: true,
-      wide: true,
-      img3d: BAND_IMGS.A1 as string | undefined,
-    },
-    {
-      id: "A2" as const,
-      title: "Elementary",
-      c: ["#047857", "#0EA5E9", "#6366F1"],
-      active: true,
-      wide: false,
-      img3d: BAND_IMGS.A2 as string | undefined,
-    },
-    {
-      id: "B1" as const,
-      title: "Intermediate",
-      c: ["#4F46E5", "#7C3AED", "#C026D3"],
-      active: true,
-      wide: false,
-      img3d: BAND_IMGS.B1 as string | undefined,
-    },
-    { id: "B2", title: "Upper-Inter.",  c: ["#334155", "#475569", "#64748B"], active: false, wide: false, img3d: undefined },
-    { id: "C1", title: "Advanced",      c: ["#1E293B", "#334155", "#475569"], active: false, wide: false, img3d: undefined },
-    { id: "C2", title: "Mastery",       c: ["#0F172A", "#1E293B", "#334155"], active: false, wide: true,  img3d: undefined },
-  ];
-}
 
   return (
     <div className="w-full flex flex-col gap-4">
