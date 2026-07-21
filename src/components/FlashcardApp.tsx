@@ -1258,7 +1258,7 @@ export function FlashcardApp() {
     <Toaster theme="dark" position="top-center" />
 
     {hasUpdate && (
-      <div className="fixed top-12 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-top-4 fade-in duration-500">
+      <div className="fixed top-28 left-1/2 -translate-x-1/2 z-[110] animate-in slide-in-from-top-4 fade-in duration-500">
         <button 
           onClick={triggerUpdate}
           className="bg-[#B875FF] text-white px-5 py-2.5 rounded-full shadow-[0_0_20px_rgba(184,117,255,0.4)] font-bold text-sm flex items-center gap-2 transition-transform active:scale-95"
@@ -1393,7 +1393,7 @@ export function FlashcardApp() {
       {/* Header logic — Unified Top Bar */}
       {!selectedLevelId && (
         <div 
-          className="sticky top-0 w-full flex flex-col z-[100] bg-[#0f0f13]/80 backdrop-blur-xl border-b border-white/5 pb-3 px-4" 
+          className="sticky top-0 w-full flex flex-col z-[100] bg-[#0f0f13]/40 backdrop-blur-2xl border-b border-white/5 pb-3 px-4" 
           style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)' }}
         >
           <div className="flex items-center justify-between mb-1">
@@ -1481,14 +1481,26 @@ export function FlashcardApp() {
             </div>
           </div>
 
-          {/* Unified Title for NodePath */}
+          {/* Unified Title for NodePath with Tabs */}
           {activeNavTab === "home" && (
             <div className="flex flex-col items-center text-center mt-1 pb-1">
-              <h2 className="text-white/50 font-bold uppercase tracking-widest text-[10px] mb-0.5">Current Path</h2>
-              <h1 className="text-white font-black text-xl relative">
-                {activeTab === "vocabulary" ? "Vocabulary" : "Phrases"}
-                <WavyLine className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-32 opacity-80" />
-              </h1>
+              <h2 className="text-white/50 font-bold uppercase tracking-widest text-[10px] mb-1">Current Path</h2>
+              <div className="flex items-center justify-center gap-6">
+                <button 
+                  onClick={() => setActiveTab("vocabulary")}
+                  className={`relative text-xl font-black transition-colors ${activeTab === 'vocabulary' ? 'text-white' : 'text-white/30 hover:text-white/60'}`}
+                >
+                  Vocabulary
+                  {activeTab === "vocabulary" && <WavyLine className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-32 opacity-80" />}
+                </button>
+                <button 
+                  onClick={() => setActiveTab("phrases")}
+                  className={`relative text-xl font-black transition-colors ${activeTab === 'phrases' ? 'text-white' : 'text-white/30 hover:text-white/60'}`}
+                >
+                  Phrases
+                  {activeTab === "phrases" && <WavyLine className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-32 opacity-80" />}
+                </button>
+              </div>
             </div>
           )}
         </div>
