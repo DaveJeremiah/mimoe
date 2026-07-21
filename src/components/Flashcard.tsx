@@ -379,7 +379,7 @@ export function Flashcard({
           */}
           <div
             className={`relative ${enterAnim} ${exitAnim}`}
-            style={{ aspectRatio: '570/438', transformOrigin: 'center center' }}
+            style={{ aspectRatio: '4/5', transformOrigin: 'center center' }}
           >
 
             {/* ── Ghost card 2 (back) — visible when 3+ cards remain ── */}
