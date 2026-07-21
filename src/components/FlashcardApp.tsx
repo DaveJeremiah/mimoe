@@ -1274,11 +1274,11 @@ export function FlashcardApp() {
 
 
       {/* Header — extends corner-to-corner at top */}
-      <header
-        className="text-center mb-6 flex w-full px-5"
-        style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 14px)', paddingBottom: '12px' }}
-      >
-        {selectedLevelId && (
+      {selectedLevelId && (
+        <header
+          className="text-center mb-6 flex w-full px-5"
+          style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 14px)', paddingBottom: '12px' }}
+        >
           <div className="w-full flex flex-col gap-3">
             {/* Top row: X + progress bar + streak icons */}
             <div className="flex items-center gap-3">
@@ -1364,8 +1364,8 @@ export function FlashcardApp() {
             </div>
 
           </div>
-        )}
-      </header>
+        </header>
+      )}
 
 
       {/* Header logic — Top bar is simpler now */}
