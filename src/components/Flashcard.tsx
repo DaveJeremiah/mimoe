@@ -278,23 +278,20 @@ export function Flashcard({
         vibrate([60, 40, 60]);
         setState("WRONG_FIRST");
         speakGated(targetRef.current);
-        // no auto-advance — mic reopens after TTS so the user can try again
       }
-    } else if (s === "WRONG_FIRST") {
+    } else if (s === "WRONG_FIRST" || s === "WRONG_FINAL") {
       if (correct) {
-        // ✓ Correct 2nd try → play the word, then advance once audio finishes
+        // ✓ Correct 2nd/3rd+ try → play the word, then advance once audio finishes
         vibrate(40);
         setState("WRONG_RETRY_CORRECT");
         speakGated(targetRef.current, () => {
           animateAndAdvance("animate-slide-up", { failed: true, requeue: true });
         });
       } else {
-        // ✗ Wrong 2nd try → speak the word, then advance ONCE audio finishes
+        // ✗ Wrong again → speak the word, wait for user to try again
         vibrate([60, 40, 60]);
         setState("WRONG_FINAL");
-        speakGated(targetRef.current, () => {
-          animateAndAdvance("animate-slide-up", { failed: true, requeue: true });
-        });
+        speakGated(targetRef.current);
       }
     }
   }, [card.alternatives, speakGated, animateAndAdvance]);
@@ -335,13 +332,10 @@ export function Flashcard({
   const handleDontKnow = () => {
     if (isExiting) return;
     if (stateRef.current !== "QUESTION" && stateRef.current !== "WRONG_FIRST") return;
-    // Speak the word first (so the user hears it), then move the card to the
-    // back of the queue once the audio finishes.
+    // Speak the word first (so the user hears it), and leave it on screen for them to try
     vibrate(40);
     setState("WRONG_FINAL");
-    speakGated(targetRef.current, () => {
-      animateAndAdvance("animate-slide-up", { failed: false, requeue: true });
-    });
+    speakGated(targetRef.current);
   };
 
   const handleHint = () => {
@@ -379,8 +373,8 @@ export function Flashcard({
               Front card: left 8%   right 8%   top 8%   bottom 0
           */}
           <div
-            className={`relative ${enterAnim} ${exitAnim}`}
-            style={{ aspectRatio: '1/1', transformOrigin: 'center center' }}
+            className={`relative`}
+            style={{ aspectRatio: '6/5', transformOrigin: 'center center' }}
           >
 
             {/* ── Ghost card 2 (back) — visible when 3+ cards remain ── */}
@@ -391,8 +385,6 @@ export function Flashcard({
                     background: 'hsl(var(--background))',
                     border: `2px solid rgba(255, 255, 255, 0.08)`,
                     boxShadow: '0 6px 22px rgba(0,0,0,0.22)',
-                    opacity: exitAnim ? 0 : 1,
-                    transition: 'opacity 0.25s ease',
                   }}
                 />
             }
@@ -405,15 +397,13 @@ export function Flashcard({
                     background: 'hsl(var(--background))',
                     border: `2px solid rgba(255, 255, 255, 0.12)`,
                     boxShadow: '0 6px 18px rgba(0,0,0,0.16)',
-                    opacity: exitAnim ? 0 : 1,
-                    transition: 'opacity 0.25s ease',
                   }}
                 />
             }
 
             {/* ── Front card ── */}
             <div
-              className="absolute rounded-[20px]"
+              className={`absolute rounded-[20px] ${enterAnim} ${exitAnim}`}
               style={{
                 left: '8%', right: '8%', top: '8%', bottom: 0,
                 background: 'hsl(var(--background))',
