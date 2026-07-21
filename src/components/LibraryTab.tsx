@@ -26,7 +26,7 @@ export function LibraryTab({
 }: LibraryTabProps) {
   
   return (
-    <div className="w-full flex flex-col pt-6 pb-24 px-5">
+    <div className="w-full flex flex-col pt-6 pb-0 px-5">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-white text-3xl font-bold">Courses</h1>
         <div className="flex bg-white/5 p-1 rounded-xl">
@@ -49,7 +49,7 @@ export function LibraryTab({
         </div>
       </div>
 
-      <div className="mb-8">
+      <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-white font-bold text-lg">My courses</h2>
         </div>
