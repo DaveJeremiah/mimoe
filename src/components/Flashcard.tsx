@@ -288,10 +288,14 @@ export function Flashcard({
           animateAndAdvance("animate-slide-up", { failed: true, requeue: true });
         });
       } else {
-        // ✗ Wrong again → speak the word, wait for user to try again
+        // ✗ Wrong again → speak the word, linger for 1.2s to let user tap "I knew it", then advance
         vibrate([60, 40, 60]);
         setState("WRONG_FINAL");
-        speakGated(targetRef.current);
+        speakGated(targetRef.current, () => {
+          advanceTimerRef.current = window.setTimeout(() => {
+            animateAndAdvance("animate-slide-up", { failed: true, requeue: true });
+          }, 1200);
+        });
       }
     }
   }, [card.alternatives, speakGated, animateAndAdvance]);
@@ -332,10 +336,13 @@ export function Flashcard({
   const handleDontKnow = () => {
     if (isExiting) return;
     if (stateRef.current !== "QUESTION" && stateRef.current !== "WRONG_FIRST") return;
-    // Speak the word first (so the user hears it), and leave it on screen for them to try
     vibrate(40);
     setState("WRONG_FINAL");
-    speakGated(targetRef.current);
+    speakGated(targetRef.current, () => {
+      advanceTimerRef.current = window.setTimeout(() => {
+        animateAndAdvance("animate-slide-up", { failed: true, requeue: true });
+      }, 1200);
+    });
   };
 
   const handleHint = () => {
@@ -374,7 +381,7 @@ export function Flashcard({
           */}
           <div
             className={`relative`}
-            style={{ aspectRatio: '6/5', transformOrigin: 'center center' }}
+            style={{ aspectRatio: '1/1', transformOrigin: 'center center' }}
           >
 
             {/* ── Ghost card 2 (back) — visible when 3+ cards remain ── */}

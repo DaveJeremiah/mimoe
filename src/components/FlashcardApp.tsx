@@ -1207,22 +1207,24 @@ export function FlashcardApp() {
               rtl={selectedCollection.language === "arabic"}
             />
           ) : currentCollectionCard ? (
-            <Flashcard
-              key={`collection-${selectedCollection.id}-${collectionQueue[0]}`}
-              card={currentCollectionCard}
-              onAdvance={handleCollectionAdvance}
-              total={colTotal}
-              remaining={collectionQueue.length}
-              streak={collectionComboCount}
-              onAnimateAdvance={(fn) => { collectionAnimateAdvanceRef.current = fn; }}
-              bandStyle={COLLECTION_BAND_STYLE}
-              customAudioEnabled={collectionUseCustomVoice}
-              langConfig={
-                selectedCollection.language === "arabic"
-                  ? getArabicConfigForDialect(selectedCollection.dialect ?? preferredDialect)
-                  : LANGUAGE_CONFIGS.french
-              }
-            />
+            <div className="relative w-full flex-1 mt-[2vh] max-h-[64vh]">
+              <Flashcard
+                key={`collection-${selectedCollection.id}-${collectionQueue[0]}`}
+                card={currentCollectionCard}
+                onAdvance={handleCollectionAdvance}
+                total={colTotal}
+                remaining={collectionQueue.length}
+                streak={collectionComboCount}
+                onAnimateAdvance={(fn) => { collectionAnimateAdvanceRef.current = fn; }}
+                bandStyle={COLLECTION_BAND_STYLE}
+                customAudioEnabled={collectionUseCustomVoice}
+                langConfig={
+                  selectedCollection.language === "arabic"
+                    ? getArabicConfigForDialect(selectedCollection.dialect ?? preferredDialect)
+                    : LANGUAGE_CONFIGS.french
+                }
+              />
+            </div>
           ) : null}
         </div>
 
