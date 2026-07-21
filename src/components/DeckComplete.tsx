@@ -53,8 +53,8 @@ export function DeckComplete({
           </div>
           <button
             onClick={onPrimary}
-            className="w-full h-[52px] rounded-2xl text-white font-black text-sm tracking-widest uppercase active:translate-y-1 transition-all"
-            style={{ background: "linear-gradient(135deg,#9b5cf6,#ec4899)", boxShadow: "0 4px 0 #7c3aed" }}
+            className="w-full h-[56px] rounded-2xl text-white font-bold text-lg active:scale-[0.98] transition-all shadow-[0_4px_20px_rgba(184,117,255,0.4)]"
+            style={{ background: "#B875FF" }}
           >
             {primaryLabel}
           </button>

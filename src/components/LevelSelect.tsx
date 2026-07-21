@@ -205,9 +205,8 @@ export function LevelSelect({
     const completedInBand = decks.filter(d => completedLevelIds.includes(d.id)).length;
 
     return (
-      <div className="w-full pt-2">
-        {/* Deck list — always 2-col grid, compact cards */}
-        <div className="grid grid-cols-2 gap-2">
+      <div className="w-full pt-2 px-1">
+        <div className="flex flex-col gap-4">
           {decks.map((deck, i) => {
             const isCompleted = completedLevelIds.includes(deck.id);
             const title = stripCefrPrefix(deck.title);
@@ -215,30 +214,43 @@ export function LevelSelect({
               <button
                 key={deck.id}
                 onClick={() => onSelectLevel(deck.id)}
-                className={`w-full flex items-center gap-2.5 p-3 rounded-2xl transition-all duration-200 text-left active:scale-[0.97] ${
-                  isCompleted ? `${band.accentBorder} ${band.accentBg} border` : "bg-card hover:bg-muted"
-                }`}
-                style={!isCompleted ? { border: '1px solid rgba(255,255,255,0.07)' } : undefined}
+                className={`relative w-full flex items-center gap-3 p-4 rounded-[28px] transition-all duration-200 text-left active:scale-[0.97] overflow-hidden`}
+                style={{
+                  background: isCompleted ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.06)",
+                  border: isCompleted ? `1px solid ${band.hex}40` : "1px solid rgba(255,255,255,0.08)",
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.2)"
+                }}
               >
-                <span className={`text-xs font-bold w-4 text-center flex-shrink-0 ${isCompleted ? band.accentText : "text-muted-foreground"}`}>
-                  {i + 1}
-                </span>
+                {/* Subtle glass reflection */}
+                <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 50%)" }} />
+                
                 <img
                   src={DECK_IMGS[deck.id] ?? DEFAULT_DECK_IMG}
                   alt=""
-                  className="w-7 h-7 object-contain flex-shrink-0"
+                  className="w-10 h-10 object-contain flex-shrink-0 relative z-10"
                   onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "0"; }}
                 />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-foreground leading-tight truncate">{title}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">{deck.cards.length} cards</p>
-                </div>
-                {isCompleted ? (
-                  <div className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: band.accentBar }}>
-                    <Check className="w-2.5 h-2.5 text-white" />
+                <div className="flex-1 min-w-0 relative z-10">
+                  <p className="text-sm font-bold text-white leading-tight truncate">{title}</p>
+                  
+                  {/* Pills */}
+                  <div className="flex items-center gap-2 mt-2">
+                    <div className="bg-black/40 border border-white/5 rounded-full px-2 py-0.5 flex items-center">
+                      <span className="text-white/70 text-[10px] font-semibold">{deck.cards.length} cards</span>
+                    </div>
+                    {isCompleted && (
+                      <div className="bg-black/40 border border-white/5 rounded-full px-2 py-0.5 flex items-center gap-1" style={{ borderColor: `${band.hex}30` }}>
+                        <Check className="w-3 h-3" style={{ color: band.hex }} />
+                        <span className="text-[10px] font-semibold" style={{ color: band.hex }}>Done</span>
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                </div>
+                
+                {!isCompleted && (
+                  <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0 relative z-10 backdrop-blur-md border border-white/10">
+                    <ChevronRight className="w-4 h-4 text-white/50" />
+                  </div>
                 )}
               </button>
             );
@@ -246,8 +258,8 @@ export function LevelSelect({
 
           {grouped.custom.length > 0 && (
             <>
-              <div className="pt-2 pb-1 col-span-2">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">My levels</p>
+              <div className="pt-2 pb-1">
+                <p className="text-xs text-white/50 uppercase tracking-wider font-bold px-2">My levels</p>
               </div>
               {grouped.custom.map((deck, i) => {
                 const isCompleted = completedLevelIds.includes(deck.id);
@@ -255,26 +267,44 @@ export function LevelSelect({
                   <button
                     key={deck.id}
                     onClick={() => onSelectLevel(deck.id)}
-                    className={`w-full flex items-center gap-2.5 p-3 rounded-2xl transition-all duration-200 text-left active:scale-[0.97] ${
-                      isCompleted ? "border border-success/30 bg-success/10" : "bg-card hover:bg-muted"
-                    }`}
-                    style={!isCompleted ? { border: '1px solid rgba(255,255,255,0.07)' } : undefined}
+                    className={`relative w-full flex items-center gap-3 p-4 rounded-[28px] transition-all duration-200 text-left active:scale-[0.97] overflow-hidden`}
+                    style={{
+                      background: "rgba(255,255,255,0.06)",
+                      border: isCompleted ? "1px solid rgba(16, 185, 129, 0.4)" : "1px solid rgba(255,255,255,0.08)",
+                      boxShadow: "0 8px 32px rgba(0,0,0,0.2)"
+                    }}
                   >
-                    <span className="text-xs font-bold w-4 text-center flex-shrink-0 text-muted-foreground">{i + 1}</span>
+                    {/* Subtle glass reflection */}
+                    <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 50%)" }} />
+                    
                     <img
                       src={FE("Memo/3D/memo_3d.png")}
                       alt=""
-                      className="w-7 h-7 object-contain flex-shrink-0"
+                      className="w-10 h-10 object-contain flex-shrink-0 relative z-10"
                       onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "0"; }}
                     />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-foreground leading-tight truncate">{deck.title}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">{deck.cards.length} cards</p>
+                    <div className="flex-1 min-w-0 relative z-10">
+                      <p className="text-sm font-bold text-white leading-tight truncate">{deck.title}</p>
+                      
+                      {/* Pills */}
+                      <div className="flex items-center gap-2 mt-2">
+                        <div className="bg-black/40 border border-white/5 rounded-full px-2 py-0.5 flex items-center">
+                          <span className="text-white/70 text-[10px] font-semibold">{deck.cards.length} cards</span>
+                        </div>
+                        {isCompleted && (
+                          <div className="bg-black/40 border border-white/5 rounded-full px-2 py-0.5 flex items-center gap-1 border-emerald-500/30">
+                            <Check className="w-3 h-3 text-emerald-400" />
+                            <span className="text-emerald-400 text-[10px] font-semibold">Done</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    {isCompleted
-                      ? <div className="w-4 h-4 rounded-full bg-success flex items-center justify-center flex-shrink-0"><Check className="w-2.5 h-2.5 text-white" /></div>
-                      : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                    }
+                    
+                    {!isCompleted && (
+                      <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0 relative z-10 backdrop-blur-md border border-white/10">
+                        <ChevronRight className="w-4 h-4 text-white/50" />
+                      </div>
+                    )}
                   </button>
                 );
               })}
@@ -286,57 +316,38 @@ export function LevelSelect({
   }
 
   // ── HOME VIEW — Microsoft-style glass tiles ──────────────────────────
+  const scenicBg = activeLanguage === "arabic" ? "/images/ar-a1-bg.png" : "/images/a1-bg.png";
+
   const ALL_TILES = [
     {
       id: "A1" as const,
       title: "Beginner",
-      subtitle: "Greetings, numbers, core verbs",
       c: activeLanguage === "arabic"
         ? ["#C86428", "#E8A020", "#F5C842"]
         : ["#C9856A", "#ECBEB4", "#4A9E8A"],
       active: true,
       wide: true,
+      img3d: BAND_IMGS.A1 as string | undefined,
     },
     {
       id: "A2" as const,
       title: "Elementary",
-      subtitle: "Routines, travel, past tense",
       c: ["#047857", "#0EA5E9", "#6366F1"],
       active: true,
       wide: false,
+      img3d: BAND_IMGS.A2 as string | undefined,
     },
     {
       id: "B1" as const,
       title: "Intermediate",
-      subtitle: "Opinions, storytelling",
       c: ["#4F46E5", "#7C3AED", "#C026D3"],
       active: true,
       wide: false,
+      img3d: BAND_IMGS.B1 as string | undefined,
     },
-    {
-      id: "B2",
-      title: "Upper-Inter.",
-      subtitle: "Nuance & debate",
-      c: ["#334155", "#475569", "#64748B"],
-      active: false,
-      wide: false,
-    },
-    {
-      id: "C1",
-      title: "Advanced",
-      subtitle: "Fluency & professional",
-      c: ["#1E293B", "#334155", "#475569"],
-      active: false,
-      wide: false,
-    },
-    {
-      id: "C2",
-      title: "Mastery",
-      subtitle: "Near-native proficiency",
-      c: ["#0F172A", "#1E293B", "#334155"],
-      active: false,
-      wide: true,
-    },
+    { id: "B2", title: "Upper-Inter.",  c: ["#334155", "#475569", "#64748B"], active: false, wide: false, img3d: undefined },
+    { id: "C1", title: "Advanced",      c: ["#1E293B", "#334155", "#475569"], active: false, wide: false, img3d: undefined },
+    { id: "C2", title: "Mastery",       c: ["#0F172A", "#1E293B", "#334155"], active: false, wide: true,  img3d: undefined },
   ];
 
   return (
@@ -358,101 +369,101 @@ export function LevelSelect({
         </button>
       )}
 
-      {/* Tile grid */}
-      <div className="grid grid-cols-2 gap-3">
+      {/* Tile grid — glassmorphic cards */}
+      <div className="flex flex-col gap-6 px-1">
         {ALL_TILES.map((tile) => {
           const decks = tile.active ? (grouped[tile.id as "A1" | "A2" | "B1"] ?? []) : [];
           const completed = decks.filter(d => completedLevelIds.includes(d.id)).length;
           const pct = decks.length > 0 ? (completed / decks.length) * 100 : 0;
           const [c0, c1, c2] = tile.c;
+          const bandData = BANDS.find(b => b.id === tile.id);
 
           return (
             <button
               key={tile.id}
               onClick={() => { if (tile.active) onSelectBand(tile.id as "A1" | "A2" | "B1"); }}
-              className={`relative overflow-hidden transition-transform outline-none ${
-                tile.wide ? "col-span-2" : "col-span-1"
-              } ${tile.active ? "active:scale-[0.97]" : "cursor-default"}`}
+              className={`relative overflow-hidden outline-none transition-opacity shadow-2xl ${tile.active ? "active:scale-[0.98]" : "cursor-default opacity-80"}`}
               style={{
-                borderRadius: 20,
-                minHeight: tile.wide
-                  ? "clamp(88px, 19vw, 118px)"
-                  : "clamp(115px, 27vw, 158px)",
+                borderRadius: 32,
+                minHeight: 280,
+                transformOrigin: "center center"
               }}
             >
-              {/* Bokeh background */}
-              <div
-                className="absolute pointer-events-none"
-                style={{
-                  inset: "-50%",
-                  background: `
-                    radial-gradient(ellipse at 22% 30%, ${c0}dd 0%, transparent 52%),
-                    radial-gradient(ellipse at 75% 20%, ${c1}cc 0%, transparent 48%),
-                    radial-gradient(ellipse at 55% 82%, ${c2}bb 0%, transparent 52%),
-                    ${c0}88
-                  `,
-                  filter: "blur(26px)",
-                }}
-              />
-
-              {/* Darken for coming-soon */}
-              {!tile.active && (
-                <div className="absolute inset-0 pointer-events-none" style={{ background: "rgba(0,0,0,0.55)" }} />
+              {/* A1: real scenic photo */}
+              {tile.id === "A1" ? (
+                <img
+                  src={scenicBg}
+                  alt="" aria-hidden="true"
+                  className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                  style={{ brightness: 0.9, transform: "scale(1.05)" }}
+                />
+              ) : (
+                /* Bokeh gradient for all other tiles */
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background: `
+                      radial-gradient(circle at 20% 30%, ${c0} 0%, transparent 60%),
+                      radial-gradient(circle at 80% 20%, ${c1} 0%, transparent 60%),
+                      radial-gradient(circle at 50% 80%, ${c2} 0%, transparent 60%),
+                      #1a1a24
+                    `,
+                  }}
+                />
               )}
 
-              {/* Glass edge */}
-              <div
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                  borderRadius: 20,
-                  border: `1px solid ${tile.active ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.06)"}`,
-                  boxShadow: tile.active ? "inset 0 1px 0 rgba(255,255,255,0.13), 0 8px 28px rgba(0,0,0,0.4)" : "none",
-                }}
-              />
-
-              {/* Shine on active tiles */}
-              {tile.active && <CardShine />}
-
-              {/* Content */}
-              <div className="relative z-10 p-4 h-full flex flex-col justify-between" style={{ minHeight: "inherit" }}>
-                {/* Top: band code + count / soon badge */}
-                <div className="flex items-start justify-between">
-                  <span
-                    className="font-black tracking-[0.22em] uppercase"
-                    style={{
-                      fontFamily: "'Courier New', monospace",
-                      fontSize: 10,
-                      color: tile.active ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.28)",
-                    }}
-                  >
-                    {tile.id}
-                  </span>
-                  {tile.active ? (
-                    <span className="text-[10px] font-medium" style={{ color: "rgba(255,255,255,0.38)" }}>
-                      {completed}/{decks.length}
-                    </span>
-                  ) : (
-                    <span
-                      className="text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full"
-                      style={{ color: "rgba(255,255,255,0.28)", border: "1px solid rgba(255,255,255,0.1)" }}
-                    >
-                      Soon
-                    </span>
-                  )}
+              {/* Top Right Heart Icon */}
+              {tile.active && (
+                <div className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full flex items-center justify-center"
+                     style={{ background: "rgba(255,255,255,0.1)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.15)" }}>
+                  <Star className="w-4 h-4 text-white" strokeWidth={1.5} />
                 </div>
+              )}
 
-                {/* Bottom: title + progress ring */}
-                <div className="flex items-end justify-between">
-                  <p
-                    className="font-black leading-tight"
-                    style={{
-                      fontSize: tile.wide ? 17 : 14,
-                      color: tile.active ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.3)",
-                    }}
-                  >
-                    {tile.title}
+              {/* Bottom Glass Pane */}
+              <div 
+                className="absolute bottom-0 left-0 right-0 flex flex-col justify-end p-5"
+                style={{
+                  minHeight: "50%",
+                  background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.85) 100%)",
+                  backdropFilter: "blur(12px)",
+                  WebkitBackdropFilter: "blur(12px)",
+                  borderTop: "1px solid rgba(255,255,255,0.05)"
+                }}
+              >
+                <div className="relative z-10 text-left">
+                  <h3 className="text-white text-2xl font-bold tracking-tight">{tile.title}</h3>
+                  <p className="text-white/70 text-sm mt-1 leading-snug line-clamp-2">
+                    {bandData?.subtitle || "Explore language concepts and level up your skills."}
                   </p>
-                  {tile.active && <ProgressRing pct={pct} />}
+
+                  {/* Badges / Pills row */}
+                  <div className="flex flex-wrap items-center gap-2 mt-4">
+                    {/* ID Pill */}
+                    <div className="bg-white/10 border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-1.5">
+                      <span className="text-white/90 text-xs font-semibold">{tile.id}</span>
+                    </div>
+
+                    {/* Progress Pill */}
+                    {tile.active ? (
+                      <div className="bg-white/10 border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-1.5">
+                        <Check className="w-3.5 h-3.5 text-white/70" />
+                        <span className="text-white/90 text-xs font-semibold">{completed}/{decks.length}</span>
+                      </div>
+                    ) : (
+                      <div className="bg-white/10 border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-1.5">
+                        <span className="text-white/90 text-xs font-semibold tracking-wide uppercase">Soon</span>
+                      </div>
+                    )}
+
+                    {/* Percentage Pill */}
+                    {tile.active && pct > 0 && (
+                      <div className="bg-white/10 border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-1.5">
+                        <div className="w-3.5 h-3.5 rounded-full" style={{ background: "conic-gradient(from 0deg, white " + pct + "%, rgba(255,255,255,0.2) 0)" }} />
+                        <span className="text-white/90 text-xs font-semibold">{Math.round(pct)}%</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </button>

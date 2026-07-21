@@ -10,6 +10,11 @@ import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { CollectionCard } from "./CollectionCard";
 import { NewCollectionModal } from "./NewCollectionModal";
 import { NewLevelModal } from "./NewLevelModal";
+import { BottomNav, type NavTab } from "./BottomNav";
+import { LibraryTab, BANDS } from "./LibraryTab";
+import { PersonalTab } from "./PersonalTab";
+import { BottomSheet } from "./BottomSheet";
+import { NodePath } from "./NodePath";
 import { ProfileModal, dicebearUrl } from "./ProfileModal";
 import { OnboardingModal } from "./OnboardingModal";
 import { useAuth } from "@/hooks/useAuth";
@@ -152,7 +157,7 @@ export function FlashcardApp() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
   const [langSplash, setLangSplash] = useState<Language | null>(null);
-  const [homeTab, setHomeTab] = useState<"levels" | "personal">("levels");
+  const [activeNavTab, setActiveNavTab] = useState<NavTab>("home");
   const [onboardingDone, setOnboardingDone] = useState(false);
 
 
@@ -1242,7 +1247,7 @@ export function FlashcardApp() {
     <>
     <AmoebaDefs />
     <div
-      className={`h-[100dvh] overflow-y-hidden flex flex-col items-center w-full max-w-[480px] md:max-w-[860px] xl:max-w-[1100px] mx-auto ${selectedLevelId ? 'pt-[61px]' : 'pt-0'} px-[15px] md:px-6 ${selectedLevelId ? 'pb-36' : 'pb-24'}`}
+      className={`h-[100dvh] overflow-y-hidden flex flex-col items-center w-full ${selectedLevelId ? 'pt-[61px] px-[15px] md:px-6 pb-36' : 'pt-0 px-0 pb-0'}`}
       onTouchStart={handleSessionTouchStart}
       onTouchEnd={handleSessionTouchEnd}
     >
@@ -1266,87 +1271,14 @@ export function FlashcardApp() {
         </div>
       )}
 
-      {/* Band header — edge-to-edge at top, only in deck list */}
-      {selectedBand && selectedBandInfo && !selectedLevelId && (
-        <div
-          className="w-full mb-6 flex flex-col justify-between"
-          style={{
-            background: selectedBandInfo.hex,
-            minHeight: "240px",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.3)",
-            borderRadius: "0 0 36px 36px",
-            margin: "0 -15px",
-            width: "calc(100% + 30px)",
-            paddingTop: "calc(env(safe-area-inset-top, 0px) + 20px)",
-            paddingBottom: "24px",
-            paddingLeft: "24px",
-            paddingRight: "24px",
-            position: "sticky",
-            top: 0,
-            zIndex: 40,
-          }}
-        >
-          {/* Top: Back + Search + French pill */}
-          <div className="flex items-center justify-between mb-4">
-            <button
-              onClick={() => setSelectedBand(null)}
-              className="p-2 rounded-lg hover:bg-white/20 transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5 text-white/70" />
-            </button>
-            <div className="flex items-center gap-2">
-              <button className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.15)' }}>
-                <svg className="w-4 h-4 text-white/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/>
-                </svg>
-              </button>
-              <span className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-white text-black">
-                <span>{LANGUAGE_CONFIGS[activeLanguage].flag}</span>
-                <span>{LANGUAGE_CONFIGS[activeLanguage].label}</span>
-              </span>
-            </div>
-          </div>
 
-          {/* Bottom: Band info */}
-          <div>
-            <div className="flex items-start gap-3 mb-3">
-              <img
-                src={selectedBandInfo.img}
-                alt=""
-                className="w-16 h-16 object-contain flex-shrink-0"
-                style={{ filter: "drop-shadow(0 6px 14px rgba(0,0,0,0.4))" }}
-                onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "0"; }}
-              />
-              <div className="flex-1">
-                <span className="text-white/70 text-xs font-bold px-2 py-0.5 rounded-full bg-white/15 inline-block">
-                  {selectedBand} · {completedInBand}/{decksInBand.length}
-                </span>
-              </div>
-            </div>
-            <h2 className="text-white font-black text-2xl leading-tight mb-1">{selectedBandInfo.title}</h2>
-            <WavyLine className="max-w-[140px] mb-2" colors={["rgba(255,255,255,0.6)", "rgba(255,255,255,0.25)"]} />
-            <p className="text-white/60 text-xs mb-3">{selectedBandInfo.subtitle}</p>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-1.5 bg-white/20 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    background: "rgba(255,255,255,0.9)",
-                    width: decksInBand.length > 0 ? `${(completedInBand / decksInBand.length) * 100}%` : "0%",
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Header — extends corner-to-corner at top */}
       <header
         className="text-center mb-6 flex w-full px-5"
         style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 14px)', paddingBottom: '12px' }}
       >
-        {selectedLevelId ? (
+        {selectedLevelId && (
           <div className="w-full flex flex-col gap-3">
             {/* Top row: X + progress bar + streak icons */}
             <div className="flex items-center gap-3">
@@ -1431,235 +1363,171 @@ export function FlashcardApp() {
               </div>
             </div>
 
-            {/* Instruction label */}
-            <div>
-              <h2 className="text-white font-black text-[1.3rem] leading-tight">Speak fluency into existence</h2>
-              <WavyLine className="mt-1 max-w-[120px]" />
-            </div>
           </div>
-        ) : !selectedBand ? (
-          /* ── Home header: logo | centered lang pill | notification ── */
-          <div className="w-full flex items-center relative">
-            {/* Left: logo */}
-            <img src={logoLight} alt="Mimoe" className="h-11 w-auto flex-shrink-0" />
+        )}
+      </header>
 
-            {/* Center: language pill — absolutely positioned */}
-            <div className="absolute left-1/2 -translate-x-1/2 z-[70]">
-              <div className="relative">
-                <button
-                  onClick={() => setIsLangDropdownOpen(v => !v)}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-semibold text-white/80 transition-all active:scale-95"
-                  style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.10)' }}
-                >
-                  <span className="text-sm leading-none">
-                    {activeLanguage === "arabic"
-                      ? (ARABIC_DIALECTS.find(d => d.code === preferredDialect)?.flag ?? LANGUAGE_CONFIGS.arabic.flag)
-                      : LANGUAGE_CONFIGS[activeLanguage].flag}
-                  </span>
-                  <span>
-                    {activeLanguage === "arabic"
-                      ? (ARABIC_DIALECTS.find(d => d.code === preferredDialect)?.label ?? "Arabic")
-                      : LANGUAGE_CONFIGS[activeLanguage].label}
-                  </span>
-                  <svg className="w-2.5 h-2.5 text-white/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m6 9 6 6 6-6"/></svg>
-                </button>
-                {isLangDropdownOpen && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setIsLangDropdownOpen(false)} />
-                    <div
-                      className="absolute top-full left-1/2 -translate-x-1/2 mt-2 rounded-2xl overflow-hidden z-50 min-w-[190px]"
-                      style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 16px 40px rgba(0,0,0,0.6)' }}
-                    >
-                      {(["french", "arabic"] as Language[]).map((lang) => {
-                        const cfg = LANGUAGE_CONFIGS[lang];
-                        return (
+
+      {/* Header logic — Top bar is simpler now */}
+      {!selectedLevelId && (
+        <div className="w-full flex flex-col px-4 pb-2 relative z-50" style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 4px)' }}>
+          <div className="flex items-center justify-between">
+            <div className="relative">
+              <button
+                onClick={() => setIsLangDropdownOpen(v => !v)}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold text-white/80 transition-all active:scale-95 bg-white/5 border border-white/10"
+              >
+                <span className="text-sm leading-none">
+                  {activeLanguage === "arabic"
+                    ? (ARABIC_DIALECTS.find(d => d.code === preferredDialect)?.flag ?? LANGUAGE_CONFIGS.arabic.flag)
+                    : LANGUAGE_CONFIGS[activeLanguage].flag}
+                </span>
+                <span>
+                  {activeLanguage === "arabic"
+                    ? (ARABIC_DIALECTS.find(d => d.code === preferredDialect)?.label ?? "Arabic")
+                    : LANGUAGE_CONFIGS[activeLanguage].label}
+                </span>
+                <svg className="w-3 h-3 text-white/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              {isLangDropdownOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsLangDropdownOpen(false)} />
+                  <div
+                    className="absolute top-full left-0 mt-2 rounded-2xl overflow-hidden z-50 min-w-[190px] shadow-[0_16px_40px_rgba(0,0,0,0.6)]"
+                    style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.08)' }}
+                  >
+                    {(["french", "arabic"] as Language[]).map((lang) => {
+                      const cfg = LANGUAGE_CONFIGS[lang];
+                      return (
+                        <button
+                          key={lang}
+                          onClick={() => {
+                            setIsLangDropdownOpen(false);
+                            if (lang === activeLanguage) return;
+                            setActiveLanguage(lang);
+                            handleBack();
+                            setLangSplash(lang);
+                            window.setTimeout(() => setLangSplash(null), 950);
+                          }}
+                          className={`w-full flex items-center gap-2.5 px-4 py-3 text-sm font-semibold transition-colors text-left ${
+                            activeLanguage === lang ? "bg-white/10 text-white" : "text-white/55 hover:bg-white/5 hover:text-white"
+                          }`}
+                        >
+                          <span className="text-base">{cfg.flag}</span>
+                          <span className="flex-1">{cfg.label}</span>
+                          {activeLanguage === lang && (
+                            <svg className="w-3.5 h-3.5 text-white/60 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6 9 17l-5-5"/></svg>
+                          )}
+                        </button>
+                      );
+                    })}
+                    {activeLanguage === "arabic" && (
+                      <>
+                        <div className="px-4 py-2 border-t border-white/5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-white/30">Dialect</span>
+                        </div>
+                        {ARABIC_DIALECTS.map(d => (
                           <button
-                            key={lang}
-                            onClick={() => {
-                              setIsLangDropdownOpen(false);
-                              if (lang === activeLanguage) return;
-                              setActiveLanguage(lang);
-                              handleBack();
-                              setLangSplash(lang);
-                              window.setTimeout(() => setLangSplash(null), 950);
-                            }}
-                            className={`w-full flex items-center gap-2.5 px-4 py-3 text-sm font-semibold transition-colors text-left ${
-                              activeLanguage === lang ? "bg-white/10 text-white" : "text-white/55 hover:bg-white/5 hover:text-white"
+                            key={d.code}
+                            onClick={() => { setPreferredDialect(d.code); setIsLangDropdownOpen(false); }}
+                            className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold transition-colors text-left ${
+                              preferredDialect === d.code ? "bg-white/10 text-white" : "text-white/55 hover:bg-white/5 hover:text-white"
                             }`}
                           >
-                            <span className="text-base">{cfg.flag}</span>
-                            <span className="flex-1">{cfg.label}</span>
-                            {activeLanguage === lang && (
+                            <span className="text-base">{d.flag}</span>
+                            <span className="flex-1">{d.label}</span>
+                            {preferredDialect === d.code && (
                               <svg className="w-3.5 h-3.5 text-white/60 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6 9 17l-5-5"/></svg>
                             )}
                           </button>
-                        );
-                      })}
-                      {activeLanguage === "arabic" && (
-                        <>
-                          <div className="px-4 py-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-white/30">Dialect</span>
-                          </div>
-                          {ARABIC_DIALECTS.map(d => (
-                            <button
-                              key={d.code}
-                              onClick={() => { setPreferredDialect(d.code); setIsLangDropdownOpen(false); }}
-                              className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold transition-colors text-left ${
-                                preferredDialect === d.code ? "bg-white/10 text-white" : "text-white/55 hover:bg-white/5 hover:text-white"
-                              }`}
-                            >
-                              <span className="text-base">{d.flag}</span>
-                              <span className="flex-1">{d.label}</span>
-                              {preferredDialect === d.code && (
-                                <svg className="w-3.5 h-3.5 text-white/60 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6 9 17l-5-5"/></svg>
-                              )}
-                            </button>
-                          ))}
-                        </>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
-            {/* Right: notification bell */}
-            <div className="relative ml-auto">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.08)' }}>
-                <svg className="w-4 h-4 text-white/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/>
-                </svg>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-white/80 transition-all bg-white/5 border border-white/10">
+                <span className="text-[14px]">🔥</span>
+                <span>{comboCount}</span>
               </div>
-              <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full text-[8px] font-black text-black flex items-center justify-center" style={{ background: '#a855f7' }}>9</span>
             </div>
           </div>
-        ) : null /* deck list — band card above serves as header */}
-      </header>
-
-      {/* Pivot header — Levels / Personal */}
-      {!selectedLevelId && !selectedBand && (
-        <div className="flex flex-col w-full mb-4">
-          {/* Greeting */}
-          {user && (
-            <p className="text-sm font-medium mb-3" style={{ color: 'rgba(255,255,255,0.38)' }}>
-              {getGreeting()},{' '}
-              <span className="text-white/70 font-semibold">
-                {(user.user_metadata?.nickname as string | undefined) ?? user.email?.split("@")[0] ?? ""}
-              </span>{' '}👋
-            </p>
-          )}
-          <div className="flex items-baseline gap-5">
-            <button onClick={() => setHomeTab("levels")}>
-              <span className={`font-black tracking-tight leading-none transition-all duration-300 ${
-                homeTab === "levels" ? "text-[2.6rem] text-white" : "text-[1.5rem] text-white/35"
-              }`}>Levels</span>
-            </button>
-            <button onClick={() => setHomeTab("personal")}>
-              <span className={`font-black tracking-tight leading-none transition-all duration-300 ${
-                homeTab === "personal" ? "text-[2.6rem] text-white" : "text-[1.5rem] text-white/35"
-              }`}>Personal</span>
-            </button>
-          </div>
-          <WavyLine className="mt-2 max-w-[200px]" />
         </div>
       )}
 
       {/* Content */}
-      <div className={`flex-1 w-full flex flex-col items-center ${selectedLevelId ? 'justify-center' : 'justify-start'}`}>
+      <div className={`flex-1 w-full flex flex-col items-center min-h-0 scrollbar-none ${selectedLevelId ? 'justify-center' : 'justify-start overflow-y-auto pb-20'}`}>
         {!selectedLevelId ? (
-          /* Sliding pivot panels */
           <div className="w-full overflow-x-hidden">
-            <div
-              className="flex transition-transform duration-300 ease-out"
-              style={{ transform: homeTab === "levels" ? "translateX(0)" : "translateX(-100%)" }}
-            >
-              {/* ── Levels panel ── */}
-              <div className="min-w-full">
-                <LevelSelect
-                  levels={levels}
-                  completedLevelIds={completedIds}
-                  onSelectLevel={(levelId) => startLevel(levelId)}
-                  onAddLevel={() => setIsNewLevelModalOpen(true)}
-                  bookmarkedCount={bookmarkedLevel?.cards.length ?? 0}
-                  onStudyBookmarked={startBookmarkedSession}
-                  selectedBand={selectedBand}
-                  onSelectBand={(band) => {
-                    window.history.pushState({ mimoe: 'band' }, '', window.location.pathname);
-                    setSelectedBand(band);
-                  }}
-                  onBack={() => setSelectedBand(null)}
-                  activeLanguage={activeLanguage}
+            {activeNavTab === "home" && (
+              <NodePath
+                levels={selectedBand ? levels.filter(l => l.cefr === selectedBand) : levels}
+                completedLevelIds={completedIds}
+                onStartLevel={(levelId) => startLevel(levelId)}
+                bandTitle={selectedBand ? BANDS.find(b=>b.id === selectedBand)?.title || selectedBand : "All Levels"}
+                onBack={selectedBand ? () => {
+                  setSelectedBand(null);
+                  setActiveNavTab("library");
+                } : undefined}
+              />
+            )}
+            {activeNavTab === "library" && (
+              <LibraryTab
+                levels={levels}
+                completedLevelIds={completedIds}
+                collections={collections}
+                onSelectBand={(band) => {
+                  window.history.pushState({ mimoe: 'band' }, '', window.location.pathname);
+                  setSelectedBand(band);
+                  setActiveNavTab("home");
+                }}
+                activeLanguage={activeLanguage}
+                activeTab={activeTab}
+                onTabSwitch={handleTabSwitch}
+              />
+            )}
+            {activeNavTab === "personal" && (
+              <PersonalTab
+                collections={collections}
+                activeLanguage={activeLanguage}
+                onStudyCollection={handleStudyCollection}
+                onCreateCollection={handleCreateCollection}
+                onEditCollection={handleEditCollection}
+                onDeleteCollection={handleDeleteCollection}
+                onOpenWordBank={() => setActiveNavTab("wordbank")}
+              />
+            )}
+            {activeNavTab === "wordbank" && (
+              <div className="w-full flex flex-col pt-12 pb-32 px-5 min-h-[100dvh]">
+                <div className="flex items-center justify-between mb-8">
+                  <h1 className="text-white text-3xl font-bold">Word Bank</h1>
+                  <button onClick={() => setActiveNavTab("personal")} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-full text-xs font-bold text-white transition-colors">Back</button>
+                </div>
+                <WordBank
+                  items={activeTab === "vocabulary" ? baseLevels.flatMap(l=>l.cards) : baseLevels.flatMap(l=>l.cards)}
+                  onAdd={handleCustomAdd}
+                  onUpdate={handleCustomUpdate}
+                  onDelete={handleCustomDelete}
+                  onBulkAdd={handleBulkAdd}
+                  label="Search or add words"
+                  rtl={activeLanguage === "arabic"}
                 />
               </div>
-              {/* ── Personal panel ── */}
-              <div className="min-w-full">
-                <div className="w-full space-y-5">
-                  <div className="px-1 flex items-center justify-between">
-                    <span className="text-xs font-bold text-white/35 uppercase tracking-widest">Collections</span>
-                    <button
-                      onClick={handleImportDeck}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold text-white active:scale-95 transition-transform"
-                      style={{ background: "linear-gradient(135deg,#9b5cf6,#ec4899)", boxShadow: "0 3px 12px rgba(155,92,246,0.35)" }}
-                    >
-                      <Download className="w-3 h-3" /> Import deck
-                    </button>
-                  </div>
-                  {(() => {
-                    // Only show collections for the active language (treat null/undefined as "french")
-                    const visibleCollections = collections.filter(c => (c.language ?? "french") === activeLanguage);
-                    if (visibleCollections.length === 0) return (
-                      <p className="text-center text-white/25 text-sm py-8">No collections yet</p>
-                    );
-                    // Group by category; uncategorized last
-                    const groups: { cat: typeof COLLECTION_CATEGORIES[number] | null; items: Collection[] }[] = [];
-                    const catMap = new Map<string, Collection[]>();
-                    const uncategorized: Collection[] = [];
-                    for (const col of visibleCollections) {
-                      if (col.category) {
-                        if (!catMap.has(col.category)) catMap.set(col.category, []);
-                        catMap.get(col.category)!.push(col);
-                      } else {
-                        uncategorized.push(col);
-                      }
-                    }
-                    for (const catDef of COLLECTION_CATEGORIES) {
-                      if (catMap.has(catDef.value)) {
-                        groups.push({ cat: catDef, items: catMap.get(catDef.value)! });
-                      }
-                    }
-                    if (uncategorized.length > 0) groups.push({ cat: null, items: uncategorized });
-                    const indexById = new Map(visibleCollections.map((c, i) => [c.id, i]));
-                    return (
-                      <div className="space-y-6">
-                        {groups.map(({ cat, items }) => (
-                          <div key={cat?.value ?? "__none"}>
-                            {cat && (
-                              <div className="flex items-center gap-2 mb-3">
-                                <span className="text-base">{cat.emoji}</span>
-                                <span className="text-xs font-bold text-white/40 uppercase tracking-wider">{cat.label}</span>
-                              </div>
-                            )}
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                              {items.map((collection) => (
-                                <CollectionCard
-                                  key={collection.id}
-                                  collection={collection}
-                                  index={indexById.get(collection.id) ?? 0}
-                                  onStudy={handleStudyCollection}
-                                  onEdit={handleEditCollection}
-                                  onDelete={handleDeleteCollection}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  })()}
-                </div>
-              </div>
-            </div>
+            )}
+
+            {activeNavTab === "profile" && (
+               <div className="w-full flex flex-col items-center pt-24 px-5">
+                 <h1 className="text-white text-2xl font-bold mb-4">Profile</h1>
+                 <button onClick={() => setIsProfileOpen(true)} className="px-6 py-3 bg-[#B875FF] text-white rounded-full font-bold">Open Settings</button>
+               </div>
+            )}
+            
+            <BottomNav activeTab={activeNavTab} onTabChange={setActiveNavTab} />
           </div>
+
         ) : allCards.length === 0 ? (
           <div className="flex flex-col items-center gap-3 text-center animate-fade-in py-8">
             <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
@@ -1804,60 +1672,7 @@ export function FlashcardApp() {
         </>
       )}
 
-      {/* ── Home bottom nav ── */}
-      {!selectedLevelId && appView === "main" && !isCollectionModalOpen && (
-        <nav className="fixed bottom-0 left-0 right-0 z-50"
-          style={{ background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.7) 30%, rgba(0,0,0,0.96) 70%)' }}
-        >
-          <div
-            className="w-full max-w-[480px] md:max-w-[860px] xl:max-w-[1100px] mx-auto flex items-center px-5 md:px-6 gap-3"
-            style={{
-              paddingTop: '28px',
-              paddingBottom: '20px',
-            }}
-          >
-            {/* + button — toggles collection type tooltip */}
-            <button
-              onClick={() => setShowCollectionTooltip(v => !v)}
-              className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 active:scale-95 transition-transform"
-              style={{ background: '#000', border: '1.5px solid rgba(168,85,247,0.6)', boxShadow: '0 0 14px rgba(168,85,247,0.35)' }}
-            >
-              <Plus className="w-5 h-5 text-white" />
-            </button>
 
-            {/* Vocabulary / Phrases tabs */}
-            <div className="flex items-center gap-5 flex-1 pl-1">
-              {(["vocabulary", "phrases"] as Tab[]).map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => handleTabSwitch(tab)}
-                  className={`text-sm font-bold capitalize transition-colors ${
-                    activeTab === tab ? "text-white" : "text-white/35"
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
-
-            {/* User avatar / profile */}
-            <button
-              onClick={() => setIsProfileOpen(true)}
-              className="w-9 h-9 rounded-full overflow-hidden flex-shrink-0 transition-opacity active:opacity-70"
-              style={{ border: '1.5px solid rgba(129,140,248,0.35)', background: 'linear-gradient(135deg, rgba(129,140,248,0.2), rgba(168,85,247,0.2))' }}
-            >
-              {user && (
-                <img
-                  src={dicebearUrl((user.user_metadata?.avatar_seed as string | undefined) ?? user.id)}
-                  alt="Profile"
-                  className="w-full h-full"
-                  draggable={false}
-                />
-              )}
-            </button>
-          </div>
-        </nav>
-      )}
 
 
       <NewLevelModal

@@ -6,8 +6,8 @@
 
 @layer base {
   :root {
-    /* Pure-black base — matches the sign-in page aesthetic */
-    --background: 0 0% 4%;        /* #0a0a0a */
+    /* Deep dark base for Node Path aesthetic */
+    --background: 240 8% 8%;      /* #121215 roughly */
     --foreground: 0 0% 90%;
 
     --card: 0 0% 7%;              /* #111111 */
@@ -60,7 +60,7 @@
   }
 
   html {
-    background: #0a0a0a;
+    background: #121215;
     overflow: hidden;
     height: 100dvh;
   }
@@ -84,6 +84,21 @@
     -webkit-user-select: text;
     user-select: text;
   }
+}
+
+@keyframes tile-casual-rotate {
+  0%, 100% { transform: perspective(700px) rotateY(0deg) rotateX(0deg); }
+  30%       { transform: perspective(700px) rotateY(6deg)  rotateX(1deg); }
+  70%       { transform: perspective(700px) rotateY(-3deg) rotateX(-0.5deg); }
+}
+
+/* Hide scrollbar universally while keeping scroll behavior */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+::-webkit-scrollbar {
+  display: none;
 }
 
 @layer utilities {
