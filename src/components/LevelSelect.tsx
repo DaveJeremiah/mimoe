@@ -389,34 +389,23 @@ export function LevelSelect({
                 transformOrigin: "center center"
               }}
             >
-              {/* A1: real scenic photo */}
-              {tile.id === "A1" ? (
-                <img
-                  src={scenicBg}
-                  alt="" aria-hidden="true"
-                  className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-                  style={{ brightness: 0.9, transform: "scale(1.05)" }}
-                />
-              ) : (
-                /* Bokeh gradient for all other tiles */
-                <div
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    background: `
-                      radial-gradient(circle at 20% 30%, ${c0} 0%, transparent 60%),
-                      radial-gradient(circle at 80% 20%, ${c1} 0%, transparent 60%),
-                      radial-gradient(circle at 50% 80%, ${c2} 0%, transparent 60%),
-                      #1a1a24
-                    `,
-                  }}
-                />
-              )}
+              {/* Bokeh gradient for all tiles */}
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: `
+                    radial-gradient(circle at 20% 30%, ${c0} 0%, transparent 60%),
+                    radial-gradient(circle at 80% 20%, ${c1} 0%, transparent 60%),
+                    radial-gradient(circle at 50% 80%, ${c2} 0%, transparent 60%),
+                    #1a1a24
+                  `,
+                }}
+              />
 
-              {/* Top Right Heart Icon */}
+              {/* Top Right Progress Ring */}
               {tile.active && (
-                <div className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full flex items-center justify-center"
-                     style={{ background: "rgba(255,255,255,0.1)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.15)" }}>
-                  <Star className="w-4 h-4 text-white" strokeWidth={1.5} />
+                <div className="absolute top-4 right-4 z-20">
+                  <ProgressRing pct={pct} />
                 </div>
               )}
 
