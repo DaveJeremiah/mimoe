@@ -17,18 +17,17 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
 
   return (
     <div 
-      className="fixed z-50 flex items-center justify-around py-2 px-2 bg-[#121215]/95 backdrop-blur-md rounded-full shadow-2xl border border-white/10"
+      className="fixed z-50 left-0 right-0 pointer-events-none flex justify-center"
       style={{ 
-        bottom: "0px",
-        left: "12px",
-        right: "12px",
-        paddingBottom: "max(env(safe-area-inset-bottom, 8px), 8px)"
+        bottom: 0,
+        paddingBottom: "max(env(safe-area-inset-bottom, 12px), 12px)"
       }}
     >
-      {tabs.map((tab) => {
-        const isActive = activeTab === tab.id;
-        const Icon = tab.icon;
-        return (
+      <div className="pointer-events-auto flex items-center justify-around py-3 px-4 bg-[#121215]/95 backdrop-blur-md rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/10 w-[calc(100%-32px)] max-w-[400px]">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.id;
+          const Icon = tab.icon;
+          return (
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}

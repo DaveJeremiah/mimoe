@@ -24,7 +24,7 @@ export function PersonalTab({
 }: PersonalTabProps) {
   
   return (
-    <div className="w-full flex flex-col pt-6 pb-0 px-5 min-h-[100dvh]">
+    <div className="w-full flex flex-col pt-6 pb-24 px-5">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-white text-3xl font-bold">Personal</h1>
         <button 

@@ -23,7 +23,7 @@ export function CollectionCard({ collection, index = 0, onStudy, onEdit, onDelet
 
   return (
     <div className="relative overflow-hidden shadow-2xl transition-transform active:scale-[0.98]"
-         style={{ borderRadius: 32, minHeight: 280, transformOrigin: 'center center' }}>
+         style={{ borderRadius: 32, minHeight: 160, transformOrigin: 'center center' }}>
       
       {/* Background Pattern */}
       <div className="absolute inset-0 pointer-events-none" style={{ background: bgGradient }} />
