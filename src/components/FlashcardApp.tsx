@@ -1393,10 +1393,10 @@ export function FlashcardApp() {
       {/* Header logic — Unified Top Bar */}
       {!selectedLevelId && (
         <div 
-          className="sticky top-0 w-full flex flex-col z-[100] bg-[#0f0f13]/40 backdrop-blur-2xl border-b border-white/5 pb-3 px-4" 
-          style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)' }}
+          className="sticky top-0 w-full flex flex-col z-[100] bg-[#0f0f13]/40 backdrop-blur-2xl border-b border-white/5 pb-5 px-5" 
+          style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 16px)' }}
         >
-          <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center justify-between mb-4">
             <div className="relative">
               <button
                 onClick={() => setIsLangDropdownOpen(v => !v)}
@@ -1484,18 +1484,18 @@ export function FlashcardApp() {
           {/* Unified Title for NodePath with Tabs */}
           {activeNavTab === "home" && (
             <div className="flex flex-col items-center text-center mt-1 pb-1">
-              <h2 className="text-white/50 font-bold uppercase tracking-widest text-[10px] mb-1">Current Path</h2>
-              <div className="flex items-center justify-center gap-6">
+              <h2 className="text-white/50 font-bold uppercase tracking-widest text-[10px] mb-2">Current Path</h2>
+              <div className="flex items-center justify-center gap-10">
                 <button 
                   onClick={() => setActiveTab("vocabulary")}
-                  className={`relative text-xl font-black transition-colors ${activeTab === 'vocabulary' ? 'text-white' : 'text-white/30 hover:text-white/60'}`}
+                  className={`relative font-black transition-all duration-300 ease-out ${activeTab === 'vocabulary' ? 'text-[26px] text-white' : 'text-lg text-white/30 hover:text-white/60'}`}
                 >
                   Vocabulary
                   {activeTab === "vocabulary" && <WavyLine className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-32 opacity-80" />}
                 </button>
                 <button 
                   onClick={() => setActiveTab("phrases")}
-                  className={`relative text-xl font-black transition-colors ${activeTab === 'phrases' ? 'text-white' : 'text-white/30 hover:text-white/60'}`}
+                  className={`relative font-black transition-all duration-300 ease-out ${activeTab === 'phrases' ? 'text-[26px] text-white' : 'text-lg text-white/30 hover:text-white/60'}`}
                 >
                   Phrases
                   {activeTab === "phrases" && <WavyLine className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-32 opacity-80" />}
