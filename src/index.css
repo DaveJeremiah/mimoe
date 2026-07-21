@@ -59,16 +59,15 @@
     @apply border-border;
   }
 
+  :root {
+    background-color: #121215 !important;
+  }
+
   html {
-    background: #121215;
+    background: #121215 !important;
     overflow: hidden;
-    height: 100dvh;
-    /* Deep iPhone fixes */
-    height: -webkit-fill-available;
-    position: fixed;
+    height: 100%;
     width: 100%;
-    top: 0;
-    left: 0;
     overscroll-behavior: none;
   }
 
@@ -78,41 +77,35 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow: hidden;
-    /* Deep iPhone fixes */
-    height: 100dvh;
-    min-height: 100dvh;
-    width: 100vw;
-    position: fixed;
-    top: 0;
-    left: 0;
+    height: 100%;
+    width: 100%;
     overscroll-behavior: none;
     /* Prevent accidental text selection (and iOS copy/keyboard toolbar) on tap */
     -webkit-user-select: none;
     user-select: none;
     /* Remove 300 ms tap delay on iOS */
     touch-action: manipulation;
-    background-color: #121215;
+    background-color: #121215 !important;
   }
 
   #root {
-    height: 100dvh;
-    width: 100vw;
-    position: fixed;
-    top: 0;
-    left: 0;
+    height: 100%;
+    width: 100%;
     overflow: hidden;
-    background-color: #121215;
+    background-color: #121215 !important;
+    display: flex;
+    flex-direction: column;
   }
 
   /* Force background to be dark everywhere */
-  html::after, body::after {
+  html::after, body::after, #root::after {
     content: '';
     position: fixed;
     bottom: -50vh;
     left: 0;
     width: 100vw;
     height: 50vh;
-    background-color: #121215;
+    background-color: #121215 !important;
     z-index: -9999;
   }
 
