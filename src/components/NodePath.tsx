@@ -4,6 +4,28 @@ import type { Level } from "@/lib/flashcardData";
 import { BottomSheet } from "./BottomSheet";
 import { WavyLine, BANDS, ProgressRing, getAllTiles } from "./LevelSelect";
 
+function VerticalWavyLine({ className = "" }: { className?: string }) {
+  return (
+    <div className={`absolute top-4 bottom-4 w-8 left-1/2 -translate-x-1/2 z-0 overflow-hidden ${className}`}>
+      <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="wavePattern" x="0" y="0" width="32" height="140" patternUnits="userSpaceOnUse">
+            <path
+              d="M16 0 C32 35, 0 105, 16 140"
+              stroke="#B875FF"
+              strokeWidth="4"
+              strokeOpacity="0.25"
+              strokeLinecap="round"
+              fill="none"
+            />
+          </pattern>
+        </defs>
+        <rect x="0" y="0" width="100%" height="100%" fill="url(#wavePattern)" />
+      </svg>
+    </div>
+  );
+}
+
 interface NodePathProps {
   levels: Level[];
   completedLevelIds: string[];
@@ -113,8 +135,8 @@ export function NodePath({ levels, completedLevelIds, onStartLevel, bandTitle, o
 
             {/* Path Track for this course */}
             <div className="w-full flex flex-col items-center relative">
-              {/* Central vertical line for this group */}
-              <div className="absolute top-4 bottom-4 w-[2px] bg-white/10 left-1/2 -translate-x-1/2 z-0" />
+              {/* Central vertical wavy line for this group */}
+              <VerticalWavyLine />
 
               {groupLevels.map((level, i) => {
                 const isCompleted = i < activeIndex;

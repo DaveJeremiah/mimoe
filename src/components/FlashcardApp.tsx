@@ -1089,7 +1089,7 @@ export function FlashcardApp() {
 
     return (
       <div
-        className="min-h-screen flex flex-col items-center max-w-[480px] mx-auto pt-[28px] pb-36 px-[15px]"
+        className="min-h-screen flex flex-col items-center max-w-[480px] mx-auto pt-[28px] pb-24 px-[15px]"
         onTouchStart={handleSessionTouchStart}
         onTouchEnd={handleCollectionSessionTouchEnd}
       >
