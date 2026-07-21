@@ -33,14 +33,6 @@
     --border: 0 0% 14%;           /* #242424 — matches rgba(255,255,255,0.08) on black */
     --input: 0 0% 11%;
     --ring: 270 60% 55%;
-  }
-
-  body {
-    background-color: #121215;
-    min-height: 100vh;
-    min-height: -webkit-fill-available;
-  }
-}
 
     --radius: 1rem;
 
@@ -58,6 +50,12 @@
 
     --warning: 45 93% 55%;
     --warning-foreground: 0 0% 10%;
+  }
+
+  body {
+    background-color: #121215;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
   }
 }
 
