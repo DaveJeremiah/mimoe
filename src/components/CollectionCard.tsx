@@ -79,8 +79,7 @@ export function CollectionCard({ collection, index = 0, onStudy, onEdit, onDelet
           minHeight: "50%",
           background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.85) 100%)",
           backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-          borderTop: "1px solid rgba(255,255,255,0.05)"
+          WebkitBackdropFilter: "blur(12px)"
         }}
       >
         <div className="relative z-10 text-left">
