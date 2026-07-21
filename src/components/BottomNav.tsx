@@ -19,9 +19,9 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
     <div 
       className="fixed z-50 flex items-center justify-around py-2 px-2 bg-[#121215]/95 backdrop-blur-md rounded-full shadow-2xl border border-white/10"
       style={{ 
-        bottom: "max(env(safe-area-inset-bottom, 16px), 16px)",
-        left: "16px",
-        right: "16px"
+        bottom: "max(env(safe-area-inset-bottom, 0px), 8px)",
+        left: "12px",
+        right: "12px"
       }}
     >
       {tabs.map((tab) => {
