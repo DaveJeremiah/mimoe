@@ -52,20 +52,7 @@ export function NodePath({ levels, completedLevelIds, onStartLevel, bandTitle, o
 
   return (
     <div className="w-full flex flex-col items-center pt-0 pb-0 relative gap-10">
-      
-      {/* Sticky Header */}
-      <div 
-        className="sticky top-0 w-full z-[40] bg-[#0f0f13]/80 backdrop-blur-xl border-b border-white/5 pb-4 px-5 flex items-center justify-center mb-2"
-        style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 16px)' }}
-      >
-        <div className="flex flex-col items-center text-center">
-          <h2 className="text-white/50 font-bold uppercase tracking-widest text-[10px] mb-0.5">Current Path</h2>
-          <h1 className="text-white font-black text-xl relative">
-            {bandTitle}
-            <WavyLine className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-32 opacity-80" />
-          </h1>
-        </div>
-      </div>
+
 
       {activeGroups.map((tile, groupIdx) => {
         const groupLevels = grouped[tile.id];

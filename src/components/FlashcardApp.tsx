@@ -1390,10 +1390,13 @@ export function FlashcardApp() {
       )}
 
 
-      {/* Header logic — Top bar is simpler now */}
+      {/* Header logic — Unified Top Bar */}
       {!selectedLevelId && (
-        <div className="w-full flex flex-col px-4 pb-2 relative z-[100]" style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)' }}>
-          <div className="flex items-center justify-between">
+        <div 
+          className="sticky top-0 w-full flex flex-col z-[100] bg-[#0f0f13]/80 backdrop-blur-xl border-b border-white/5 pb-3 px-4" 
+          style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)' }}
+        >
+          <div className="flex items-center justify-between mb-1">
             <div className="relative">
               <button
                 onClick={() => setIsLangDropdownOpen(v => !v)}
@@ -1477,6 +1480,17 @@ export function FlashcardApp() {
               </div>
             </div>
           </div>
+
+          {/* Unified Title for NodePath */}
+          {activeNavTab === "home" && (
+            <div className="flex flex-col items-center text-center mt-1 pb-1">
+              <h2 className="text-white/50 font-bold uppercase tracking-widest text-[10px] mb-0.5">Current Path</h2>
+              <h1 className="text-white font-black text-xl relative">
+                {activeTab === "vocabulary" ? "Vocabulary" : "Phrases"}
+                <WavyLine className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-32 opacity-80" />
+              </h1>
+            </div>
+          )}
         </div>
       )}
 
