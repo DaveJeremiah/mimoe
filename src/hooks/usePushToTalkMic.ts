@@ -111,7 +111,7 @@ async function transcribeViaAzure(blob: Blob, langCode: string): Promise<string 
 // ── Tunables ──────────────────────────────────────────────────────────────────
 
 const MAX_RETRIES   = 8;
-const VAD_SILENCE_TICKS = 7;     // 7 × 100 ms = 700 ms of silence ends the utterance
+const VAD_SILENCE_TICKS = 4;     // 4 * 100 ms = 400 ms of silence ends the utterance
 const VAD_SPEECH_RMS    = 0.022; // ~-33 dBFS threshold for "speaking"
 const ONSTOP_TIMEOUT_MS = 800;   // fallback if MediaRecorder.onstop never fires
 
@@ -226,7 +226,7 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult, handsFree = false }
     if (iosGenRef.current === gen) setStatus("listening");
 
     if (iosSafetyRef.current) clearTimeout(iosSafetyRef.current);
-    iosSafetyRef.current = setTimeout(() => { if (iosGenRef.current === gen) void iosStop(); }, 10000);
+    iosSafetyRef.current = setTimeout(() => { if (iosGenRef.current === gen) void iosStop(); }, 30000);
 
     // ── Voice-activity detection: stop after VAD_SILENCE_TICKS of silence ──
     try {

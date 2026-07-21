@@ -571,12 +571,12 @@ export function Flashcard({
 
           {/* Push-to-talk — rotated squircle with accent gradient */}
           <div className="relative flex items-center justify-center flex-shrink-0">
-            {/* Ripple rings (accent) — staggered animate-ping */}
+            {/* Ripple rings (accent) — staggered animate-ping (calm blue colors) */}
             {pttStatus === "listening" && (
               <>
-                <div className="absolute w-[78px] h-[78px] animate-ping" style={{ borderRadius: 26, transform: "rotate(45deg)", background: "rgba(192,38,211,0.45)", animationDuration: "1.1s" }} />
-                <div className="absolute w-[78px] h-[78px] animate-ping" style={{ borderRadius: 26, transform: "rotate(45deg)", background: "rgba(155,92,246,0.30)", animationDuration: "1.1s", animationDelay: "280ms" }} />
-                <div className="absolute w-[78px] h-[78px] animate-ping" style={{ borderRadius: 26, transform: "rotate(45deg)", background: "rgba(236,72,153,0.18)", animationDuration: "1.1s", animationDelay: "560ms" }} />
+                <div className="absolute w-[78px] h-[78px] animate-ping" style={{ borderRadius: 26, transform: "rotate(45deg)", background: "rgba(59,130,246,0.45)", animationDuration: "1.1s" }} />
+                <div className="absolute w-[78px] h-[78px] animate-ping" style={{ borderRadius: 26, transform: "rotate(45deg)", background: "rgba(14,165,233,0.30)", animationDuration: "1.1s", animationDelay: "280ms" }} />
+                <div className="absolute w-[78px] h-[78px] animate-ping" style={{ borderRadius: 26, transform: "rotate(45deg)", background: "rgba(6,182,212,0.18)", animationDuration: "1.1s", animationDelay: "560ms" }} />
               </>
             )}
             {/* Idle-but-armed: gentle breathing ring so it reads as "ready" */}
@@ -596,11 +596,11 @@ export function Flashcard({
                 borderRadius: 26,
                 transform: pttStatus === "listening" ? "rotate(45deg) scale(0.94)" : "rotate(45deg)",
                 background: pttStatus === "listening"
-                  ? "linear-gradient(135deg,#9b5cf6 0%,#c026d3 50%,#ec4899 100%)"
+                  ? "linear-gradient(135deg, #3b82f6 0%, #0ea5e9 50%, #06b6d4 100%)"
                   : "#15131f",
                 boxShadow: pttStatus === "listening"
-                  ? "0 0 30px rgba(192,38,211,0.6)"
-                  : "inset 0 0 0 2px rgba(167,139,250,0.55), 0 8px 22px rgba(124,58,237,0.28)",
+                  ? "0 4px 20px rgba(14,165,233,0.4)"
+                  : "0 6px 16px rgba(0,0,0,0.4), inset 0 -2px 1px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.06)",
                 opacity: isSpeaking ? 0.55 : 1,
                 cursor: isSpeaking ? "default" : "pointer",
                 WebkitUserSelect: "none", userSelect: "none", WebkitTouchCallout: "none",
