@@ -1392,7 +1392,7 @@ export function FlashcardApp() {
 
       {/* Header logic — Top bar is simpler now */}
       {!selectedLevelId && (
-        <div className="w-full flex flex-col px-4 pb-2 relative z-50" style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)' }}>
+        <div className="w-full flex flex-col px-4 pb-2 relative z-[100]" style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 12px)' }}>
           <div className="flex items-center justify-between">
             <div className="relative">
               <button
