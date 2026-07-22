@@ -88,10 +88,7 @@ export function NodePath({ levels, completedLevelIds, onStartLevel, bandTitle, o
                 }}
               />
 
-              {/* Top Right Progress Ring */}
-              <div className="absolute top-4 right-4 z-20">
-                <ProgressRing pct={pct} />
-              </div>
+              {/* (Removed top right progress ring) */}
 
               {/* Bottom Glass Pane */}
               <div 
@@ -119,6 +116,16 @@ export function NodePath({ levels, completedLevelIds, onStartLevel, bandTitle, o
                       <span className="text-white/90 text-xs font-semibold">{completed}/{groupLevels.length}</span>
                     </div>
                   </div>
+                  
+                  {/* Linear Progress Tube */}
+                  {pct > 0 && (
+                    <div className="mt-4 w-full h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.15)" }}>
+                      <div 
+                        className="h-full transition-all duration-700 ease-out" 
+                        style={{ width: `${pct}%`, background: "rgba(255,255,255,0.9)" }} 
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

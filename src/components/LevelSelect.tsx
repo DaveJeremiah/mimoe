@@ -405,12 +405,7 @@ export function LevelSelect({
                 }}
               />
 
-              {/* Top Right Progress Ring */}
-              {tile.active && (
-                <div className="absolute top-4 right-4 z-20">
-                  <ProgressRing pct={pct} />
-                </div>
-              )}
+              {/* (Removed top right progress ring) */}
 
               {/* Bottom Glass Pane */}
               <div 
@@ -446,15 +441,17 @@ export function LevelSelect({
                         <span className="text-white/90 text-xs font-semibold tracking-wide uppercase">Soon</span>
                       </div>
                     )}
-
-                    {/* Percentage Pill */}
-                    {tile.active && pct > 0 && (
-                      <div className="bg-white/10 border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-1.5">
-                        <div className="w-3.5 h-3.5 rounded-full" style={{ background: "conic-gradient(from 0deg, white " + pct + "%, rgba(255,255,255,0.2) 0)" }} />
-                        <span className="text-white/90 text-xs font-semibold">{Math.round(pct)}%</span>
-                      </div>
-                    )}
                   </div>
+                  
+                  {/* Linear Progress Tube */}
+                  {tile.active && pct > 0 && (
+                    <div className="mt-4 w-full h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.15)" }}>
+                      <div 
+                        className="h-full transition-all duration-700 ease-out" 
+                        style={{ width: `${pct}%`, background: "rgba(255,255,255,0.9)" }} 
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </button>
