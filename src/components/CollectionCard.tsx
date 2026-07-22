@@ -25,10 +25,7 @@ export function CollectionCard({ collection, index = 0, onStudy, onEdit, onDelet
       }}
       onClick={() => onStudy(collection)}
     >
-      {/* Icon / Emoji */}
-      <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 relative z-10 shadow-inner">
-        <span style={{ fontSize: 24, filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.3))' }}>{catInfo?.emoji ?? "📚"}</span>
-      </div>
+      {/* Removed Icon / Emoji */}
 
       <div className="flex-1 min-w-0 relative z-10">
         <p className="text-[15px] font-bold text-white leading-tight truncate pr-2">{collection.title}</p>
