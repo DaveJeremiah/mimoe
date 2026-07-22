@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LogOut, BookOpen, Layers, Pencil, Check, X } from "lucide-react";
+import { LogOut, BookOpen, Layers, Pencil, Check, X, Lock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { WavyLine } from "./LevelSelect";
@@ -44,6 +44,11 @@ export function ProfileModal({
   const [previewSeed,     setPreviewSeed]     = useState(savedSeed);
   const [savingAvatar,    setSavingAvatar]    = useState(false);
 
+  const [newPassword,     setNewPassword]     = useState("");
+  const [settingPassword, setSettingPassword] = useState(false);
+  const [passwordError,   setPasswordError]   = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+
   const avatarUrl    = dicebearUrl(previewSeed);
   const displayName  = savedNickname;
 
@@ -77,6 +82,17 @@ export function ProfileModal({
   const handleCancelAvatar = () => {
     setPreviewSeed(savedSeed);
     setPickingAvatar(false);
+  };
+
+  /* ── password ── */
+  const handleSetPassword = async () => {
+    if (newPassword.length < 6) { setPasswordError("Minimum 6 characters"); return; }
+    setPasswordError("");
+    setSettingPassword(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setSettingPassword(false);
+    if (error) { setPasswordError(error.message); }
+    else { setPasswordSuccess(true); setNewPassword(""); }
   };
 
   /* ── sign out ── */
@@ -249,6 +265,43 @@ export function ProfileModal({
                   <p className="text-[9px] font-semibold text-white/30 text-center uppercase tracking-wider leading-tight">{label}</p>
                 </div>
               ))}
+            </div>
+
+            {/* Set Password (for OAuth users) */}
+            <div className="flex flex-col gap-2 p-4 rounded-2xl" style={{ background: '#111118', border: '1px solid rgba(255,255,255,0.07)' }}>
+              <div className="flex items-center gap-2 mb-1">
+                <Lock className="w-4 h-4 text-white/40" />
+                <h3 className="text-sm font-bold text-white/80">Set Password</h3>
+              </div>
+              <p className="text-xs text-white/40 leading-snug mb-2">
+                If you signed in with Google, you can set a password here to log in with email next time.
+              </p>
+              {passwordSuccess ? (
+                <p className="text-xs text-green-400 font-semibold flex items-center gap-1"><Check className="w-3 h-3" /> Password updated successfully!</p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      placeholder="New password (min 6)"
+                      value={newPassword}
+                      onChange={e => { setNewPassword(e.target.value); setPasswordError(""); }}
+                      disabled={settingPassword}
+                      className="flex-1 bg-transparent text-white text-sm outline-none px-3 py-2 rounded-xl focus:bg-white/5 transition-colors"
+                      style={{ border: '1px solid rgba(255,255,255,0.1)' }}
+                    />
+                    <button
+                      onClick={handleSetPassword}
+                      disabled={settingPassword || newPassword.length < 6}
+                      className="px-4 py-2 rounded-xl text-xs font-bold transition-opacity disabled:opacity-50"
+                      style={{ background: 'rgba(255,255,255,0.1)', color: '#fff' }}
+                    >
+                      {settingPassword ? "Saving..." : "Set"}
+                    </button>
+                  </div>
+                  {passwordError && <p className="text-xs text-red-400">{passwordError}</p>}
+                </div>
+              )}
             </div>
 
             {/* Sign out */}
