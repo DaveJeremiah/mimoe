@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { adminDb, type BuiltinOverrideRow } from "@/lib/adminDb";
 import type { FlashcardItem } from "@/lib/flashcardData";
-import { X, Plus, Eye, EyeOff, Save } from "lucide-react";
+import { X, Plus, Eye, EyeOff, Save, Sparkles, Loader2 } from "lucide-react";
+import { generateIllustration } from "@/lib/generateImage";
 
 interface EditorCard {
   card_id: string;
@@ -10,6 +11,8 @@ interface EditorCard {
   transliteration: string;
   hidden: boolean;
   isNew: boolean;
+  imageUrl?: string;
+  isGenerating?: boolean;
 }
 
 interface BuiltinLevel {
@@ -33,6 +36,7 @@ function makeEditorCard(card: FlashcardItem): EditorCard {
     transliteration: card.transliteration ?? "",
     hidden: false,
     isNew: false,
+    imageUrl: card.imageUrl,
   };
 }
 
@@ -49,6 +53,7 @@ function applyOverrides(base: EditorCard[], overrides: BuiltinOverrideRow[]): Ed
       target: o.target || c.target,
       transliteration: o.transliteration ?? c.transliteration,
       hidden: o.hidden,
+      imageUrl: o.imageUrl ?? c.imageUrl,
     };
   });
 
@@ -62,6 +67,7 @@ function applyOverrides(base: EditorCard[], overrides: BuiltinOverrideRow[]): Ed
         transliteration: o.transliteration ?? "",
         hidden: false,
         isNew: true,
+        imageUrl: o.imageUrl,
       });
     }
   }
@@ -101,6 +107,19 @@ export function BuiltinLevelEditor({ level, onClose, onSaved }: Props) {
 
   const removeNew = (idx: number) => {
     setCards(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleGenerateImage = async (idx: number, english: string) => {
+    if (!english) return;
+    update(idx, "isGenerating", true);
+    try {
+      const url = await generateIllustration(english);
+      update(idx, "imageUrl", url);
+    } catch (e: any) {
+      console.error(e);
+    } finally {
+      update(idx, "isGenerating", false);
+    }
   };
 
   const handleSave = async () => {
@@ -207,6 +226,20 @@ export function BuiltinLevelEditor({ level, onClose, onSaved }: Props) {
                         >
                           {card.hidden ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                         </button>
+                      )}
+                      
+                      {!card.hidden && (
+                        card.isGenerating ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-white/50 inline-block ml-1" />
+                        ) : (
+                          <button
+                            onClick={() => handleGenerateImage(idx, card.english)}
+                            className={`p-1 rounded transition-colors inline-block ml-1 ${card.imageUrl ? 'text-green-400' : 'text-white/25 hover:text-yellow-400'}`}
+                            title="Generate image"
+                          >
+                            <Sparkles className="w-3.5 h-3.5" />
+                          </button>
+                        )
                       )}
                     </td>
                   </tr>

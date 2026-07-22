@@ -60,6 +60,7 @@ export interface BuiltinOverrideRow {
   transliteration: string | null;
   position: number;
   hidden: boolean;
+  imageUrl?: string;
 }
 
 export const adminDb = {
@@ -186,6 +187,7 @@ export const adminDb = {
         transliteration: c.transliteration ?? null,
         position: i,
         hidden: c.hidden,
+        imageUrl: c.imageUrl ?? null,
       })),
     });
     if (error) throw error;

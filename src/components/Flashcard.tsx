@@ -457,15 +457,27 @@ export function Flashcard({
               <div className="absolute inset-0 flex flex-col items-center justify-center z-10"
                 style={{ padding: '60px 28px 44px 28px' }}>
 
+                {card.imageUrl && (
+                  <div className="mb-4 flex-shrink-0 animate-fade-in">
+                    <img 
+                      src={card.imageUrl} 
+                      alt="Context clue" 
+                      className="w-40 h-40 object-cover rounded-3xl shadow-md border-[3px] border-white/20" 
+                    />
+                  </div>
+                )}
+
                 {/* QUESTION */}
                 {isQuestion && (
-                  <div className="flex flex-col items-center gap-2 animate-fade-in z-10 px-4 mt-6">
-                    <h2
-                      className={`font-bold text-[2rem] text-center leading-snug lowercase`}
-                      style={{ color: '#ffffff' }}
-                    >
-                      {card.english}
-                    </h2>
+                  <div className="flex flex-col items-center gap-2 animate-fade-in z-10 px-4 mt-1">
+                    {(!card.imageUrl || showHint) && (
+                      <h2
+                        className={`font-bold text-center leading-snug lowercase ${card.imageUrl ? 'text-[1.5rem] animate-pop-in' : 'text-[2rem]'}`}
+                        style={{ color: '#ffffff' }}
+                      >
+                        {card.english}
+                      </h2>
+                    )}
                     {showHint && card.transliteration && (
                       <p dir={targetDir} className={`text-sm font-medium tracking-wide text-center animate-pop-in ${targetFontClass}`}
                         style={{ color: 'rgba(255,255,255,0.55)' }}>
@@ -474,7 +486,7 @@ export function Flashcard({
                     )}
                     <button
                       onClick={handleHint}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all active:scale-95"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all active:scale-95 mt-1"
                       style={{ background: 'rgba(0,0,0,0.18)', color: 'rgba(255,255,255,0.45)' }}
                     >
                       <Lightbulb className="w-3 h-3" />

@@ -8,7 +8,10 @@ import { WavyLine } from "./LevelSelect";
 import { AudioRecorderInput } from "./AudioRecorderInput";
 import { arabicToLatin } from "@/lib/transliterate";
 
-interface Pair { english: string; target: string; transliteration?: string; audioUrl?: string; }
+import { generateIllustration } from "@/lib/generateImage";
+import { Loader2 } from "lucide-react";
+
+interface Pair { english: string; target: string; transliteration?: string; audioUrl?: string; imageUrl?: string; isGenerating?: boolean; }
 
 interface NewCollectionModalProps {
   isOpen: boolean;
@@ -47,6 +50,7 @@ export function NewCollectionModal({
           target: e.target ?? e.french,
           transliteration: e.transliteration,
           audioUrl: e.audioUrl,
+          imageUrl: e.imageUrl,
         })));
       } else {
         setPairs([{ english: "", target: "" }]);
@@ -76,6 +80,18 @@ export function NewCollectionModal({
   };
   const setPairAudio = (i: number, audioUrl: string | undefined) => {
     setPairs(prev => prev.map((p, idx) => idx === i ? { ...p, audioUrl } : p));
+  };
+  const handleGenerateImage = async (i: number, english: string) => {
+    if (!english) return;
+    setPairs(prev => prev.map((p, idx) => idx === i ? { ...p, isGenerating: true } : p));
+    try {
+      const url = await generateIllustration(english);
+      setPairs(prev => prev.map((p, idx) => idx === i ? { ...p, imageUrl: url } : p));
+    } catch (e: any) {
+      console.error(e);
+    } finally {
+      setPairs(prev => prev.map((p, idx) => idx === i ? { ...p, isGenerating: false } : p));
+    }
   };
   const addPair = () => {
     setPairs(prev => [...prev, { english: "", target: "" }]);
@@ -120,6 +136,7 @@ export function NewCollectionModal({
           target: p.target.trim(),
           ...(p.transliteration?.trim() ? { transliteration: p.transliteration.trim() } : {}),
           ...(p.audioUrl ? { audioUrl: p.audioUrl } : {}),
+          ...(p.imageUrl ? { imageUrl: p.imageUrl } : {}),
         }));
       if (entries.length === 0 && !editingCollection) {
         setError("Add at least one complete pair");
@@ -327,6 +344,19 @@ export function NewCollectionModal({
                           onChange={(uri) => setPairAudio(i, uri)}
                           disabled={isSaving}
                         />
+                        {pair.isGenerating ? (
+                          <div className="flex-shrink-0 p-1.5"><Loader2 className="w-4 h-4 text-white/50 animate-spin" /></div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleGenerateImage(i, pair.english)}
+                            disabled={isSaving || !pair.english}
+                            title="Generate Image"
+                            className={`flex items-center justify-center p-1.5 rounded-lg flex-shrink-0 transition-colors ${pair.imageUrl ? 'bg-green-500/10 text-green-400' : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-yellow-400'}`}
+                          >
+                            <Sparkles className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}

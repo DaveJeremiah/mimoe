@@ -9,6 +9,8 @@ export interface FlashcardItem {
   transliteration?: string;
   /** Optional user-supplied audio (recorded or uploaded), stored as a data URI. */
   audioUrl?: string;
+  /** Optional illustration for context-based guessing */
+  imageUrl?: string;
 }
 
 export interface Level {
@@ -167,7 +169,7 @@ export const vocabularyLevels: Level[] = [
       { id: "fr-v-a1-6-c12", english: "Dessert",                target: "Un dessert" },
       { id: "fr-v-a1-6-c13", english: "The bill",               target: "L'addition" },
       { id: "fr-v-a1-6-c14", english: "A table for two",        target: "Une table pour deux" },
-      { id: "fr-v-a1-6-c15", english: "I am hungry",            target: "J'ai faim" },
+      { id: "fr-v-a1-6-c15", english: "I am hungry",            target: "J'ai faim", imageUrl: "/assets/illustrations/i_am_hungry.png" },
       { id: "fr-v-a1-6-c16", english: "I am thirsty",           target: "J'ai soif" },
       { id: "fr-v-a1-6-c17", english: "Delicious",              target: "Délicieux" },
       { id: "fr-v-a1-6-c18", english: "Juice",                  target: "Un jus" },
@@ -181,7 +183,7 @@ export const vocabularyLevels: Level[] = [
     cards: [
       { id: "fr-v-a1-7-c01", english: "The city / town",        target: "La ville" },
       { id: "fr-v-a1-7-c02", english: "The street",             target: "La rue" },
-      { id: "fr-v-a1-7-c03", english: "The train station",      target: "La gare" },
+      { id: "fr-v-a1-7-c03", english: "The train station",      target: "La gare", imageUrl: "/assets/illustrations/train_station.png" },
       { id: "fr-v-a1-7-c04", english: "The airport",            target: "L'aéroport" },
       { id: "fr-v-a1-7-c05", english: "The hospital",           target: "L'hôpital" },
       { id: "fr-v-a1-7-c06", english: "The pharmacy",           target: "La pharmacie" },
@@ -457,7 +459,7 @@ export const phraseLevels: Level[] = [
       { id: "fr-p-a1-2-c03", english: "Speak more slowly",      target: "Parlez plus lentement s'il vous plaît" },
       { id: "fr-p-a1-2-c04", english: "Do you speak English?",  target: "Vous parlez anglais" },
       { id: "fr-p-a1-2-c05", english: "I speak a little French",target: "Je parle un peu français" },
-      { id: "fr-p-a1-2-c06", english: "Where is the bathroom?", target: "Où sont les toilettes" },
+      { id: "fr-p-a1-2-c06", english: "Where is the bathroom?", target: "Où sont les toilettes", imageUrl: "/assets/illustrations/where_is_bathroom.png" },
       { id: "fr-p-a1-2-c07", english: "How much does it cost?", target: "C'est combien" },
       { id: "fr-p-a1-2-c08", english: "I would like...",        target: "Je voudrais" },
       { id: "fr-p-a1-2-c09", english: "Do you have...?",        target: "Vous avez" },

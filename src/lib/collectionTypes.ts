@@ -8,6 +8,8 @@ export interface CollectionEntry {
   transliteration?: string;
   /** Optional user-supplied audio (recorded or uploaded), stored as a data URI. */
   audioUrl?: string;
+  /** Optional illustration for context-based guessing. */
+  imageUrl?: string;
 }
 
 export type CollectionCategory = "lyrics" | "poem" | "dialogue" | "phrases" | "vocabulary" | "other";
