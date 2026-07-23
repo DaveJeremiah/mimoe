@@ -7,6 +7,7 @@ interface PersonalTabProps {
   collections: Collection[];
   activeLanguage: string;
   onStudyCollection: (collection: Collection) => void;
+  onCreateNotes: () => void;
   onCreateCollection: () => void;
   onEditCollection: (collection: Collection) => void;
   onDeleteCollection: (collectionId: string) => void;
@@ -17,6 +18,7 @@ export function PersonalTab({
   collections,
   activeLanguage,
   onStudyCollection,
+  onCreateNotes,
   onCreateCollection,
   onEditCollection,
   onDeleteCollection,
@@ -37,12 +39,20 @@ export function PersonalTab({
 
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-white font-bold text-lg">My Collections</h2>
-        <button 
-          onClick={onCreateCollection}
-          className="flex items-center gap-1 text-[#B875FF] text-sm font-semibold hover:opacity-80"
-        >
-          <Plus className="w-4 h-4" /> Create
-        </button>
+        <div className="flex gap-4">
+          <button 
+            onClick={onCreateNotes}
+            className="flex items-center gap-1 text-[#B875FF] text-sm font-semibold hover:opacity-80"
+          >
+            <Plus className="w-4 h-4" /> Note
+          </button>
+          <button 
+            onClick={onCreateCollection}
+            className="flex items-center gap-1 text-[#B875FF] text-sm font-semibold hover:opacity-80"
+          >
+            <Plus className="w-4 h-4" /> Collection
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-col gap-5">

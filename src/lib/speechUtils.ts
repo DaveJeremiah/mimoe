@@ -291,7 +291,7 @@ async function fetchProxyTTS(text: string, langConfig: LanguageConfig = DEFAULT_
 // Arabic goes straight to Azure Neural TTS (proper dialect voices).
 // French uses the Google proxy first, Azure as fallback.
 async function fetchRemoteTTS(text: string, langConfig: LanguageConfig = DEFAULT_LANG): Promise<string | null> {
-  if (langConfig.code === 'arabic') {
+  if (langConfig.code === 'arabic' || langConfig.code === 'english') {
     return fetchAzureTTS(text, langConfig)
   }
   const proxied = await fetchProxyTTS(text, langConfig)

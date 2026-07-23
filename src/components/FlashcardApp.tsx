@@ -1379,14 +1379,16 @@ export function FlashcardApp() {
                           <Bookmark className="w-4 h-4" />
                           Study Bookmarked
                         </button>
-                        <button
-                          onClick={() => { setIsMenuOpen(false); setIsWordBankOpen(true); }}
-                          className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-white/80 hover:text-white hover:bg-white/5 transition-colors"
-                          style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
-                        >
-                          <BookOpen className="w-4 h-4" />
-                          Word Bank
-                        </button>
+                        {!isBookmarkedSession && (
+                          <button
+                            onClick={() => { setIsMenuOpen(false); setIsWordBankOpen(true); }}
+                            className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-white/80 hover:text-white hover:bg-white/5 transition-colors"
+                            style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+                          >
+                            <BookOpen className="w-4 h-4" />
+                            Word Bank
+                          </button>
+                        )}
                       </div>
                     </>
                   )}
@@ -1547,6 +1549,11 @@ export function FlashcardApp() {
                 collections={collections}
                 activeLanguage={activeLanguage}
                 onStudyCollection={handleStudyCollection}
+                onCreateNotes={() => {
+                  setCollectionToEdit(null);
+                  setCollectionModalMode("notes");
+                  setIsCollectionModalOpen(true);
+                }}
                 onCreateCollection={handleCreateCollection}
                 onEditCollection={handleEditCollection}
                 onDeleteCollection={handleDeleteCollection}

@@ -1277,6 +1277,18 @@ export const englishForArabicVocabLevels: Level[] = [
       { id: "en-ar-v-a1-2-c06", english: "عشرة", target: "Ten" },
     ],
   },
+  {
+    id: "en-ar-v-a2-1",
+    title: "A2 · Travel & Places",
+    cefr: "A2",
+    cards: [
+      { id: "en-ar-v-a2-1-c01", english: "مطار", target: "Airport" },
+      { id: "en-ar-v-a2-1-c02", english: "فندق", target: "Hotel" },
+      { id: "en-ar-v-a2-1-c03", english: "مطعم", target: "Restaurant" },
+      { id: "en-ar-v-a2-1-c04", english: "تذكرة", target: "Ticket" },
+      { id: "en-ar-v-a2-1-c05", english: "محطة", target: "Station" },
+    ],
+  },
 ];
 
 export const englishForArabicPhraseLevels: Level[] = [
@@ -1303,6 +1315,17 @@ export const englishForArabicPhraseLevels: Level[] = [
       { id: "en-ar-p-a1-2-c03", english: "هل تتحدث الإنجليزية؟", target: "Do you speak English?" },
       { id: "en-ar-p-a1-2-c04", english: "أين الحمام؟", target: "Where is the bathroom?" },
       { id: "en-ar-p-a1-2-c05", english: "بكم هذا؟", target: "How much does it cost?" },
+    ],
+  },
+  {
+    id: "en-ar-p-a2-1",
+    title: "A2 · Daily routines",
+    cefr: "A2",
+    cards: [
+      { id: "en-ar-p-a2-1-c01", english: "أستيقظ في السابعة", target: "I wake up at seven" },
+      { id: "en-ar-p-a2-1-c02", english: "أذهب إلى العمل", target: "I go to work" },
+      { id: "en-ar-p-a2-1-c03", english: "أتناول الفطور", target: "I eat breakfast" },
+      { id: "en-ar-p-a2-1-c04", english: "أنام باكراً", target: "I sleep early" },
     ],
   },
 ];

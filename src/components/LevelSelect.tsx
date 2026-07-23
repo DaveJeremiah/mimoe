@@ -172,8 +172,10 @@ const DECK_IMGS: Record<string, string> = {
   // English for Arabic speakers
   "en-ar-v-a1-1": FE("Waving%20hand/3D/waving_hand_3d_default.png"),
   "en-ar-v-a1-2": FE("Abacus/3D/abacus_3d.png"),
+  "en-ar-v-a2-1": FE("Train/3D/train_3d.png"),
   "en-ar-p-a1-1": FE("Person%20raising%20hand/3D/person_raising_hand_3d_default.png"),
   "en-ar-p-a1-2": FE("SOS%20button/3D/sos_button_3d.png"),
+  "en-ar-p-a2-1": FE("Sun%20with%20face/3D/sun_with_face_3d.png"),
 };
 const DEFAULT_DECK_IMG = FE("Open%20book/3D/open_book_3d.png");
 
