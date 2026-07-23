@@ -94,13 +94,20 @@ export default function Auth() {
         if (error) throw error;
         toast.success("Welcome back!");
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: { emailRedirectTo: `${window.location.origin}/` },
         });
         if (error) throw error;
-        toast.success("Account created! You're signed in.");
+        
+        if (data?.user?.identities?.length === 0) {
+          toast.error("An account with this email already exists. Please sign in.");
+        } else if (!data.session) {
+          toast.success("Please check your email to confirm your account!");
+        } else {
+          toast.success("Account created! You're signed in.");
+        }
       }
     } catch (err: any) {
       toast.error(err?.message || "Authentication failed");
