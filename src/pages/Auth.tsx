@@ -117,8 +117,8 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center overflow-y-auto" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-      <div className="w-full max-w-md mx-auto flex flex-col pb-8">
+    <div className="min-h-[100dvh] bg-black flex flex-col items-center overflow-y-auto" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+      <div className="w-full max-w-md mx-auto flex flex-col pb-16 sm:pb-8">
         {/* Top bar */}
         <div className="flex items-center justify-between px-5 pt-8 sm:pt-12 pb-2 sm:pb-4">
           <LogoMark size={38} />
