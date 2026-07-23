@@ -169,6 +169,15 @@ export function FlashcardApp() {
   const [onboardingDone, setOnboardingDone] = useState(false);
   const [homeTab, setHomeTab] = useState<"levels" | "personal">("levels");
 
+  // Sync activeLanguage with target_language if it's the default and they have a different target
+  useEffect(() => {
+    if (user?.user_metadata?.target_language) {
+      const target = user.user_metadata.target_language as Language;
+      if (activeLanguage === "french" && target !== "french") {
+        setActiveLanguage(target);
+      }
+    }
+  }, [user?.user_metadata?.target_language]);
 
   const baseLevels = useMemo(() => {
     const nativeLang = user?.user_metadata?.native_language || "english";
@@ -1567,7 +1576,7 @@ export function FlashcardApp() {
                   <button onClick={() => setActiveNavTab("personal")} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-full text-xs font-bold text-white transition-colors">Back</button>
                 </div>
                 <WordBank
-                  items={activeTab === "vocabulary" ? baseLevels.flatMap(l=>l.cards) : baseLevels.flatMap(l=>l.cards)}
+                  items={activeTab === "vocabulary" ? baseLevels.flatMap(l=>l.cards).slice(0, 50) : baseLevels.flatMap(l=>l.cards).slice(0, 50)}
                   onAdd={handleCustomAdd}
                   onUpdate={handleCustomUpdate}
                   onDelete={handleCustomDelete}
