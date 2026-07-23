@@ -117,106 +117,107 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-black flex flex-col" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-5 pt-12 pb-4">
-        <LogoMark size={38} />
-        <button
-          onClick={() => setIsLogin(!isLogin)}
-          className="flex items-center gap-2 text-white/70 text-sm font-medium hover:text-white transition-colors"
-        >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-          </svg>
-          {isLogin ? "Sign Up" : "Sign In"}
-        </button>
-      </div>
-
-      {/* Title */}
-      <div className="flex flex-col items-center px-6 pt-6 pb-2">
-        <h1 className="text-white font-black text-[2.6rem] leading-tight tracking-tight text-center mb-4">
-          {isLogin ? "Sign In" : "Sign Up"}
-        </h1>
-        <WavyLine />
-      </div>
-
-      {/* Form */}
-      <form onSubmit={handleEmailAuth} className="flex-1 flex flex-col px-5 pt-10 gap-5">
-
-        {/* Email */}
-        <div className="flex flex-col gap-2">
-          <label className="text-white/40 text-sm font-medium pl-1">Email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="your@email.com"
-            required
-            className="w-full rounded-full px-5 py-4 text-white text-sm font-medium placeholder:text-white/25 outline-none"
-            style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.08)' }}
-          />
-        </div>
-
-        {/* Password */}
-        <div className="flex flex-col gap-2">
-          <label className="text-white/40 text-sm font-medium pl-1">Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            placeholder="••••••••••••"
-            required
-            minLength={6}
-            className="w-full rounded-full px-5 py-4 text-white text-sm font-medium placeholder:text-white/30 outline-none"
-            style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.08)' }}
-          />
-        </div>
-
-        {/* Submit — gradient border button */}
-        <div className="mt-2 p-[1.5px] rounded-full" style={{ background: 'linear-gradient(135deg, #9b5cf6, #ec4899)' }}>
+    <div className="min-h-screen bg-black flex flex-col items-center overflow-y-auto" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+      <div className="w-full max-w-md mx-auto flex flex-col pb-8">
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-5 pt-8 sm:pt-12 pb-2 sm:pb-4">
+          <LogoMark size={38} />
           <button
-            type="submit"
-            disabled={submitting}
-            className="w-full py-4 rounded-full font-bold text-white flex items-center justify-center gap-2 transition-opacity disabled:opacity-50"
-            style={{ background: '#0a0a0a' }}
+            onClick={() => setIsLogin(!isLogin)}
+            className="flex items-center gap-2 text-white/70 text-sm font-medium hover:text-white transition-colors"
           >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/>
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
             </svg>
-            {submitting ? "…" : isLogin ? "Sign In" : "Create Account"}
+            {isLogin ? "Sign Up" : "Sign In"}
           </button>
         </div>
 
-        {/* Divider */}
-        <div className="flex items-center gap-4 mt-2">
-          <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
-          <span className="text-white/30 text-xs font-medium">or Sign In with</span>
-          <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
+        {/* Title */}
+        <div className="flex flex-col items-center px-6 pt-4 sm:pt-6 pb-2">
+          <h1 className="text-white font-black text-4xl sm:text-[2.6rem] leading-tight tracking-tight text-center mb-4">
+            {isLogin ? "Sign In" : "Sign Up"}
+          </h1>
+          <WavyLine />
         </div>
 
-        {/* Social icons */}
-        <div className="flex items-center justify-center gap-4">
-          {[
-            { icon: GOOGLE_ICON,  label: "Google",    action: handleGoogleSignIn },
-            { icon: INSTA_ICON,   label: "Instagram", action: () => toast.info("Instagram sign-in coming soon") },
-            { icon: X_ICON,       label: "X",         action: () => toast.info("X sign-in coming soon") },
-            { icon: TIKTOK_ICON,  label: "TikTok",    action: () => toast.info("TikTok sign-in coming soon") },
-          ].map(({ icon, label, action }) => (
+        {/* Form */}
+        <form onSubmit={handleEmailAuth} className="flex-1 flex flex-col px-5 pt-6 sm:pt-10 gap-4 sm:gap-5">
+
+          {/* Email */}
+          <div className="flex flex-col gap-2">
+            <label className="text-white/40 text-sm font-medium pl-1">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              placeholder="your@email.com"
+              required
+              className="w-full rounded-full px-4 py-3 sm:px-5 sm:py-4 text-white text-sm font-medium placeholder:text-white/25 outline-none"
+              style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.08)' }}
+            />
+          </div>
+
+          {/* Password */}
+          <div className="flex flex-col gap-2">
+            <label className="text-white/40 text-sm font-medium pl-1">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="••••••••••••"
+              required
+              minLength={6}
+              className="w-full rounded-full px-4 py-3 sm:px-5 sm:py-4 text-white text-sm font-medium placeholder:text-white/30 outline-none"
+              style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.08)' }}
+            />
+          </div>
+
+          {/* Submit — gradient border button */}
+          <div className="mt-2 p-[1.5px] rounded-full" style={{ background: 'linear-gradient(135deg, #9b5cf6, #ec4899)' }}>
             <button
-              key={label}
-              type="button"
-              onClick={action}
-              aria-label={label}
-              className="w-14 h-14 rounded-full flex items-center justify-center transition-opacity hover:opacity-70 active:scale-95"
-              style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)' }}
+              type="submit"
+              disabled={submitting}
+              className="w-full py-3 sm:py-4 rounded-full font-bold text-white flex items-center justify-center gap-2 transition-opacity disabled:opacity-50"
+              style={{ background: '#0a0a0a' }}
             >
-              {icon}
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/>
+              </svg>
+              {submitting ? "…" : isLogin ? "Sign In" : "Create Account"}
             </button>
-          ))}
-        </div>
+          </div>
 
-      </form>
+          {/* Divider */}
+          <div className="flex items-center gap-4 mt-2">
+            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
+            <span className="text-white/30 text-xs font-medium">or Sign In with</span>
+            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
+          </div>
+
+          {/* Social icons */}
+          <div className="flex items-center justify-center gap-3 sm:gap-4">
+            {[
+              { icon: GOOGLE_ICON,  label: "Google",    action: handleGoogleSignIn },
+              { icon: INSTA_ICON,   label: "Instagram", action: () => toast.info("Instagram sign-in coming soon") },
+              { icon: X_ICON,       label: "X",         action: () => toast.info("X sign-in coming soon") },
+              { icon: TIKTOK_ICON,  label: "TikTok",    action: () => toast.info("TikTok sign-in coming soon") },
+            ].map(({ icon, label, action }) => (
+              <button
+                key={label}
+                type="button"
+                onClick={action}
+                aria-label={label}
+                className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-opacity hover:opacity-70 active:scale-95"
+                style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)' }}
+              >
+                {icon}
+              </button>
+            ))}
+          </div>
+
+        </form>
+      </div>
     </div>
   );
 }
