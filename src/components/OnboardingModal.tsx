@@ -82,6 +82,9 @@ export function OnboardingModal({ user, onDone }: Props) {
       },
     });
     setSaving(false);
+    try {
+      localStorage.setItem("mimoe-language", JSON.stringify(targetLang));
+    } catch { /* ignore */ }
     onDone();
   };
 

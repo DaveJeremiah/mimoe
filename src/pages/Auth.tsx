@@ -124,10 +124,10 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-black flex flex-col items-center overflow-y-auto" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-      <div className="w-full max-w-md mx-auto flex flex-col pb-16 sm:pb-8">
+    <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-4 sm:p-6 overflow-y-auto" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+      <div className="w-full max-w-md mx-auto flex flex-col bg-[#050505] sm:bg-[#111111] sm:border sm:border-white/10 sm:rounded-3xl sm:shadow-2xl overflow-hidden my-auto pb-safe pb-8 sm:pb-0">
         {/* Top bar */}
-        <div className="flex items-center justify-between px-5 pt-8 sm:pt-12 pb-2 sm:pb-4">
+        <div className="flex items-center justify-between px-6 pt-10 sm:pt-10 pb-4">
           <LogoMark size={38} />
           <button
             onClick={() => setIsLogin(!isLogin)}
@@ -141,15 +141,15 @@ export default function Auth() {
         </div>
 
         {/* Title */}
-        <div className="flex flex-col items-center px-6 pt-4 sm:pt-6 pb-2">
-          <h1 className="text-white font-black text-4xl sm:text-[2.6rem] leading-tight tracking-tight text-center mb-4">
+        <div className="flex flex-col items-center px-6 pt-4 pb-2">
+          <h1 className="text-white font-black text-4xl sm:text-[2.4rem] leading-tight tracking-tight text-center mb-4">
             {isLogin ? "Sign In" : "Sign Up"}
           </h1>
           <WavyLine />
         </div>
 
         {/* Form */}
-        <form onSubmit={handleEmailAuth} className="flex-1 flex flex-col px-5 pt-6 sm:pt-10 gap-4 sm:gap-5">
+        <form onSubmit={handleEmailAuth} className="flex-1 flex flex-col px-6 pt-6 sm:pt-8 pb-10 sm:pb-12 gap-5">
 
           {/* Email */}
           <div className="flex flex-col gap-2">
@@ -160,8 +160,8 @@ export default function Auth() {
               onChange={e => setEmail(e.target.value)}
               placeholder="your@email.com"
               required
-              className="w-full rounded-full px-4 py-3 sm:px-5 sm:py-4 text-white text-sm font-medium placeholder:text-white/25 outline-none"
-              style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.08)' }}
+              className="w-full rounded-2xl px-5 py-4 text-white text-sm font-medium placeholder:text-white/25 outline-none focus:ring-2 focus:ring-[#9b5cf6]/50 transition-all"
+              style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)' }}
             />
           </div>
 
@@ -175,17 +175,17 @@ export default function Auth() {
               placeholder="••••••••••••"
               required
               minLength={6}
-              className="w-full rounded-full px-4 py-3 sm:px-5 sm:py-4 text-white text-sm font-medium placeholder:text-white/30 outline-none"
-              style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.08)' }}
+              className="w-full rounded-2xl px-5 py-4 text-white text-sm font-medium placeholder:text-white/30 outline-none focus:ring-2 focus:ring-[#9b5cf6]/50 transition-all"
+              style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)' }}
             />
           </div>
 
-          {/* Submit — gradient border button */}
-          <div className="mt-2 p-[1.5px] rounded-full" style={{ background: 'linear-gradient(135deg, #9b5cf6, #ec4899)' }}>
+          {/* Submit */}
+          <div className="mt-2 p-[1.5px] rounded-2xl" style={{ background: 'linear-gradient(135deg, #9b5cf6, #ec4899)' }}>
             <button
               type="submit"
               disabled={submitting}
-              className="w-full py-3 sm:py-4 rounded-full font-bold text-white flex items-center justify-center gap-2 transition-opacity disabled:opacity-50"
+              className="w-full py-4 rounded-2xl font-bold text-white flex items-center justify-center gap-2 transition-opacity disabled:opacity-50"
               style={{ background: '#0a0a0a' }}
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -196,14 +196,14 @@ export default function Auth() {
           </div>
 
           {/* Divider */}
-          <div className="flex items-center gap-4 mt-2">
+          <div className="flex items-center gap-4 mt-4">
             <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
-            <span className="text-white/30 text-xs font-medium">or Sign In with</span>
+            <span className="text-white/30 text-xs font-medium uppercase tracking-wider">or continue with</span>
             <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
           </div>
 
           {/* Social icons */}
-          <div className="flex items-center justify-center gap-3 sm:gap-4">
+          <div className="flex items-center justify-center gap-3 sm:gap-4 pb-12 sm:pb-0">
             {[
               { icon: GOOGLE_ICON,  label: "Google",    action: handleGoogleSignIn },
               { icon: INSTA_ICON,   label: "Instagram", action: () => toast.info("Instagram sign-in coming soon") },
@@ -215,7 +215,7 @@ export default function Auth() {
                 type="button"
                 onClick={action}
                 aria-label={label}
-                className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-opacity hover:opacity-70 active:scale-95"
+                className="w-14 h-14 rounded-2xl flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
                 style={{ background: '#1a1a1a', border: '1px solid rgba(255,255,255,0.08)' }}
               >
                 {icon}

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Plus } from "lucide-react";
 import type { Collection } from "@/lib/collectionTypes";
 import { CollectionCard } from "./CollectionCard";
@@ -24,6 +25,7 @@ export function PersonalTab({
   onDeleteCollection,
   onOpenWordBank
 }: PersonalTabProps) {
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   
   return (
     <div className="w-full flex flex-col pt-6 pb-0 px-5">
@@ -37,21 +39,35 @@ export function PersonalTab({
         </button>
       </div>
 
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 relative">
         <h2 className="text-white font-bold text-lg">My Collections</h2>
-        <div className="flex gap-4">
+        <div className="relative">
           <button 
-            onClick={onCreateNotes}
-            className="flex items-center gap-1 text-[#B875FF] text-sm font-semibold hover:opacity-80"
+            onClick={() => setIsCreateOpen(!isCreateOpen)}
+            className="flex items-center gap-1 text-[#B875FF] text-sm font-semibold hover:opacity-80 px-2 py-1"
           >
-            <Plus className="w-4 h-4" /> Note
+            <Plus className="w-4 h-4" /> Create
           </button>
-          <button 
-            onClick={onCreateCollection}
-            className="flex items-center gap-1 text-[#B875FF] text-sm font-semibold hover:opacity-80"
-          >
-            <Plus className="w-4 h-4" /> Collection
-          </button>
+          
+          {isCreateOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setIsCreateOpen(false)} />
+              <div className="absolute right-0 top-full mt-2 w-40 bg-[#111111] border border-white/10 rounded-2xl shadow-xl z-50 overflow-hidden animate-slide-up-in">
+                <button 
+                  onClick={() => { setIsCreateOpen(false); onCreateNotes(); }}
+                  className="w-full text-left px-4 py-3 text-sm font-semibold text-white/90 hover:bg-white/5 transition-colors border-b border-white/5"
+                >
+                  📝 Note (Single)
+                </button>
+                <button 
+                  onClick={() => { setIsCreateOpen(false); onCreateCollection(); }}
+                  className="w-full text-left px-4 py-3 text-sm font-semibold text-white/90 hover:bg-white/5 transition-colors"
+                >
+                  🗂️ Collection (Bulk)
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

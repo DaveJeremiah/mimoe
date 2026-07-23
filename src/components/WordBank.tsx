@@ -178,7 +178,7 @@ export function WordBank({ items, onAdd, onUpdate, onDelete, onBulkAdd, onReorde
         <div className="text-center py-8 text-white/35 text-sm">
           No pairs yet — add one below.
         </div>
-      ) : (
+      ) : onReorder ? (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
             <div className="flex flex-col gap-2">
@@ -192,6 +192,14 @@ export function WordBank({ items, onAdd, onUpdate, onDelete, onBulkAdd, onReorde
             </div>
           </SortableContext>
         </DndContext>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {items.map(item => (
+            <div key={item.id} className="flex-1 min-w-0">
+              <SuggestRow item={item} rtl={rtl} />
+            </div>
+          ))}
+        </div>
       )}
 
       {/* Add / edit form */}

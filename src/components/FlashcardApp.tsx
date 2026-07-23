@@ -1756,7 +1756,10 @@ export function FlashcardApp() {
       {user && !user.user_metadata?.onboarding_done && !onboardingDone && (
         <OnboardingModal
           user={user}
-          onDone={() => setOnboardingDone(true)}
+          onDone={() => {
+            setOnboardingDone(true);
+            window.location.reload();
+          }}
         />
       )}
 
