@@ -1241,3 +1241,68 @@ export const arabicPhraseLevels: Level[] = [
     ],
   },
 ];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENGLISH FOR ARABIC SPEAKERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const englishForArabicVocabLevels: Level[] = [
+  {
+    id: "en-ar-v-a1-1",
+    title: "A1 · Greetings & basics",
+    cefr: "A1",
+    cards: [
+      { id: "en-ar-v-a1-1-c01", english: "مرحباً", target: "Hello" },
+      { id: "en-ar-v-a1-1-c02", english: "صباح الخير", target: "Good morning" },
+      { id: "en-ar-v-a1-1-c03", english: "مساء الخير", target: "Good evening" },
+      { id: "en-ar-v-a1-1-c04", english: "مع السلامة", target: "Goodbye" },
+      { id: "en-ar-v-a1-1-c05", english: "من فضلك", target: "Please" },
+      { id: "en-ar-v-a1-1-c06", english: "شكراً", target: "Thank you" },
+      { id: "en-ar-v-a1-1-c07", english: "عفواً / على الرحب والسعة", target: "You're welcome" },
+      { id: "en-ar-v-a1-1-c08", english: "نعم", target: "Yes" },
+      { id: "en-ar-v-a1-1-c09", english: "لا", target: "No" },
+      { id: "en-ar-v-a1-1-c10", english: "آسف", target: "Sorry" },
+    ],
+  },
+  {
+    id: "en-ar-v-a1-2",
+    title: "A1 · Numbers",
+    cefr: "A1",
+    cards: [
+      { id: "en-ar-v-a1-2-c01", english: "واحد", target: "One" },
+      { id: "en-ar-v-a1-2-c02", english: "اثنان", target: "Two" },
+      { id: "en-ar-v-a1-2-c03", english: "ثلاثة", target: "Three" },
+      { id: "en-ar-v-a1-2-c04", english: "أربعة", target: "Four" },
+      { id: "en-ar-v-a1-2-c05", english: "خمسة", target: "Five" },
+      { id: "en-ar-v-a1-2-c06", english: "عشرة", target: "Ten" },
+    ],
+  },
+];
+
+export const englishForArabicPhraseLevels: Level[] = [
+  {
+    id: "en-ar-p-a1-1",
+    title: "A1 · Introducing yourself",
+    cefr: "A1",
+    cards: [
+      { id: "en-ar-p-a1-1-c01", english: "اسمي ديف", target: "My name is Dave" },
+      { id: "en-ar-p-a1-1-c02", english: "أنا من مصر", target: "I am from Egypt" },
+      { id: "en-ar-p-a1-1-c03", english: "كيف حالك؟", target: "How are you?" },
+      { id: "en-ar-p-a1-1-c04", english: "أنا بخير، شكراً", target: "I am fine, thank you" },
+      { id: "en-ar-p-a1-1-c05", english: "سعدت بلقائك", target: "Nice to meet you" },
+      { id: "en-ar-p-a1-1-c06", english: "أنا أتعلم الإنجليزية", target: "I am learning English" },
+    ],
+  },
+  {
+    id: "en-ar-p-a1-2",
+    title: "A1 · Survival phrases",
+    cefr: "A1",
+    cards: [
+      { id: "en-ar-p-a1-2-c01", english: "أنا لا أفهم", target: "I don't understand" },
+      { id: "en-ar-p-a1-2-c02", english: "هل يمكنك التكرار؟", target: "Can you repeat?" },
+      { id: "en-ar-p-a1-2-c03", english: "هل تتحدث الإنجليزية؟", target: "Do you speak English?" },
+      { id: "en-ar-p-a1-2-c04", english: "أين الحمام؟", target: "Where is the bathroom?" },
+      { id: "en-ar-p-a1-2-c05", english: "بكم هذا؟", target: "How much does it cost?" },
+    ],
+  },
+];

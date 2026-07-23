@@ -1,4 +1,4 @@
-export type Language = "french" | "arabic";
+export type Language = "french" | "arabic" | "english";
 
 export interface ArabicDialect {
   code: string;
@@ -51,6 +51,17 @@ export const LANGUAGE_CONFIGS: Record<Language, LanguageConfig> = {
     rtl: true,
     fontClass: "font-arabic",
     cachePrefix: "tts3_ar_sa_",
+  },
+  english: {
+    code: "english",
+    label: "English",
+    flag: "🇺🇸",
+    ttsLang: "en-US",
+    ttsVoice: "en-US-JennyNeural",
+    sttLang: "en-US",
+    rtl: false,
+    fontClass: "",
+    cachePrefix: "tts_az_en_",
   },
 };
 

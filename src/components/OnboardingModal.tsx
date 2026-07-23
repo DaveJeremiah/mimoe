@@ -28,13 +28,16 @@ export function OnboardingModal({ user, onDone }: Props) {
     ?? (user.user_metadata?.nickname as string | undefined)
     ?? emailHandle;
 
-  const [step, setStep]       = useState<0 | 1 | 2>(0);
+  const [step, setStep]       = useState<0 | 1 | 2 | 3>(0);
   const [name, setName]       = useState(initialName);
   const [country, setCountry] = useState("");
+  const [nativeLang, setNativeLang] = useState<string>("");
+  const [targetLang, setTargetLang] = useState<string>("");
   const [seed, setSeed]       = useState<string>(user.id);
   const [saving, setSaving]   = useState(false);
   const [nameErr, setNameErr] = useState("");
   const [cntryErr, setCntryErr] = useState("");
+  const [langErr, setLangErr] = useState("");
 
   const nameRef    = useRef<HTMLInputElement>(null);
   const countryRef = useRef<HTMLInputElement>(null);
@@ -52,11 +55,18 @@ export function OnboardingModal({ user, onDone }: Props) {
     setStep(1);
   };
 
-  const goAvatar = () => {
+  const goLanguage = () => {
     const t = country.trim();
     if (!t) { setCntryErr("Tell us where you're from! 🌍"); return; }
     setCntryErr("");
     setStep(2);
+  };
+
+  const goAvatar = () => {
+    if (!nativeLang || !targetLang) { setLangErr("Please select both languages! 🗣️"); return; }
+    if (nativeLang === targetLang) { setLangErr("Target language must be different! 🔄"); return; }
+    setLangErr("");
+    setStep(3);
   };
 
   const finish = async () => {
@@ -65,6 +75,8 @@ export function OnboardingModal({ user, onDone }: Props) {
       data: {
         nickname:       name.trim(),
         country:        country.trim(),
+        native_language: nativeLang,
+        target_language: targetLang,
         avatar_seed:    seed,
         onboarding_done: true,
       },
@@ -72,8 +84,6 @@ export function OnboardingModal({ user, onDone }: Props) {
     setSaving(false);
     onDone();
   };
-
-  const DOT_W = [24, 8, 8];
 
   return (
     <div className="fixed inset-0 z-[60] flex flex-col" style={{ background: "#050505" }}>
@@ -85,7 +95,7 @@ export function OnboardingModal({ user, onDone }: Props) {
 
       {/* Step pills */}
       <div className="flex items-center justify-center gap-2 py-4">
-        {[0,1,2].map(i => (
+        {[0,1,2,3].map(i => (
           <div
             key={i}
             className="rounded-full transition-all duration-300"
@@ -167,7 +177,7 @@ export function OnboardingModal({ user, onDone }: Props) {
                 ref={countryRef}
                 value={country}
                 onChange={e => { setCountry(e.target.value); setCntryErr(""); }}
-                onKeyDown={e => e.key === "Enter" && goAvatar()}
+                onKeyDown={e => e.key === "Enter" && goLanguage()}
                 placeholder="Your country"
                 className="w-full text-center text-2xl font-bold text-white bg-transparent outline-none py-3 border-b-2 placeholder:text-white/20"
                 style={{ borderColor: cntryErr ? "rgba(255,80,80,0.7)" : "rgba(129,140,248,0.5)" }}
@@ -198,7 +208,7 @@ export function OnboardingModal({ user, onDone }: Props) {
             </div>
 
             <button
-              onClick={goAvatar}
+              onClick={goLanguage}
               className="w-full py-4 rounded-full font-bold text-base flex items-center justify-center gap-2 active:opacity-70 transition-opacity"
               style={{ background: "linear-gradient(135deg,#7C3AED,#9B5CF6)", color: "#fff" }}
             >
@@ -207,8 +217,76 @@ export function OnboardingModal({ user, onDone }: Props) {
           </div>
         )}
 
-        {/* ── Step 2: Avatar ── */}
+        {/* ── Step 2: Languages ── */}
         {step === 2 && (
+          <div className="flex flex-col items-center gap-6 w-full max-w-sm animate-fade-in">
+            <div className="text-center">
+              <div className="text-[3.5rem] leading-none mb-4">🗣️</div>
+              <h1 className="text-[1.75rem] font-black text-white leading-tight">
+                Language Journey
+              </h1>
+              <p className="mt-2 text-sm" style={{ color: "rgba(255,255,255,0.45)" }}>
+                Tell us what you speak and what you want to learn.
+              </p>
+            </div>
+
+            <div className="w-full space-y-4">
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold text-white/50 uppercase tracking-wider pl-2">I speak</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[{ id: "english", label: "English" }, { id: "french", label: "French" }, { id: "arabic", label: "Arabic" }].map(l => (
+                    <button
+                      key={l.id}
+                      onClick={() => { setNativeLang(l.id); setLangErr(""); }}
+                      className="py-2.5 rounded-xl font-bold text-sm transition-all"
+                      style={{
+                        background: nativeLang === l.id ? "rgba(129,140,248,0.2)" : "rgba(255,255,255,0.05)",
+                        border: nativeLang === l.id ? "2px solid #818CF8" : "2px solid transparent",
+                        color: nativeLang === l.id ? "#fff" : "rgba(255,255,255,0.6)"
+                      }}
+                    >
+                      {l.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold text-white/50 uppercase tracking-wider pl-2">I want to learn</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[{ id: "english", label: "English" }, { id: "french", label: "French" }, { id: "arabic", label: "Arabic" }].map(l => (
+                    <button
+                      key={l.id}
+                      onClick={() => { setTargetLang(l.id); setLangErr(""); }}
+                      disabled={nativeLang === l.id}
+                      className="py-2.5 rounded-xl font-bold text-sm transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                      style={{
+                        background: targetLang === l.id ? "rgba(167,139,250,0.2)" : "rgba(255,255,255,0.05)",
+                        border: targetLang === l.id ? "2px solid #A78BFA" : "2px solid transparent",
+                        color: targetLang === l.id ? "#fff" : "rgba(255,255,255,0.6)"
+                      }}
+                    >
+                      {l.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              {langErr && <p className="text-xs text-red-400 text-center pt-2">{langErr}</p>}
+            </div>
+
+            <button
+              onClick={goAvatar}
+              className="w-full py-4 rounded-full font-bold text-base flex items-center justify-center gap-2 active:opacity-70 transition-opacity mt-2"
+              style={{ background: "linear-gradient(135deg,#7C3AED,#9B5CF6)", color: "#fff" }}
+            >
+              Next <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        {/* ── Step 3: Avatar ── */}
+        {step === 3 && (
           <div className="flex flex-col items-center gap-5 w-full max-w-sm animate-fade-in">
             <div className="text-center">
               <div className="text-[3.5rem] leading-none mb-4">🎨</div>

@@ -25,7 +25,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { db, listAdminLevels, listAdminCards, listAllBuiltinOverrides, type AdminLevelRow, type BuiltinOverrideRow } from "@/lib/db";
 import { AmoebaDefs } from "./AmoebaDefs";
-import { vocabularyLevels, phraseLevels, arabicVocabularyLevels, arabicPhraseLevels, type FlashcardItem } from "@/lib/flashcardData";
+import { vocabularyLevels, phraseLevels, arabicVocabularyLevels, arabicPhraseLevels, englishForArabicVocabLevels, englishForArabicPhraseLevels, type FlashcardItem } from "@/lib/flashcardData";
 import { type Collection, CollectionFormData, COLLECTION_CATEGORIES } from "@/lib/collectionTypes";
 import { prefetchAudio, unlockAudio } from "@/lib/speechUtils";
 import { LANGUAGE_CONFIGS, ARABIC_DIALECTS, getArabicConfigForDialect, type Language } from "@/lib/languageConfig";
@@ -171,10 +171,17 @@ export function FlashcardApp() {
 
 
   const baseLevels = useMemo(() => {
-    const vocabSource = activeLanguage === "arabic" ? arabicVocabularyLevels : vocabularyLevels;
-    const phraseSource = activeLanguage === "arabic" ? arabicPhraseLevels : phraseLevels;
+    const nativeLang = user?.user_metadata?.native_language || "english";
+    const targetLang = activeLanguage || user?.user_metadata?.target_language || "french";
+
+    if (nativeLang === "arabic" && targetLang === "english") {
+      return activeTab === "vocabulary" ? englishForArabicVocabLevels : englishForArabicPhraseLevels;
+    }
+
+    const vocabSource = targetLang === "arabic" ? arabicVocabularyLevels : vocabularyLevels;
+    const phraseSource = targetLang === "arabic" ? arabicPhraseLevels : phraseLevels;
     return activeTab === "vocabulary" ? vocabSource : phraseSource;
-  }, [activeLanguage, activeTab]);
+  }, [activeLanguage, activeTab, user?.user_metadata?.native_language, user?.user_metadata?.target_language]);
   const completedIds = activeTab === "vocabulary" ? completedVocab : completedPhrases;
   const setCompletedIds = activeTab === "vocabulary" ? setCompletedVocab : setCompletedPhrases;
   const customCards = activeTab === "vocabulary" ? customVocab : customPhrases;
@@ -1423,7 +1430,7 @@ export function FlashcardApp() {
                     className="absolute top-full left-0 mt-2 rounded-2xl overflow-hidden z-50 min-w-[190px] shadow-[0_16px_40px_rgba(0,0,0,0.6)]"
                     style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.08)' }}
                   >
-                    {(["french", "arabic"] as Language[]).map((lang) => {
+                    {(["french", "arabic", "english"] as Language[]).filter(l => l !== (user?.user_metadata?.native_language || "english")).map((lang) => {
                       const cfg = LANGUAGE_CONFIGS[lang];
                       return (
                         <button
