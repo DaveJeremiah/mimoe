@@ -1527,7 +1527,7 @@ export function FlashcardApp() {
       )}
 
       {/* Content */}
-      <div className={`flex-1 w-full flex flex-col items-center min-h-0 scrollbar-none ${selectedLevelId ? 'justify-center' : 'justify-start overflow-y-auto pb-0'}`}>
+      <div className={`flex-1 w-full flex flex-col items-center min-h-0 scrollbar-none ${selectedLevelId ? 'justify-center' : 'justify-start overflow-y-auto pb-32'}`}>
         {!selectedLevelId ? (
           <div className="w-full overflow-x-hidden">
             {activeNavTab === "home" && (
