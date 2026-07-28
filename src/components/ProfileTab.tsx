@@ -5,9 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { WavyLine } from "./LevelSelect";
 import type { User } from "@supabase/supabase-js";
 
-interface ProfileModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+interface ProfileTabProps {
   user: User;
   completedVocabCount: number;
   completedPhrasesCount: number;
@@ -25,10 +23,10 @@ export function dicebearUrl(seed: string) {
   return `https://api.dicebear.com/9.x/micah/png?seed=${encodeURIComponent(seed)}&size=200`;
 }
 
-export function ProfileModal({
-  isOpen, onClose, user,
+export function ProfileTab({
+  user,
   completedVocabCount, completedPhrasesCount, collectionsCount,
-}: ProfileModalProps) {
+}: ProfileTabProps) {
   const { signOut } = useAuth();
 
   const emailHandle   = (user.email ?? "").split("@")[0];
@@ -99,30 +97,13 @@ export function ProfileModal({
   const handleSignOut = async () => {
     setSigningOut(true);
     await signOut();
-    onClose();
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm animate-fade-in"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-[480px] rounded-t-[32px] overflow-hidden animate-slide-up-in"
-        style={{ background: '#050505', border: '1px solid rgba(255,255,255,0.07)', maxHeight: '85vh' }}
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Handle */}
-        <div className="flex justify-center pt-3">
-          <div className="w-10 h-1 rounded-full bg-white/15" />
-        </div>
-
-        <div className="overflow-y-auto" style={{ maxHeight: 'calc(85vh - 20px)' }}>
-          <div className="px-5 pt-5 pb-8 flex flex-col gap-5">
-
-            {/* Avatar + identity */}
+    <div className="w-full flex flex-col pt-6 pb-0 px-5 max-w-[480px] mx-auto animate-fade-in">
+      <div className="flex flex-col gap-5">
+        
+        {/* Avatar + identity */}
             <div className="flex flex-col items-center gap-3 pt-2">
 
               {/* Avatar ring — tappable */}
@@ -316,9 +297,6 @@ export function ProfileModal({
                 : <><LogOut className="w-4 h-4" /> Sign out</>
               }
             </button>
-
-          </div>
-        </div>
       </div>
     </div>
   );

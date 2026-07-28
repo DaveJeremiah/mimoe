@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { ArrowRight, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
-import { dicebearUrl } from "./ProfileModal";
+import { dicebearUrl } from "./ProfileTab";
 import logoLight from "@/assets/logo-light.png";
 
 const AVATAR_SEEDS = [

@@ -19,7 +19,7 @@ import { BANDS } from "./LevelSelect";
 import { PersonalTab } from "./PersonalTab";
 import { BottomSheet } from "./BottomSheet";
 import { NodePath } from "./NodePath";
-import { ProfileModal, dicebearUrl } from "./ProfileModal";
+import { ProfileTab, dicebearUrl } from "./ProfileTab";
 import { OnboardingModal } from "./OnboardingModal";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -162,7 +162,7 @@ export function FlashcardApp() {
   const [customOrder, setCustomOrder] = useLocalStorage<Record<string, string[]>>("mimoe-custom-order", {});
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isWordBankOpen, setIsWordBankOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
   const [langSplash, setLangSplash] = useState<Language | null>(null);
   const [activeNavTab, setActiveNavTab] = useState<NavTab>("home");
@@ -1556,9 +1556,9 @@ export function FlashcardApp() {
                 </div>
                 <WordBank
                   items={activeTab === "vocabulary" ? baseLevels.flatMap(l=>l.cards).slice(0, 50) : baseLevels.flatMap(l=>l.cards).slice(0, 50)}
-                  onAdd={handleCustomAdd}
-                  onUpdate={handleCustomUpdate}
-                  onDelete={handleCustomDelete}
+                  onAdd={handleAddItem}
+                  onUpdate={handleUpdateItem}
+                  onDelete={handleDeleteItem}
                   onBulkAdd={handleBulkAdd}
                   label="Search or add words"
                   rtl={activeLanguage === "arabic"}
@@ -1567,10 +1567,12 @@ export function FlashcardApp() {
             )}
 
             {activeNavTab === "profile" && (
-               <div className="w-full flex flex-col items-center pt-24 px-5">
-                 <h1 className="text-white text-2xl font-bold mb-4">Profile</h1>
-                 <button onClick={() => setIsProfileOpen(true)} className="px-6 py-3 bg-[#B875FF] text-white rounded-full font-bold">Open Settings</button>
-               </div>
+               <ProfileTab
+                 user={user!}
+                 completedVocabCount={completedVocab.length}
+                 completedPhrasesCount={completedPhrases.length}
+                 collectionsCount={collections.length}
+               />
             )}
             
             <BottomNav activeTab={activeNavTab} onTabChange={setActiveNavTab} />
@@ -1730,16 +1732,7 @@ export function FlashcardApp() {
         activeLanguage={activeLanguage}
       />
 
-      {user && (
-        <ProfileModal
-          isOpen={isProfileOpen}
-          onClose={() => setIsProfileOpen(false)}
-          user={user}
-          completedVocabCount={completedVocab.length}
-          completedPhrasesCount={completedPhrases.length}
-          collectionsCount={collections.length}
-        />
-      )}
+
 
       {user && !user.user_metadata?.onboarding_done && !onboardingDone && (
         <OnboardingModal
