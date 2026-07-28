@@ -1466,28 +1466,7 @@ export function FlashcardApp() {
                         </button>
                       );
                     })}
-                    {activeLanguage === "arabic" && (
-                      <>
-                        <div className="px-4 py-2 border-t border-white/5">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-white/30">Dialect</span>
-                        </div>
-                        {ARABIC_DIALECTS.map(d => (
-                          <button
-                            key={d.code}
-                            onClick={() => { setPreferredDialect(d.code); setIsLangDropdownOpen(false); }}
-                            className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold transition-colors text-left ${
-                              preferredDialect === d.code ? "bg-white/10 text-white" : "text-white/55 hover:bg-white/5 hover:text-white"
-                            }`}
-                          >
-                            <span className="text-base">{d.flag}</span>
-                            <span className="flex-1">{d.label}</span>
-                            {preferredDialect === d.code && (
-                              <svg className="w-3.5 h-3.5 text-white/60 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6 9 17l-5-5"/></svg>
-                            )}
-                          </button>
-                        ))}
-                      </>
-                    )}
+
                   </div>
                 </>
               )}
