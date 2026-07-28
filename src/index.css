@@ -55,7 +55,6 @@
   body {
     background-color: #121215;
     min-height: 100vh;
-    min-height: -webkit-fill-available;
   }
 }
 
@@ -95,7 +94,6 @@
 
   #root {
     height: 100dvh;
-    min-height: -webkit-fill-available;
     width: 100%;
     overflow: hidden;
     background-color: #121215 !important;
@@ -138,6 +136,13 @@
 }
 
 @layer utilities {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+
   .font-display {
     font-family: 'Fraunces', serif;
   }

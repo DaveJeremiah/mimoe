@@ -25,7 +25,7 @@ function AdminShell() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen" style={{ background: "#0a0a0a" }}>
+    <div className="min-h-[100dvh]" style={{ background: "#0a0a0a" }}>
       {/* Header */}
       <header className="sticky top-0 z-30 flex items-center gap-4 px-5 py-3 border-b border-white/6" style={{ background: "rgba(10,10,10,0.95)", backdropFilter: "blur(12px)" }}>
         <button onClick={() => navigate("/")} className="p-1.5 rounded-lg hover:bg-white/6 transition-colors text-white/40 hover:text-white/70">
@@ -94,7 +94,7 @@ export default function Admin() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#0a0a0a" }}>
+      <div className="min-h-[100dvh] flex items-center justify-center" style={{ background: "#0a0a0a" }}>
         <div className="w-6 h-6 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
       </div>
     );

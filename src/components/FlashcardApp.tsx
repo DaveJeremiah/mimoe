@@ -1082,7 +1082,7 @@ export function FlashcardApp() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-[100dvh] flex items-center justify-center bg-background">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
       </div>
     );
@@ -1105,7 +1105,7 @@ export function FlashcardApp() {
 
     return (
       <div
-        className="min-h-screen flex flex-col items-center max-w-[480px] mx-auto pt-[28px] pb-24 px-[15px]"
+        className="min-h-[100dvh] flex flex-col items-center max-w-[480px] mx-auto pt-[28px] pb-24 px-[15px]"
         onTouchStart={handleSessionTouchStart}
         onTouchEnd={handleCollectionSessionTouchEnd}
       >

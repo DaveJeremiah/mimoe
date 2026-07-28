@@ -18,8 +18,8 @@ export function BottomSheet({ isOpen, onClose, title, subtitle, onStart }: Botto
         onClick={onClose}
       />
       <div 
-        className="fixed bottom-0 left-0 right-0 z-[70] bg-[#1a1a24] rounded-t-[32px] p-6 pb-safe transition-transform animate-slide-up-in shadow-[0_-10px_40px_rgba(0,0,0,0.5)]"
-        style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
+        className="fixed bottom-0 left-0 right-0 z-[70] bg-[#1a1a24] rounded-t-[32px] p-6 transition-transform animate-slide-up-in shadow-[0_-10px_40px_rgba(0,0,0,0.5)]"
+        style={{ paddingBottom: "max(env(safe-area-inset-bottom), 1.5rem)", borderTop: "1px solid rgba(255,255,255,0.05)" }}
       >
         <div className="w-12 h-1.5 bg-white/10 rounded-full mx-auto mb-6" />
         

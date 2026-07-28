@@ -41,8 +41,8 @@ export function DeckComplete({
       {/* Action panel */}
       <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center">
         <div
-          className="w-full max-w-[480px] px-5 pt-5 pb-8 animate-result-slide rounded-t-[36px]"
-          style={{ background: "#160d24", borderTop: "2px solid rgba(168,85,247,0.3)" }}
+          className="w-full max-w-[480px] px-5 pt-5 pb-8 animate-result-slide rounded-t-[36px] pb-safe"
+          style={{ background: "#160d24", borderTop: "2px solid rgba(168,85,247,0.3)", paddingBottom: "max(calc(env(safe-area-inset-bottom) + 2rem), 2rem)" }}
         >
           <div className="flex items-center gap-3 mb-4">
             <CheckCircle2 className="w-8 h-8" style={{ color: "#a855f7" }} />

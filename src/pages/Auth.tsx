@@ -77,7 +77,7 @@ export default function Auth() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
+      <div className="min-h-[100dvh] flex items-center justify-center bg-black">
         <div className="w-8 h-8 rounded-full border-2 border-white/20 border-t-white animate-spin" />
       </div>
     );
@@ -124,7 +124,7 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-4 sm:p-6 overflow-y-auto" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+    <div className="min-h-[100dvh] bg-[#050505] flex flex-col items-center justify-center p-4 sm:p-6 overflow-y-auto" style={{ fontFamily: "'DM Sans', sans-serif" }}>
       <div className="w-full max-w-md mx-auto flex flex-col bg-[#050505] sm:bg-[#111111] sm:border sm:border-white/10 sm:rounded-3xl sm:shadow-2xl overflow-hidden my-auto pb-safe pb-8 sm:pb-0">
         {/* Top bar */}
         <div className="flex items-center justify-between px-6 pt-10 sm:pt-10 pb-4">
