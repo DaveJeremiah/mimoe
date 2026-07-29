@@ -379,9 +379,12 @@ export function LevelSelect({
         </button>
       )}
 
-      {/* Tile grid — glassmorphic cards */}
-      <div className="flex flex-col gap-6 px-1">
-        {ALL_TILES.map((tile) => {
+      {/* Tile grid — stacked flashcard carousel */}
+      <div 
+        className="flex overflow-x-auto px-5 pb-12 pt-4 -mx-5 gap-4 hide-scrollbar"
+        style={{ scrollSnapType: 'x mandatory' }}
+      >
+        {ALL_TILES.map((tile, i) => {
           const decks = tile.active ? (grouped[tile.id as "A1" | "A2" | "B1"] ?? []) : [];
           const completed = decks.filter(d => completedLevelIds.includes(d.id)).length;
           const pct = decks.length > 0 ? (completed / decks.length) * 100 : 0;
@@ -392,74 +395,54 @@ export function LevelSelect({
             <button
               key={tile.id}
               onClick={() => { if (tile.active) onSelectBand(tile.id as "A1" | "A2" | "B1"); }}
-              className={`relative overflow-hidden outline-none transition-opacity shadow-2xl ${tile.active ? "active:scale-[0.98]" : "cursor-default opacity-80"}`}
+              className={`relative flex-shrink-0 sticky flex flex-col p-6 text-left outline-none transition-transform shadow-2xl ${tile.active ? "active:scale-[0.98]" : "cursor-default opacity-80"}`}
               style={{
-                borderRadius: 32,
-                minHeight: 280,
-                transformOrigin: "center center"
+                left: `${1.25 + i * 2.2}rem`, // Stack with an offset
+                width: '260px',
+                height: '360px',
+                borderRadius: '44px',
+                background: 'hsl(var(--background))',
+                border: `2px solid ${c0}`,
+                boxShadow: '0 16px 44px rgba(0,0,0,0.38), 0 2px 8px rgba(0,0,0,0.18)',
+                scrollSnapAlign: 'start',
               }}
             >
-              {/* Bokeh gradient for all tiles */}
-              <div
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                  background: `
-                    radial-gradient(circle at 20% 30%, ${c0} 0%, transparent 60%),
-                    radial-gradient(circle at 80% 20%, ${c1} 0%, transparent 60%),
-                    radial-gradient(circle at 50% 80%, ${c2} 0%, transparent 60%),
-                    #1a1a24
-                  `,
-                }}
-              />
+              {/* Content area */}
+              <div className="flex-1 mt-2">
+                {bandData && <span className="text-4xl mb-4 block">{bandData.emoji}</span>}
+                <h3 className="text-white text-2xl font-bold tracking-tight mt-4">{tile.title}</h3>
+                <p className="text-white/60 text-sm mt-3 leading-snug">
+                  {bandData?.subtitle || "Explore language concepts and level up your skills."}
+                </p>
+              </div>
 
-              {/* (Removed top right progress ring) */}
-
-              {/* Bottom Glass Pane */}
-              <div 
-                className="absolute bottom-0 left-0 right-0 flex flex-col justify-end p-5"
-                style={{
-                  minHeight: "50%",
-                  background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.85) 100%)",
-                  backdropFilter: "blur(12px)",
-                  WebkitBackdropFilter: "blur(12px)"
-                }}
-              >
-                <div className="relative z-10 text-left">
-                  <h3 className="text-white text-2xl font-bold tracking-tight">{tile.title}</h3>
-                  <p className="text-white/70 text-sm mt-1 leading-snug line-clamp-2">
-                    {bandData?.subtitle || "Explore language concepts and level up your skills."}
-                  </p>
-
-                  {/* Badges / Pills row */}
-                  <div className="flex flex-wrap items-center gap-2 mt-4">
-                    {/* ID Pill */}
-                    <div className="bg-white/10 border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-1.5">
-                      <span className="text-white/90 text-xs font-semibold">{tile.id}</span>
-                    </div>
-
-                    {/* Progress Pill */}
-                    {tile.active ? (
-                      <div className="bg-white/10 border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-1.5">
-                        <Check className="w-3.5 h-3.5 text-white/70" />
-                        <span className="text-white/90 text-xs font-semibold">{completed}/{decks.length}</span>
-                      </div>
-                    ) : (
-                      <div className="bg-white/10 border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-1.5">
-                        <span className="text-white/90 text-xs font-semibold tracking-wide uppercase">Soon</span>
-                      </div>
-                    )}
+              {/* Bottom Badges & Progress */}
+              <div className="mt-auto pt-4 flex flex-col gap-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="bg-white/5 border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-1.5">
+                    <span className="text-white/90 text-xs font-semibold" style={{ color: c0 }}>{tile.id}</span>
                   </div>
-                  
-                  {/* Linear Progress Tube */}
-                  {tile.active && pct > 0 && (
-                    <div className="mt-4 w-full h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.15)" }}>
-                      <div 
-                        className="h-full transition-all duration-700 ease-out" 
-                        style={{ width: `${pct}%`, background: "rgba(255,255,255,0.9)" }} 
-                      />
+
+                  {tile.active ? (
+                    <div className="bg-white/5 border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-1.5">
+                      <Check className="w-3.5 h-3.5" style={{ color: c0 }} />
+                      <span className="text-white/90 text-xs font-semibold">{completed}/{decks.length}</span>
+                    </div>
+                  ) : (
+                    <div className="bg-white/5 border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-1.5">
+                      <span className="text-white/90 text-xs font-semibold tracking-wide uppercase">Soon</span>
                     </div>
                   )}
                 </div>
+                
+                {tile.active && pct > 0 && (
+                  <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
+                    <div 
+                      className="h-full transition-all duration-700 ease-out" 
+                      style={{ width: `${pct}%`, background: c0 }} 
+                    />
+                  </div>
+                )}
               </div>
             </button>
           );
