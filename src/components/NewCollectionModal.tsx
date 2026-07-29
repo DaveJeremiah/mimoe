@@ -19,11 +19,12 @@ interface NewCollectionModalProps {
   onSave: (collection: CollectionFormData) => void;
   editingCollection?: Collection;
   activeLanguage?: Language;
+  nativeLanguage?: string;
   mode?: "notes" | "bulk";
 }
 
 export function NewCollectionModal({
-  isOpen, onClose, onSave, editingCollection, activeLanguage, mode = "bulk",
+  isOpen, onClose, onSave, editingCollection, activeLanguage, nativeLanguage, mode = "bulk",
 }: NewCollectionModalProps) {
   const [title, setTitle]             = useState(editingCollection?.title || "");
   const [importText, setImportText]   = useState("");
@@ -33,7 +34,10 @@ export function NewCollectionModal({
   const [selectedDialect, setSelectedDialect]   = useState(editingCollection?.dialect ?? "ar-SA");
   const [selectedCategory, setSelectedCategory] = useState<CollectionCategory | undefined>(editingCollection?.category);
 
-  const targetLabel = activeLanguage === "arabic" ? "Arabic" : "French";
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  const sourceLabel = nativeLanguage ? capitalize(nativeLanguage) : "English";
+  const targetLabel = activeLanguage ? capitalize(activeLanguage) : "French";
+  
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Populate fields when modal opens / editingCollection changes
@@ -231,7 +235,7 @@ export function NewCollectionModal({
                     onClick={() => setSelectedCategory(selectedCategory === cat.value ? undefined : cat.value)}
                     className="flex items-center gap-1.5 px-3 py-2.5 rounded-full text-xs font-semibold transition-all"
                     style={selectedCategory === cat.value
-                      ? { background: 'linear-gradient(135deg, #9b5cf6, #ec4899)', color: '#fff', border: '1px solid transparent' }
+                      ? { background: 'linear-gradient(135deg, #f97316, #fb923c)', color: '#fff', border: '1px solid transparent' }
                       : { background: '#111111', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.08)' }
                     }
                   >
@@ -254,7 +258,7 @@ export function NewCollectionModal({
                       onClick={() => setSelectedDialect(d.code)}
                       className="flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-semibold transition-all"
                       style={selectedDialect === d.code
-                        ? { background: 'linear-gradient(135deg, #9b5cf6, #ec4899)', color: '#fff', border: '1px solid transparent' }
+                        ? { background: 'linear-gradient(135deg, #f97316, #fb923c)', color: '#fff', border: '1px solid transparent' }
                         : { background: '#111111', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.08)' }
                       }
                     >
@@ -278,7 +282,7 @@ export function NewCollectionModal({
                       style={{ background: '#111111', border: '1px solid rgba(255,255,255,0.07)' }}
                     >
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-white/25 w-14 flex-shrink-0">English</span>
+                        <span className="text-[10px] font-bold text-white/25 w-14 flex-shrink-0 truncate" title={sourceLabel}>{sourceLabel}</span>
                         <input
                           type="text"
                           value={pair.english}

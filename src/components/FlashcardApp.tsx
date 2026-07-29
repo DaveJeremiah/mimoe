@@ -1248,10 +1248,11 @@ export function FlashcardApp() {
         <NewCollectionModal
           isOpen={isCollectionModalOpen}
           onClose={() => setIsCollectionModalOpen(false)}
-          onSave={handleSaveCollection}
-          editingCollection={editingCollection}
           activeLanguage={activeLanguage}
-          mode={editingCollection ? "notes" : collectionModalMode}
+          nativeLanguage={(user?.user_metadata?.native_language as string) || "english"}
+          onSave={handleSaveCollection}
+          editingCollection={collectionToEdit ?? editingCollection}
+          mode={collectionModalMode}
         />
         {shareToastEl}
       </div>
@@ -1671,10 +1672,11 @@ export function FlashcardApp() {
       <NewCollectionModal
         isOpen={isCollectionModalOpen}
         onClose={() => setIsCollectionModalOpen(false)}
-        onSave={handleSaveCollection}
-        editingCollection={editingCollection}
         activeLanguage={activeLanguage}
-        mode={editingCollection ? "notes" : collectionModalMode}
+        nativeLanguage={(user?.user_metadata?.native_language as string) || "english"}
+        onSave={handleSaveCollection}
+        editingCollection={collectionToEdit}
+        mode={collectionModalMode}
       />
 
       {/* ── Collection type tooltip (above bottom nav + button) ── */}
