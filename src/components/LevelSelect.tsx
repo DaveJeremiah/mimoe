@@ -246,8 +246,8 @@ export function LevelSelect({
     const completedInBand = decks.filter(d => completedLevelIds.includes(d.id)).length;
 
     return (
-      <div className="w-full pt-2 px-1">
-        <div className="flex flex-col gap-4">
+      <div className="w-full pt-2 px-1 pb-32">
+        <div className="flex flex-col gap-6">
           {decks.map((deck, i) => {
             const isCompleted = completedLevelIds.includes(deck.id);
             const title = stripCefrPrefix(deck.title);
@@ -255,97 +255,96 @@ export function LevelSelect({
               <button
                 key={deck.id}
                 onClick={() => onSelectLevel(deck.id)}
-                className={`relative w-full flex items-center gap-3 p-4 rounded-[28px] transition-all duration-200 text-left active:scale-[0.97] overflow-hidden`}
+                className={`sticky w-full flex flex-col items-center justify-between p-6 transition-all duration-200 active:scale-[0.97] shadow-2xl`}
                 style={{
-                  background: isCompleted ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.06)",
-                  border: isCompleted ? `1px solid ${band.hex}40` : "1px solid rgba(255,255,255,0.08)",
-                  boxShadow: "0 8px 32px rgba(0,0,0,0.2)"
+                  top: `calc(4rem + ${i * 1.5}rem)`,
+                  aspectRatio: '1/1.1',
+                  borderRadius: '40px',
+                  background: 'hsl(var(--background))',
+                  border: isCompleted ? `2px solid ${band.hex}40` : `2px solid ${band.hex}`,
+                  boxShadow: "0 16px 44px rgba(0,0,0,0.38), 0 2px 8px rgba(0,0,0,0.18)",
                 }}
               >
-                {/* Subtle glass reflection */}
-                <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 50%)" }} />
-                
-                <img
-                  src={DECK_IMGS[deck.id] ?? DEFAULT_DECK_IMG}
-                  alt=""
-                  className="w-10 h-10 object-contain flex-shrink-0 relative z-10"
-                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "0"; }}
-                />
-                <div className="flex-1 min-w-0 relative z-10">
-                  <p className="text-sm font-bold text-white leading-tight truncate">{title}</p>
-                  
-                  {/* Pills */}
-                  <div className="flex items-center gap-2 mt-2">
-                    <div className="bg-black/40 border border-white/5 rounded-full px-2 py-0.5 flex items-center">
-                      <span className="text-white/70 text-[10px] font-semibold">{deck.cards.length} cards</span>
-                    </div>
-                    {isCompleted && (
-                      <div className="bg-black/40 border border-white/5 rounded-full px-2 py-0.5 flex items-center gap-1" style={{ borderColor: `${band.hex}30` }}>
-                        <Check className="w-3 h-3" style={{ color: band.hex }} />
-                        <span className="text-[10px] font-semibold" style={{ color: band.hex }}>Done</span>
-                      </div>
-                    )}
-                  </div>
+                {/* Center Image & Title */}
+                <div className="flex-1 w-full flex flex-col items-center justify-center text-center mt-2">
+                  <img
+                    src={DECK_IMGS[deck.id] ?? DEFAULT_DECK_IMG}
+                    alt=""
+                    className="w-28 h-28 object-contain mb-6 drop-shadow-2xl"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "0"; }}
+                  />
+                  <p className="text-2xl font-bold text-white leading-tight px-4">{title}</p>
                 </div>
                 
-                {!isCompleted && (
-                  <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0 relative z-10 backdrop-blur-md border border-white/10">
-                    <ChevronRight className="w-4 h-4 text-white/50" />
+                {/* Bottom Row */}
+                <div className="mt-auto w-full flex items-center justify-between pt-6">
+                  <div className="bg-white/5 border border-white/10 rounded-full px-4 py-2 flex items-center">
+                    <span className="text-white/70 text-sm font-semibold">{deck.cards.length} cards</span>
                   </div>
-                )}
+                  {isCompleted ? (
+                    <div className="bg-white/5 border border-white/10 rounded-full px-4 py-2 flex items-center gap-1.5" style={{ borderColor: `${band.hex}40` }}>
+                      <Check className="w-4 h-4" style={{ color: band.hex }} />
+                      <span className="text-sm font-bold" style={{ color: band.hex }}>Done</span>
+                    </div>
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center backdrop-blur-md border border-white/10">
+                      <ChevronRight className="w-5 h-5 text-white/50" />
+                    </div>
+                  )}
+                </div>
               </button>
             );
           })}
 
           {grouped.custom.length > 0 && (
             <>
-              <div className="pt-2 pb-1">
+              <div className="pt-6 pb-2">
                 <p className="text-xs text-white/50 uppercase tracking-wider font-bold px-2">My levels</p>
               </div>
-              {grouped.custom.map((deck, i) => {
+              {grouped.custom.map((deck, idx) => {
+                const i = decks.length + idx;
                 const isCompleted = completedLevelIds.includes(deck.id);
                 return (
                   <button
                     key={deck.id}
                     onClick={() => onSelectLevel(deck.id)}
-                    className={`relative w-full flex items-center gap-3 p-4 rounded-[28px] transition-all duration-200 text-left active:scale-[0.97] overflow-hidden`}
+                    className={`sticky w-full flex flex-col items-center justify-between p-6 transition-all duration-200 active:scale-[0.97] shadow-2xl`}
                     style={{
-                      background: "rgba(255,255,255,0.06)",
-                      border: isCompleted ? "1px solid rgba(16, 185, 129, 0.4)" : "1px solid rgba(255,255,255,0.08)",
-                      boxShadow: "0 8px 32px rgba(0,0,0,0.2)"
+                      top: `calc(4rem + ${i * 1.5}rem)`,
+                      aspectRatio: '1/1.1',
+                      borderRadius: '40px',
+                      background: 'hsl(var(--background))',
+                      border: isCompleted ? "2px solid rgba(16, 185, 129, 0.4)" : "2px solid rgba(255,255,255,0.15)",
+                      boxShadow: "0 16px 44px rgba(0,0,0,0.38), 0 2px 8px rgba(0,0,0,0.18)",
                     }}
                   >
-                    {/* Subtle glass reflection */}
-                    <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(135deg, rgba(255,255,255,0.08) 0%, transparent 50%)" }} />
-                    
-                    <img
-                      src={FE("Memo/3D/memo_3d.png")}
-                      alt=""
-                      className="w-10 h-10 object-contain flex-shrink-0 relative z-10"
-                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "0"; }}
-                    />
-                    <div className="flex-1 min-w-0 relative z-10">
-                      <p className="text-sm font-bold text-white leading-tight truncate">{deck.title}</p>
-                      
-                      {/* Pills */}
-                      <div className="flex items-center gap-2 mt-2">
-                        <div className="bg-black/40 border border-white/5 rounded-full px-2 py-0.5 flex items-center">
-                          <span className="text-white/70 text-[10px] font-semibold">{deck.cards.length} cards</span>
-                        </div>
-                        {isCompleted && (
-                          <div className="bg-black/40 border border-white/5 rounded-full px-2 py-0.5 flex items-center gap-1 border-emerald-500/30">
-                            <Check className="w-3 h-3 text-emerald-400" />
-                            <span className="text-emerald-400 text-[10px] font-semibold">Done</span>
-                          </div>
-                        )}
-                      </div>
+                    {/* Center Image & Title */}
+                    <div className="flex-1 w-full flex flex-col items-center justify-center text-center mt-2">
+                      <img
+                        src={FE("Memo/3D/memo_3d.png")}
+                        alt=""
+                        className="w-28 h-28 object-contain mb-6 drop-shadow-2xl"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "0"; }}
+                      />
+                      <p className="text-2xl font-bold text-white leading-tight px-4">{deck.title}</p>
                     </div>
                     
-                    {!isCompleted && (
-                      <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center flex-shrink-0 relative z-10 backdrop-blur-md border border-white/10">
-                        <ChevronRight className="w-4 h-4 text-white/50" />
+                    {/* Bottom Row */}
+                    <div className="mt-auto w-full flex items-center justify-between pt-6">
+                      <div className="bg-white/5 border border-white/10 rounded-full px-4 py-2 flex items-center">
+                        <span className="text-white/70 text-sm font-semibold">{deck.cards.length} cards</span>
                       </div>
-                    )}
+                      {isCompleted ? (
+                        <div className="bg-white/5 border border-white/10 rounded-full px-4 py-2 flex items-center gap-1.5 border-emerald-500/30">
+                          <Check className="w-4 h-4 text-emerald-400" />
+                          <span className="text-emerald-400 text-sm font-bold">Done</span>
+                        </div>
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center backdrop-blur-md border border-white/10">
+                          <ChevronRight className="w-5 h-5 text-white/50" />
+                        </div>
+                      )}
+                    </div>
                   </button>
                 );
               })}
