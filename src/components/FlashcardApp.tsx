@@ -368,7 +368,7 @@ export function FlashcardApp() {
 
   const langConfig = activeLanguage === "arabic"
     ? getArabicConfigForDialect(sessionDialect)
-    : LANGUAGE_CONFIGS.french;
+    : LANGUAGE_CONFIGS[activeLanguage as keyof typeof LANGUAGE_CONFIGS] ?? LANGUAGE_CONFIGS.french;
 
   const animateAdvanceRef = useRef<((exitClass: string, opts: { failed: boolean; requeue: boolean }) => void) | null>(null);
   const handleBackRef = useRef<() => void>(() => {});
@@ -1237,7 +1237,7 @@ export function FlashcardApp() {
                 langConfig={
                   selectedCollection.language === "arabic"
                     ? getArabicConfigForDialect(selectedCollection.dialect ?? preferredDialect)
-                    : LANGUAGE_CONFIGS.french
+                    : LANGUAGE_CONFIGS[selectedCollection.language as keyof typeof LANGUAGE_CONFIGS] ?? LANGUAGE_CONFIGS.french
                 }
               />
             </div>
