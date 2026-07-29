@@ -16,7 +16,7 @@ import { NewLevelModal } from "./NewLevelModal";
 import { BottomNav, type NavTab } from "./BottomNav";
 import { LibraryTab } from "./LibraryTab";
 import { BANDS } from "./LevelSelect";
-import { PersonalTab } from "./PersonalTab";
+
 import { BottomSheet } from "./BottomSheet";
 import { NodePath } from "./NodePath";
 import { ProfileTab, dicebearUrl } from "./ProfileTab";
@@ -1530,12 +1530,6 @@ export function FlashcardApp() {
                 activeLanguage={activeLanguage}
                 activeTab={activeTab}
                 onTabSwitch={handleTabSwitch}
-              />
-            )}
-            {activeNavTab === "personal" && (
-              <PersonalTab
-                collections={collections}
-                activeLanguage={activeLanguage}
                 onStudyCollection={handleStudyCollection}
                 onCreateNotes={() => {
                   setCollectionToEdit(null);
@@ -1552,7 +1546,7 @@ export function FlashcardApp() {
               <div className="w-full flex flex-col pt-6 pb-0 px-5">
                 <div className="flex items-center justify-between mb-8">
                   <h1 className="text-white text-3xl font-bold">Word Bank</h1>
-                  <button onClick={() => setActiveNavTab("personal")} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-full text-xs font-bold text-white transition-colors">Back</button>
+                  <button onClick={() => setActiveNavTab("library")} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-full text-xs font-bold text-white transition-colors">Back</button>
                 </div>
                 <WordBank
                   items={activeTab === "vocabulary" ? baseLevels.flatMap(l=>l.cards).slice(0, 50) : baseLevels.flatMap(l=>l.cards).slice(0, 50)}

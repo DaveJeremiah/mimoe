@@ -1,6 +1,6 @@
 import { Home, BookOpen, Layers, User, FolderHeart } from "lucide-react";
 
-export type NavTab = "home" | "library" | "personal" | "profile" | "wordbank";
+export type NavTab = "home" | "library" | "profile" | "wordbank";
 
 interface BottomNavProps {
   activeTab: NavTab;
@@ -11,7 +11,6 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   const tabs = [
     { id: "home", label: "Home", icon: Home },
     { id: "library", label: "Library", icon: Layers },
-    { id: "personal", label: "Personal", icon: FolderHeart },
     { id: "profile", label: "Profile", icon: User },
   ] as const;
 
