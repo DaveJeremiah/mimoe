@@ -67,66 +67,45 @@ export function NodePath({ levels, completedLevelIds, onStartLevel, bandTitle, o
         return (
           <div key={tile.id} className="w-full flex flex-col items-center px-4">
             
-            {/* The Huge Gradient Card */}
+            {/* The Huge Gradient Card -> Stacked Flashcard */}
             <div
-              className={`relative overflow-hidden outline-none transition-opacity shadow-2xl w-full mb-8`}
+              className={`relative sticky z-20 w-full overflow-hidden outline-none shadow-2xl flex flex-col p-6 mb-8`}
               style={{
-                borderRadius: 24,
-                minHeight: 160,
+                top: `calc(4.5rem + ${groupIdx * 1.5}rem)`, // Stack based on group index!
+                borderRadius: '32px',
+                minHeight: '180px',
+                background: 'hsl(var(--background))',
+                border: `2px solid ${c0}`,
               }}
             >
-              {/* Bokeh gradient */}
-              <div
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                  background: `
-                    radial-gradient(circle at 20% 30%, ${c0} 0%, transparent 60%),
-                    radial-gradient(circle at 80% 20%, ${c1} 0%, transparent 60%),
-                    radial-gradient(circle at 50% 80%, ${c2} 0%, transparent 60%),
-                    #1a1a24
-                  `,
-                }}
-              />
+              <div className="flex-1">
+                <h3 className="text-white text-2xl font-bold tracking-tight">{tile.title}</h3>
+                <p className="text-white/60 text-sm mt-2 leading-snug max-w-[85%]">
+                  {bandData?.subtitle || "Explore language concepts and level up your skills."}
+                </p>
+              </div>
 
-              {/* (Removed top right progress ring) */}
-
-              {/* Bottom Glass Pane */}
-              <div 
-                className="absolute bottom-0 left-0 right-0 flex flex-col justify-end p-5"
-                style={{
-                  minHeight: "50%",
-                  background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.85) 100%)",
-                  backdropFilter: "blur(12px)",
-                  WebkitBackdropFilter: "blur(12px)"
-                }}
-              >
-                <div className="relative z-10 text-left">
-                  <h3 className="text-white text-2xl font-bold tracking-tight">{tile.title}</h3>
-                  <p className="text-white/70 text-sm mt-1 leading-snug line-clamp-2">
-                    {bandData?.subtitle || "Explore language concepts and level up your skills."}
-                  </p>
-
-                  {/* Badges / Pills row */}
-                  <div className="flex flex-wrap items-center gap-2 mt-4">
-                    <div className="bg-white/10 border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-1.5">
-                      <span className="text-white/90 text-xs font-semibold">{tile.id}</span>
-                    </div>
-                    <div className="bg-white/10 border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-1.5">
-                      <Check className="w-3.5 h-3.5 text-white/70" />
-                      <span className="text-white/90 text-xs font-semibold">{completed}/{groupLevels.length}</span>
-                    </div>
+              <div className="mt-6 flex flex-col gap-4">
+                {/* Badges / Pills row */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="bg-white/5 border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-1.5">
+                    <span className="text-white/90 text-xs font-semibold" style={{ color: c0 }}>{tile.id}</span>
                   </div>
-                  
-                  {/* Linear Progress Tube */}
-                  {pct > 0 && (
-                    <div className="mt-4 w-full h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.15)" }}>
-                      <div 
-                        className="h-full transition-all duration-700 ease-out" 
-                        style={{ width: `${pct}%`, background: "rgba(255,255,255,0.9)" }} 
-                      />
-                    </div>
-                  )}
+                  <div className="bg-white/5 border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-1.5">
+                    <Check className="w-3.5 h-3.5" style={{ color: c0 }} />
+                    <span className="text-white/90 text-xs font-semibold">{completed}/{groupLevels.length}</span>
+                  </div>
                 </div>
+                
+                {/* Linear Progress Tube */}
+                {pct > 0 && (
+                  <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
+                    <div 
+                      className="h-full transition-all duration-700 ease-out" 
+                      style={{ width: `${pct}%`, background: c0 }} 
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
