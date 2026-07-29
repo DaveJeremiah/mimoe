@@ -386,10 +386,6 @@ export function usePushToTalkMic({ lang = "fr-FR", onResult, handsFree = false }
     return () => {
       isHoldingRef.current = false;
       if (recRef.current) { try { recRef.current.abort(); } catch { /**/ } recRef.current = null; }
-      if (iosStreamRef.current) {
-        iosStreamRef.current.getTracks().forEach(t => t.stop());
-        iosStreamRef.current = null;
-      }
       if (iosSafetyRef.current) clearTimeout(iosSafetyRef.current);
       if (iosVadStopRef.current) iosVadStopRef.current();
     };

@@ -526,6 +526,7 @@ export function FlashcardApp() {
 
   // Save queue state whenever it changes
   useEffect(() => {
+    if (!hasRestoredRef.current) return;
     if (queue.length > 0) {
       setSavedQueue(queue);
     } else if (queue.length === 0 && savedQueue.length > 0) {
