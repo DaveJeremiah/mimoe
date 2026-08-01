@@ -192,9 +192,8 @@ export function NodePath({ levels, completedLevelIds, onStartLevel, bandTitle, o
                 const isActive = i === activeIndex;
                 const isLocked = i > activeIndex;
                 
-                const t = groupLevels.length > 1 ? i / (groupLevels.length - 1) : 0.5;
-                const snakeAmplitude = 24; 
-                const baseOffset = -50 + Math.sin(t * Math.PI * (groupLevels.length > 3 ? 3 : 1)) * snakeAmplitude;
+                const snakeAmplitude = 32; 
+                const baseOffset = -50 + Math.sin(i * Math.PI / 2.5) * snakeAmplitude;
                 const offset = baseOffset;
 
                 return (
