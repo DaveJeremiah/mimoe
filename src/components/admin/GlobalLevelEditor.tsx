@@ -139,7 +139,7 @@ export function GlobalLevelEditor({ level, onClose, onSaved }: Props) {
                   className="w-full rounded-xl px-4 py-3 text-white text-sm outline-none"
                   style={{ background: "#111111", border: "1px solid rgba(255,255,255,0.08)" }}
                 >
-                  <option value="">Default (MSA)</option>
+                  <option value="">Default (Arabic)</option>
                   <option value="ar-SA">Saudi (ar-SA)</option>
                   <option value="ar-EG">Egyptian (ar-EG)</option>
                   <option value="ar-MA">Moroccan (ar-MA)</option>
