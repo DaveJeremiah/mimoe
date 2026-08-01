@@ -21,7 +21,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
         paddingBottom: "max(env(safe-area-inset-bottom), 16px)"
       }}
     >
-      <div className="pointer-events-auto flex items-center justify-around py-2 px-3 w-[calc(100%-32px)] max-w-[400px]">
+      <div className="pointer-events-auto flex items-center gap-2 py-2 px-4 bg-[#121215]/95 backdrop-blur-md rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/10">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           const Icon = tab.icon;
