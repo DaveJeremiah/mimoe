@@ -1287,7 +1287,7 @@ export function FlashcardApp() {
     )}
 
     <div
-      className={`h-full overflow-y-hidden flex flex-col items-center w-full ${selectedLevelId ? 'pt-[61px] px-[15px] md:px-6 pb-24' : 'pt-0 px-0 pb-0'}`}
+      className={`absolute inset-0 bg-[#0a0a0a] overflow-y-hidden flex flex-col items-center w-full ${selectedLevelId ? 'pt-[61px] px-[15px] md:px-6 pb-24' : 'pt-0 px-0 pb-0'}`}
       onTouchStart={handleSessionTouchStart}
       onTouchEnd={handleSessionTouchEnd}
     >
@@ -1472,6 +1472,10 @@ export function FlashcardApp() {
               )}
             </div>
 
+            <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-none">
+              <img src={logoLight} alt="mimoe" className="h-5 w-auto opacity-70" />
+            </div>
+
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-white/80 transition-all bg-white/5 border border-white/10">
                 <span className="text-[14px]">🔥</span>
@@ -1483,7 +1487,6 @@ export function FlashcardApp() {
           {/* Unified Title for NodePath with Tabs */}
           {activeNavTab === "home" && (
             <div className="flex flex-col items-center text-center mt-1 pb-1">
-              <img src={logoLight} alt="mimoe" className="h-5 w-auto mb-3 opacity-80" />
               <div className="flex items-center justify-center gap-10">
                 <button 
                   onClick={() => setActiveTab("vocabulary")}
