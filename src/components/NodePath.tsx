@@ -40,13 +40,10 @@ export function NodePath({ levels, completedLevelIds, onStartLevel, bandTitle, o
     let rafId: number;
     const updatePositions = () => {
       if (!rootRef.current) return;
-      const scrollY = scroller.scrollTop;
       const nodes = rootRef.current.querySelectorAll('.path-node');
-      const cards = Array.from(rootRef.current.querySelectorAll('.group-card')).map((c, i) => {
-         const el = c as HTMLElement;
-         const stackOffset = 32 + (i * 24); // 2rem + 1.5rem * i
-         const visualTop = Math.max(el.offsetTop, scrollY + stackOffset);
-         return { top: visualTop, bottom: visualTop + el.offsetHeight };
+      const cards = Array.from(rootRef.current.querySelectorAll('.group-card')).map(c => {
+         const rect = c.getBoundingClientRect();
+         return { top: rect.top, bottom: rect.bottom };
       });
       
       let allPoints: {x: number, y: number}[][] = [];
@@ -62,28 +59,29 @@ export function NodePath({ levels, completedLevelIds, onStartLevel, bandTitle, o
           currentGroupIndex = gIdx;
         }
 
-        const nodeY = el.offsetTop + el.offsetHeight / 2;
-        let minDistance = 9999;
+        const rect = el.getBoundingClientRect();
+        const nodeY = rect.top + rect.height / 2;
+        
+        let maxEase = 0;
         cards.forEach(card => {
-           let dist = 0;
-           if (nodeY < card.top) dist = card.top - nodeY;
-           else if (nodeY > card.bottom) dist = nodeY - card.bottom;
-           if (dist < minDistance) minDistance = dist;
+           const distToBottom = nodeY - card.bottom;
+           if (nodeY < card.bottom) {
+              maxEase = Math.max(maxEase, 1);
+           } else if (distToBottom >= 0 && distToBottom < 260) {
+              const factor = 1 - (distToBottom / 260);
+              const ease = Math.sin(factor * Math.PI / 2);
+              maxEase = Math.max(maxEase, ease);
+           }
         });
         
         const baseX = parseFloat(el.getAttribute('data-basex') || '0');
-        let dodgeX = baseX;
-        const DODGE_RADIUS = 220; 
-        if (minDistance < DODGE_RADIUS) {
-           const factor = 1 - (minDistance / DODGE_RADIUS);
-           const ease = Math.sin(factor * Math.PI / 2);
-           dodgeX = baseX + (140 - baseX) * ease;
-        }
+        const dodgeX = baseX + (140 - baseX) * maxEase;
         
         el.style.transform = `translateX(${dodgeX}px)`;
-        // Store relative to the svg container which is top-0 of track
+        
         const trackTop = el.closest('.track-container') as HTMLElement;
-        const relativeY = el.offsetTop - trackTop.offsetTop + el.offsetHeight / 2;
+        const trackRect = trackTop.getBoundingClientRect();
+        const relativeY = nodeY - trackRect.top;
         currentGroupPoints.push({ x: dodgeX, y: relativeY });
       });
       if (currentGroupPoints.length > 0) allPoints.push(currentGroupPoints);
