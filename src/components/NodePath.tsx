@@ -43,7 +43,7 @@ export function NodePath({ levels, completedLevelIds, onStartLevel, bandTitle, o
       const nodes = rootRef.current.querySelectorAll('.path-node');
       const cards = Array.from(rootRef.current.querySelectorAll('.group-card')).map(c => {
          const rect = c.getBoundingClientRect();
-         return { top: rect.top, bottom: rect.bottom };
+         return { top: rect.top, bottom: rect.bottom, groupIdx: parseInt(c.getAttribute('data-groupidx') || '0') };
       });
       
       let allPoints: {x: number, y: number}[][] = [];
@@ -63,16 +63,17 @@ export function NodePath({ levels, completedLevelIds, onStartLevel, bandTitle, o
         const nodeY = rect.top + rect.height / 2;
         
         let maxEase = 0;
-        cards.forEach(card => {
-           const distToBottom = nodeY - card.bottom;
-           if (nodeY < card.bottom) {
-              maxEase = Math.max(maxEase, 1);
+        const myCard = cards.find(c => c.groupIdx === gIdx);
+        if (myCard) {
+           const distToBottom = nodeY - myCard.bottom;
+           if (nodeY < myCard.bottom) {
+              maxEase = 1;
            } else if (distToBottom >= 0 && distToBottom < 260) {
               const factor = 1 - (distToBottom / 260);
               const ease = Math.sin(factor * Math.PI / 2);
-              maxEase = Math.max(maxEase, ease);
+              maxEase = ease;
            }
-        });
+        }
         
         const baseX = parseFloat(el.getAttribute('data-basex') || '0');
         const dodgeX = baseX + (140 - baseX) * maxEase;
@@ -142,6 +143,7 @@ export function NodePath({ levels, completedLevelIds, onStartLevel, bandTitle, o
             {/* The Huge Gradient Card -> Stacked Flashcard */}
             <div
               className={`group-card relative sticky z-20 w-[75%] max-w-[320px] mr-auto overflow-hidden outline-none shadow-2xl flex flex-col p-5 mb-4`}
+              data-groupidx={groupIdx}
               style={{
                 top: `calc(2rem + ${groupIdx * 1.5}rem)`, // Stack based on group index!
                 marginLeft: `${groupIdx * 1.5}rem`, // Shift right to create prominent top-left peek effect
