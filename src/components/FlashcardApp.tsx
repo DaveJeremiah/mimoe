@@ -1483,7 +1483,7 @@ export function FlashcardApp() {
           {/* Unified Title for NodePath with Tabs */}
           {activeNavTab === "home" && (
             <div className="flex flex-col items-center text-center mt-1 pb-1">
-              <h2 className="text-white/50 font-bold uppercase tracking-widest text-[10px] mb-2">Current Path</h2>
+              <img src={logoLight} alt="mimoe" className="h-5 w-auto mb-3 opacity-80" />
               <div className="flex items-center justify-center gap-10">
                 <button 
                   onClick={() => setActiveTab("vocabulary")}
