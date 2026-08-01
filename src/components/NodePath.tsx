@@ -73,11 +73,11 @@ export function NodePath({ levels, completedLevelIds, onStartLevel, bandTitle, o
         
         const baseX = parseFloat(el.getAttribute('data-basex') || '0');
         let dodgeX = baseX;
-        const DODGE_RADIUS = 160; 
+        const DODGE_RADIUS = 220; 
         if (minDistance < DODGE_RADIUS) {
            const factor = 1 - (minDistance / DODGE_RADIUS);
            const ease = Math.sin(factor * Math.PI / 2);
-           dodgeX = baseX + (120 - baseX) * ease;
+           dodgeX = baseX + (140 - baseX) * ease;
         }
         
         el.style.transform = `translateX(${dodgeX}px)`;
@@ -195,10 +195,9 @@ export function NodePath({ levels, completedLevelIds, onStartLevel, bandTitle, o
                 const isLocked = i > activeIndex;
                 
                 const t = groupLevels.length > 1 ? i / (groupLevels.length - 1) : 0.5;
-                const curveStrength = 120; 
-                const baseOffset = groupLevels.length > 1 ? (4 * Math.pow(t - 0.5, 2) * curveStrength) : curveStrength;
-                const zigzag = i % 2 === 0 ? -16 : 16;
-                const offset = baseOffset + zigzag;
+                const snakeAmplitude = 24; 
+                const baseOffset = -50 + Math.sin(t * Math.PI * (groupLevels.length > 3 ? 3 : 1)) * snakeAmplitude;
+                const offset = baseOffset;
 
                 return (
                   <div key={level.id} className="relative z-10 w-full flex justify-center h-[100px] items-center">
