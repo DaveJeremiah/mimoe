@@ -1106,7 +1106,7 @@ export function FlashcardApp() {
 
     return (
       <div
-        className="min-h-[100dvh] flex flex-col items-center max-w-[480px] mx-auto pt-[28px] pb-24 px-[15px]"
+        className="min-h-[100dvh] flex flex-col items-center w-full max-w-[480px] mx-auto pt-[61px] px-[15px] md:px-6 pb-24"
         onTouchStart={handleSessionTouchStart}
         onTouchEnd={handleCollectionSessionTouchEnd}
       >
@@ -1208,7 +1208,7 @@ export function FlashcardApp() {
           </div>
         </header>
 
-        <div className="flex-1 w-full flex flex-col items-center justify-center">
+        <div className="flex-1 w-full flex flex-col items-center justify-center min-h-0">
           {isCollectionDeckComplete ? (
             <DeckComplete
               cards={collectionCards}
@@ -1224,24 +1224,22 @@ export function FlashcardApp() {
               rtl={selectedCollection.language === "arabic"}
             />
           ) : currentCollectionCard ? (
-            <div className="relative w-full flex-1 mt-[2vh] max-h-[64vh]">
-              <Flashcard
-                key={`collection-${selectedCollection.id}-${collectionQueue[0]}`}
-                card={currentCollectionCard}
-                onAdvance={handleCollectionAdvance}
-                total={colTotal}
-                remaining={collectionQueue.length}
-                streak={collectionComboCount}
-                onAnimateAdvance={(fn) => { collectionAnimateAdvanceRef.current = fn; }}
-                bandStyle={COLLECTION_BAND_STYLE}
-                customAudioEnabled={collectionUseCustomVoice}
-                langConfig={
-                  selectedCollection.language === "arabic"
-                    ? getArabicConfigForDialect(selectedCollection.dialect ?? preferredDialect)
-                    : LANGUAGE_CONFIGS[selectedCollection.language as keyof typeof LANGUAGE_CONFIGS] ?? LANGUAGE_CONFIGS.french
-                }
-              />
-            </div>
+            <Flashcard
+              key={`collection-${selectedCollection.id}-${collectionQueue[0]}`}
+              card={currentCollectionCard}
+              onAdvance={handleCollectionAdvance}
+              total={colTotal}
+              remaining={collectionQueue.length}
+              streak={collectionComboCount}
+              onAnimateAdvance={(fn) => { collectionAnimateAdvanceRef.current = fn; }}
+              bandStyle={COLLECTION_BAND_STYLE}
+              customAudioEnabled={collectionUseCustomVoice}
+              langConfig={
+                selectedCollection.language === "arabic"
+                  ? getArabicConfigForDialect(selectedCollection.dialect ?? preferredDialect)
+                  : LANGUAGE_CONFIGS[selectedCollection.language as keyof typeof LANGUAGE_CONFIGS] ?? LANGUAGE_CONFIGS.french
+              }
+            />
           ) : null}
         </div>
 

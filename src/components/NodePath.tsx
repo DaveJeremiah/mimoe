@@ -1,26 +1,21 @@
-import { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Check, Play, Lock } from "lucide-react";
 import type { Level } from "@/lib/flashcardData";
 import { BottomSheet } from "./BottomSheet";
 import { WavyLine, BANDS, ProgressRing, getAllTiles } from "./LevelSelect";
 
-function VerticalWavyLine({ className = "" }: { className?: string }) {
+function DynamicPathLine({ className = "" }: { className?: string }) {
   return (
-    <div className={`absolute top-4 bottom-4 w-32 left-1/2 -translate-x-1/2 z-0 overflow-hidden ${className}`}>
-      <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <pattern id="wavePattern" x="0" y="0" width="128" height="240" patternUnits="userSpaceOnUse">
-            <path
-              d="M64 0 C140 60, -12 180, 64 240"
-              stroke="#B875FF"
-              strokeWidth="6"
-              strokeOpacity="0.3"
-              strokeLinecap="round"
-              fill="none"
-            />
-          </pattern>
-        </defs>
-        <rect x="0" y="0" width="100%" height="100%" fill="url(#wavePattern)" />
+    <div className={`absolute top-0 bottom-0 left-1/2 w-[2px] z-0 overflow-visible ${className}`}>
+      <svg width="2" height="100%" className="overflow-visible">
+        <path
+          className="dynamic-svg-path"
+          fill="none"
+          stroke="#B875FF"
+          strokeOpacity="0.3"
+          strokeWidth="6"
+          strokeLinecap="round"
+        />
       </svg>
     </div>
   );
@@ -36,6 +31,85 @@ interface NodePathProps {
 
 export function NodePath({ levels, completedLevelIds, onStartLevel, bandTitle, onBack }: NodePathProps) {
   const [selectedNode, setSelectedNode] = useState<Level | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const scroller = rootRef.current?.closest('.overflow-y-auto');
+    if (!scroller || !rootRef.current) return;
+
+    let rafId: number;
+    const updatePositions = () => {
+      if (!rootRef.current) return;
+      const scrollY = scroller.scrollTop;
+      const nodes = rootRef.current.querySelectorAll('.path-node');
+      const cards = Array.from(rootRef.current.querySelectorAll('.group-card')).map((c, i) => {
+         const el = c as HTMLElement;
+         const stackOffset = 32 + (i * 24); // 2rem + 1.5rem * i
+         const visualTop = Math.max(el.offsetTop, scrollY + stackOffset);
+         return { top: visualTop, bottom: visualTop + el.offsetHeight };
+      });
+      
+      let allPoints: {x: number, y: number}[][] = [];
+      let currentGroupPoints: {x: number, y: number}[] = [];
+      let currentGroupIndex = -1;
+
+      nodes.forEach((node) => {
+        const el = node as HTMLElement;
+        const gIdx = parseInt(el.getAttribute('data-groupidx') || '0');
+        if (gIdx !== currentGroupIndex) {
+          if (currentGroupPoints.length > 0) allPoints.push(currentGroupPoints);
+          currentGroupPoints = [];
+          currentGroupIndex = gIdx;
+        }
+
+        const nodeY = el.offsetTop + el.offsetHeight / 2;
+        let minDistance = 9999;
+        cards.forEach(card => {
+           let dist = 0;
+           if (nodeY < card.top) dist = card.top - nodeY;
+           else if (nodeY > card.bottom) dist = nodeY - card.bottom;
+           if (dist < minDistance) minDistance = dist;
+        });
+        
+        const baseX = parseFloat(el.getAttribute('data-basex') || '0');
+        let dodgeX = baseX;
+        const DODGE_RADIUS = 160; 
+        if (minDistance < DODGE_RADIUS) {
+           const factor = 1 - (minDistance / DODGE_RADIUS);
+           const ease = Math.sin(factor * Math.PI / 2);
+           dodgeX = baseX + (120 - baseX) * ease;
+        }
+        
+        el.style.transform = `translateX(${dodgeX}px)`;
+        // Store relative to the svg container which is top-0 of track
+        const trackTop = el.closest('.track-container') as HTMLElement;
+        const relativeY = el.offsetTop - trackTop.offsetTop + el.offsetHeight / 2;
+        currentGroupPoints.push({ x: dodgeX, y: relativeY });
+      });
+      if (currentGroupPoints.length > 0) allPoints.push(currentGroupPoints);
+      
+      const svgPaths = rootRef.current.querySelectorAll('.dynamic-svg-path');
+      allPoints.forEach((points, i) => {
+         if (i < svgPaths.length && points.length > 0) {
+            let d = `M ${points[0].x} ${points[0].y - 50} L ${points[0].x} ${points[0].y}`;
+            for (let j = 1; j < points.length; j++) {
+               const prev = points[j - 1];
+               const curr = points[j];
+               const cp1y = prev.y + (curr.y - prev.y) / 2;
+               d += ` C ${prev.x} ${cp1y}, ${curr.x} ${cp1y}, ${curr.x} ${curr.y}`;
+            }
+            const last = points[points.length - 1];
+            d += ` L ${last.x} ${last.y + 50}`;
+            svgPaths[i].setAttribute('d', d);
+         }
+      });
+      
+      rafId = requestAnimationFrame(updatePositions);
+    };
+    
+    rafId = requestAnimationFrame(updatePositions);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
 
   const ALL_TILES = getAllTiles();
 
@@ -51,7 +125,7 @@ export function NodePath({ levels, completedLevelIds, onStartLevel, bandTitle, o
   const activeGroups = ALL_TILES.filter(tile => tile.active && grouped[tile.id]?.length > 0);
 
   return (
-    <div className="w-full flex flex-col items-center pt-0 pb-0 relative gap-10">
+    <div ref={rootRef} className="w-full flex flex-col pt-0 pb-0 relative px-3 sm:px-4">
 
 
       {activeGroups.map((tile, groupIdx) => {
@@ -65,35 +139,36 @@ export function NodePath({ levels, completedLevelIds, onStartLevel, bandTitle, o
         if (activeIndex === -1) activeIndex = groupLevels.length; // all completed
 
         return (
-          <div key={tile.id} className="w-full flex flex-col items-center px-4">
+          <React.Fragment key={tile.id}>
             
             {/* The Huge Gradient Card -> Stacked Flashcard */}
             <div
-              className={`relative sticky z-20 w-full overflow-hidden outline-none shadow-2xl flex flex-col p-6 mb-8`}
+              className={`group-card relative sticky z-20 w-[75%] max-w-[320px] mr-auto overflow-hidden outline-none shadow-2xl flex flex-col p-5 mb-4`}
               style={{
-                top: `calc(4.5rem + ${groupIdx * 1.5}rem)`, // Stack based on group index!
+                top: `calc(2rem + ${groupIdx * 1.5}rem)`, // Stack based on group index!
+                marginLeft: `${groupIdx * 1.5}rem`, // Shift right to create prominent top-left peek effect
                 borderRadius: '32px',
-                minHeight: '180px',
+                minHeight: '160px',
                 background: 'hsl(var(--background))',
                 border: `2px solid ${c0}`,
               }}
             >
               <div className="flex-1">
-                <h3 className="text-white text-2xl font-bold tracking-tight">{tile.title}</h3>
-                <p className="text-white/60 text-sm mt-2 leading-snug max-w-[85%]">
+                <h3 className="text-white text-xl font-bold tracking-tight">{tile.title}</h3>
+                <p className="text-white/60 text-xs mt-1.5 leading-snug line-clamp-2">
                   {bandData?.subtitle || "Explore language concepts and level up your skills."}
                 </p>
               </div>
 
-              <div className="mt-6 flex flex-col gap-4">
+              <div className="mt-5 flex flex-col gap-3">
                 {/* Badges / Pills row */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="bg-white/5 border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-1.5">
-                    <span className="text-white/90 text-xs font-semibold" style={{ color: c0 }}>{tile.id}</span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="bg-white/5 border border-white/10 rounded-full px-2 py-1 flex items-center gap-1">
+                    <span className="text-white/90 text-[10px] font-semibold" style={{ color: c0 }}>{tile.id}</span>
                   </div>
-                  <div className="bg-white/5 border border-white/10 rounded-full px-3 py-1.5 flex items-center gap-1.5">
-                    <Check className="w-3.5 h-3.5" style={{ color: c0 }} />
-                    <span className="text-white/90 text-xs font-semibold">{completed}/{groupLevels.length}</span>
+                  <div className="bg-white/5 border border-white/10 rounded-full px-2 py-1 flex items-center gap-1">
+                    <Check className="w-3 h-3" style={{ color: c0 }} />
+                    <span className="text-white/90 text-[10px] font-semibold">{completed}/{groupLevels.length}</span>
                   </div>
                 </div>
                 
@@ -110,46 +185,51 @@ export function NodePath({ levels, completedLevelIds, onStartLevel, bandTitle, o
             </div>
 
             {/* Path Track for this course */}
-            <div className="w-full flex flex-col items-center relative">
+            <div className="track-container w-full flex flex-col items-center relative mt-2 mb-2">
               {/* Central vertical wavy line for this group */}
-              <VerticalWavyLine />
+              <DynamicPathLine />
 
               {groupLevels.map((level, i) => {
                 const isCompleted = i < activeIndex;
                 const isActive = i === activeIndex;
                 const isLocked = i > activeIndex;
-                const offset = i % 2 === 0 ? -45 : 45;
-
-                const isVeryLastNode = groupIdx === activeGroups.length - 1 && i === groupLevels.length - 1;
+                
+                const t = groupLevels.length > 1 ? i / (groupLevels.length - 1) : 0.5;
+                const curveStrength = 120; 
+                const baseOffset = groupLevels.length > 1 ? (4 * Math.pow(t - 0.5, 2) * curveStrength) : curveStrength;
+                const zigzag = i % 2 === 0 ? -16 : 16;
+                const offset = baseOffset + zigzag;
 
                 return (
-                  <div key={level.id} className={`relative z-10 w-full flex justify-center pt-7 ${isVeryLastNode ? 'pb-0' : 'pb-7'}`}>
+                  <div key={level.id} className="relative z-10 w-full flex justify-center h-[100px] items-center">
                     <button
                       onClick={() => {
                         if (!isLocked) setSelectedNode(level);
                       }}
-                      className="relative group transition-transform active:scale-95 flex flex-col items-center gap-2"
+                      className="path-node relative group transition-transform active:scale-95 flex flex-col items-center gap-2"
+                      data-groupidx={groupIdx}
+                      data-basex={offset}
                       style={{ transform: `translateX(${offset}px)` }}
                     >
                       {isActive ? (
                         <div className="relative">
                           <div className="absolute inset-0 rounded-full bg-[#B875FF] animate-ping opacity-30" />
-                          <div className="w-20 h-20 rounded-full bg-[#B875FF] flex items-center justify-center shadow-[0_0_30px_rgba(184,117,255,0.4)]">
-                            <Play className="w-8 h-8 text-white ml-1" fill="currentColor" />
+                          <div className="w-14 h-14 rounded-full bg-[#B875FF] flex items-center justify-center shadow-[0_0_20px_rgba(184,117,255,0.4)]">
+                            <Play className="w-6 h-6 text-white ml-1" fill="currentColor" />
                           </div>
                         </div>
                       ) : isCompleted ? (
-                        <div className="w-16 h-16 rounded-full bg-[#1a1a24] border-2 border-[#B875FF]/40 flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)]">
-                          <Check className="w-7 h-7 text-[#B875FF]" strokeWidth={3} />
+                        <div className="w-12 h-12 rounded-full bg-[#1a1a24] border-2 border-[#B875FF]/40 flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.5)]">
+                          <Check className="w-5 h-5 text-[#B875FF]" strokeWidth={3} />
                         </div>
                       ) : (
-                        <div className="w-16 h-16 rounded-full bg-[#1a1a24] flex items-center justify-center shadow-[0_4px_15px_rgba(0,0,0,0.5)]">
-                          <Lock className="w-6 h-6 text-white/20" />
+                        <div className="w-12 h-12 rounded-full bg-[#1a1a24] flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.5)]">
+                          <Lock className="w-5 h-5 text-white/20" />
                         </div>
                       )}
                       {/* Node Title Bubble */}
                       <div 
-                        className="px-3 py-1.5 rounded-full bg-[#1a1a24] border border-white/5 text-white/70 text-[10px] font-bold max-w-[120px] truncate absolute top-full mt-2 shadow-lg"
+                        className="px-2 py-1 rounded-full bg-[#1a1a24] border border-white/5 text-white/70 text-[9px] font-bold max-w-[80px] truncate absolute top-full mt-1.5 shadow-lg"
                         style={{ backdropFilter: 'blur(8px)' }}
                       >
                         {level.title.replace(/^[AB]\d\s*·\s*/i, "").trim()}
@@ -159,8 +239,7 @@ export function NodePath({ levels, completedLevelIds, onStartLevel, bandTitle, o
                 );
               })}
             </div>
-
-          </div>
+          </React.Fragment>
         );
       })}
 

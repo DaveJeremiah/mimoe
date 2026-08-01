@@ -21,7 +21,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
         paddingBottom: "max(env(safe-area-inset-bottom), 16px)"
       }}
     >
-      <div className="pointer-events-auto flex items-center justify-around py-3 px-4 bg-[#121215]/95 backdrop-blur-md rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/10 w-[calc(100%-32px)] max-w-[400px]">
+      <div className="pointer-events-auto flex items-center justify-around py-2 px-3 bg-[#121215]/95 backdrop-blur-md rounded-full shadow-[0_10px_40px_rgba(0,0,0,0.8)] border border-white/10 w-[calc(100%-32px)] max-w-[400px]">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           const Icon = tab.icon;
@@ -29,11 +29,11 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
-            className={`flex flex-col items-center justify-center p-2 min-w-[64px] transition-colors ${
+            className={`flex flex-col items-center justify-center p-1.5 min-w-[56px] transition-colors ${
               isActive ? "text-[#B875FF]" : "text-white/40 hover:text-white/60"
             }`}
           >
-            <Icon className="w-6 h-6 mb-1" strokeWidth={isActive ? 2.5 : 2} />
+            <Icon className="w-5 h-5 mb-0.5" strokeWidth={isActive ? 2.5 : 2} />
             <span className="text-[10px] font-semibold">{tab.label}</span>
           </button>
         );
