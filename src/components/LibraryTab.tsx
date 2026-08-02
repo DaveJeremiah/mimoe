@@ -20,7 +20,7 @@ interface LibraryTabProps {
   onCreateCollection: () => void;
   onEditCollection: (collection: Collection) => void;
   onDeleteCollection: (collectionId: string) => void;
-  onOpenWordBank: () => void;
+  onOpenWordBank: (mode: "courses" | "collections") => void;
 }
 
 export function LibraryTab({
@@ -47,12 +47,6 @@ export function LibraryTab({
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-white text-3xl font-bold">Library</h1>
         <div className="flex items-center gap-3">
-          <button 
-            onClick={onOpenWordBank}
-            className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-bold transition-colors"
-          >
-            Word Bank
-          </button>
           <div className="flex bg-white/5 p-1 rounded-xl">
             <button
               onClick={() => onTabSwitch("vocabulary")}
@@ -86,7 +80,14 @@ export function LibraryTab({
               {isCollectionsOpen ? <ChevronUp className="w-5 h-5 text-white/40" /> : <ChevronDown className="w-5 h-5 text-white/40" />}
             </div>
             
-            <div className="relative" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+              <button 
+                onClick={() => onOpenWordBank("collections")}
+                className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-bold transition-colors"
+              >
+                Word Bank
+              </button>
+              <div className="relative">
               <button 
                 onClick={() => setIsCreateOpen(!isCreateOpen)}
                 className="flex items-center gap-1 text-[#B875FF] text-sm font-semibold hover:opacity-80 px-2 py-1 bg-white/5 rounded-full"
@@ -184,11 +185,19 @@ export function LibraryTab({
         {/* COURSES SECTION */}
         <div>
           <div 
-            className="flex items-center gap-2 mb-4 cursor-pointer select-none"
+            className="flex items-center justify-between mb-4 cursor-pointer select-none"
             onClick={() => setIsCoursesOpen(!isCoursesOpen)}
           >
-            <h2 className="text-white font-bold text-xl">Courses</h2>
-            {isCoursesOpen ? <ChevronUp className="w-5 h-5 text-white/40" /> : <ChevronDown className="w-5 h-5 text-white/40" />}
+            <div className="flex items-center gap-2">
+              <h2 className="text-white font-bold text-xl">Courses</h2>
+              {isCoursesOpen ? <ChevronUp className="w-5 h-5 text-white/40" /> : <ChevronDown className="w-5 h-5 text-white/40" />}
+            </div>
+            <button 
+              onClick={(e) => { e.stopPropagation(); onOpenWordBank("courses"); }}
+              className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-bold transition-colors"
+            >
+              Word Bank
+            </button>
           </div>
           
           {isCoursesOpen && (

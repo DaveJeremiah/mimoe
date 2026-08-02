@@ -175,8 +175,8 @@ export function FlashcardApp() {
     const onScroll = () => {
       if (logoRef.current) {
         const y = el.scrollTop;
-        const scale = Math.max(0.75, 1.25 - y / 150);
-        logoRef.current.style.transform = `translateX(-50%) scale(${scale})`;
+        const scale = Math.max(0.8, 1.4 - y / 100);
+        logoRef.current.style.transform = `translateX(-50%) translateY(-50%) scale(${scale})`;
       }
     };
     el.addEventListener('scroll', onScroll, { passive: true });
@@ -1492,26 +1492,15 @@ export function FlashcardApp() {
 
             <div 
               ref={logoRef}
-              className="absolute left-1/2 flex items-center justify-center pointer-events-none"
+              className="absolute top-1/2 left-1/2 flex items-center justify-center pointer-events-none"
               style={{
-                top: 2,
-                transform: `translateX(-50%) scale(1.25)`,
-                transformOrigin: 'top center',
-                transition: 'transform 0.1s ease-out'
+                transform: `translateX(-50%) translateY(-50%) scale(1.4)`,
               }}
             >
               <img src={logoLight} alt="mimoe" className="h-5 w-auto opacity-70" />
             </div>
 
             <div className="flex items-center gap-2">
-              {activeNavTab === "home" && (
-                <button 
-                  onClick={() => { setWordBankMode("courses"); setIsWordBankOpen(true); }}
-                  className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-bold transition-colors"
-                >
-                  Word Bank
-                </button>
-              )}
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-white/80 transition-all bg-white/5 border border-white/10">
                 <span className="text-[14px]">🔥</span>
                 <span>{comboCount}</span>
@@ -1580,7 +1569,7 @@ export function FlashcardApp() {
                 onCreateCollection={handleCreateCollection}
                 onEditCollection={handleEditCollection}
                 onDeleteCollection={handleDeleteCollection}
-                onOpenWordBank={() => { setWordBankMode("collections"); setIsWordBankOpen(true); }}
+                onOpenWordBank={(mode) => { setWordBankMode(mode); setIsWordBankOpen(true); }}
               />
             )}
 
