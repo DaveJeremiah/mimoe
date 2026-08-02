@@ -64,7 +64,7 @@ export function CollectionCard({ collection, index = 0, onStudy, onEdit, onDelet
       {/* Dropdown Menu */}
       {showMenu && (
         <>
-          <div className="fixed inset-0 z-30" onClick={(e) => { e.stopPropagation(); setShowMenu(false); }} />
+          <div className="fixed inset-0 z-30 cursor-pointer" onClick={(e) => { e.stopPropagation(); setShowMenu(false); }} />
           <div
             className="absolute right-14 top-12 w-32 rounded-xl overflow-hidden z-40 animate-pop-in"
             style={{

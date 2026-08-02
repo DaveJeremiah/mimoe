@@ -126,7 +126,6 @@ export function FlashcardApp() {
   const [collectionModalMode, setCollectionModalMode] = useState<"notes" | "bulk">("bulk");
   const [showCollectionTooltip, setShowCollectionTooltip] = useState(false);
   const [editingCollection, setEditingCollection] = useState<Collection | undefined>();
-  const [collectionToEdit, setCollectionToEdit] = useState<string | null>(null);
 
   const { hasUpdate, triggerUpdate } = useAppUpdate();
 
@@ -162,7 +161,8 @@ export function FlashcardApp() {
   const [customOrder, setCustomOrder] = useLocalStorage<Record<string, string[]>>("mimoe-custom-order", {});
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isWordBankOpen, setIsWordBankOpen] = useState(false);
-
+  const [wordBankMode, setWordBankMode] = useState<"courses" | "collections" | "level" | null>(null);
+  const [scrollY, setScrollY] = useState(0);
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
   const [langSplash, setLangSplash] = useState<Language | null>(null);
   const [activeNavTab, setActiveNavTab] = useState<NavTab>("home");
@@ -1250,7 +1250,7 @@ export function FlashcardApp() {
           activeLanguage={activeLanguage}
           nativeLanguage={(user?.user_metadata?.native_language as string) || "english"}
           onSave={handleSaveCollection}
-          editingCollection={collectionToEdit ?? editingCollection}
+          editingCollection={editingCollection}
           mode={collectionModalMode}
         />
         {shareToastEl}
@@ -1472,11 +1472,27 @@ export function FlashcardApp() {
               )}
             </div>
 
-            <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-none">
+            <div 
+              className="absolute left-1/2 flex items-center justify-center pointer-events-none"
+              style={{
+                top: 2,
+                transform: `translateX(-50%) scale(${Math.max(0.75, 1.25 - scrollY / 150)})`,
+                transformOrigin: 'top center',
+                transition: 'transform 0.1s ease-out'
+              }}
+            >
               <img src={logoLight} alt="mimoe" className="h-5 w-auto opacity-70" />
             </div>
 
             <div className="flex items-center gap-2">
+              {activeNavTab === "home" && (
+                <button 
+                  onClick={() => { setWordBankMode("courses"); setIsWordBankOpen(true); }}
+                  className="p-1.5 rounded-full text-white/80 transition-colors bg-white/5 border border-white/10 hover:bg-white/10"
+                >
+                  <BookOpen className="w-4 h-4" />
+                </button>
+              )}
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-white/80 transition-all bg-white/5 border border-white/10">
                 <span className="text-[14px]">🔥</span>
                 <span>{comboCount}</span>
@@ -1509,7 +1525,10 @@ export function FlashcardApp() {
       )}
 
       {/* Content */}
-      <div className={`flex-1 w-full flex flex-col items-center min-h-0 scrollbar-none ${selectedLevelId ? 'justify-center' : 'justify-start overflow-y-auto pb-0'}`}>
+      <div 
+        className={`flex-1 w-full flex flex-col items-center min-h-0 scrollbar-none ${selectedLevelId ? 'justify-center' : 'justify-start overflow-y-auto pb-0'}`}
+        onScroll={(e) => setScrollY(e.currentTarget.scrollTop)}
+      >
         {!selectedLevelId ? (
           <div className="w-full overflow-x-hidden">
             {activeNavTab === "home" && (
@@ -1535,32 +1554,15 @@ export function FlashcardApp() {
                 onTabSwitch={handleTabSwitch}
                 onStudyCollection={handleStudyCollection}
                 onCreateNotes={() => {
-                  setCollectionToEdit(null);
+                  setEditingCollection(undefined);
                   setCollectionModalMode("notes");
                   setIsCollectionModalOpen(true);
                 }}
                 onCreateCollection={handleCreateCollection}
                 onEditCollection={handleEditCollection}
                 onDeleteCollection={handleDeleteCollection}
-                onOpenWordBank={() => setActiveNavTab("wordbank")}
+                onOpenWordBank={() => { setWordBankMode("collections"); setIsWordBankOpen(true); }}
               />
-            )}
-            {activeNavTab === "wordbank" && (
-              <div className="w-full flex flex-col pt-6 pb-0 px-5">
-                <div className="flex items-center justify-between mb-8">
-                  <h1 className="text-white text-3xl font-bold">Word Bank</h1>
-                  <button onClick={() => setActiveNavTab("library")} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-full text-xs font-bold text-white transition-colors">Back</button>
-                </div>
-                <WordBank
-                  items={activeTab === "vocabulary" ? baseLevels.flatMap(l=>l.cards).slice(0, 50) : baseLevels.flatMap(l=>l.cards).slice(0, 50)}
-                  onAdd={handleAddItem}
-                  onUpdate={handleUpdateItem}
-                  onDelete={handleDeleteItem}
-                  onBulkAdd={handleBulkAdd}
-                  label="Search or add words"
-                  rtl={activeLanguage === "arabic"}
-                />
-              </div>
             )}
 
             {activeNavTab === "profile" && (
@@ -1629,11 +1631,11 @@ export function FlashcardApp() {
       </div>
 
 
-      {/* Word bank — opened from 3-dot menu */}
-      {selectedLevelId && !isBookmarkedSession && isWordBankOpen && (
+      {/* Word bank modal */}
+      {isWordBankOpen && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
-          onClick={() => setIsWordBankOpen(false)}
+          onClick={() => { setIsWordBankOpen(false); setWordBankMode(null); }}
         >
           <div
             className="w-full max-w-[480px] rounded-t-3xl overflow-hidden animate-slide-up-in"
@@ -1646,22 +1648,36 @@ export function FlashcardApp() {
             <div className="flex items-center justify-between px-5 py-3 border-b border-border">
               <h3 className="font-bold text-base text-foreground flex items-center gap-2">
                 <BookOpen className="w-4 h-4" />
-                Word Bank
+                {wordBankMode === "collections" ? "My Custom Words" : wordBankMode === "courses" ? "Course Words" : "Word Bank"}
               </h3>
-              <button onClick={() => setIsWordBankOpen(false)} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+              <button onClick={() => { setIsWordBankOpen(false); setWordBankMode(null); }} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
                 <X className="w-4 h-4 text-muted-foreground" />
               </button>
             </div>
             <div className="overflow-y-auto" style={{ maxHeight: 'calc(80vh - 80px)' }}>
               <div className="p-4">
                 <WordBank
-                  items={allCards}
-                  onAdd={handleAddItem}
-                  onUpdate={handleUpdateItem}
-                  onDelete={handleDeleteItem}
-                  onBulkAdd={handleBulkAdd}
-                  onReorder={handleReorder}
-                  label={activeTab === "vocabulary" ? "Vocabulary" : "Phrases"}
+                  items={
+                    wordBankMode === "collections"
+                      ? collections.flatMap(c => c.entries.map((e, idx) => ({
+                          id: `${c.id}-${idx}`,
+                          english: e.english,
+                          french: e.french,
+                          target: e.target ?? e.french,
+                          alternatives: e.alternatives,
+                          transliteration: e.transliteration,
+                          audioUrl: e.audioUrl
+                        })))
+                      : wordBankMode === "courses"
+                      ? baseLevels.flatMap(l => l.cards)
+                      : allCards
+                  }
+                  onAdd={wordBankMode === "level" ? handleAddItem : undefined}
+                  onUpdate={wordBankMode === "level" ? handleUpdateItem : undefined}
+                  onDelete={wordBankMode === "level" ? handleDeleteItem : undefined}
+                  onBulkAdd={wordBankMode === "level" ? handleBulkAdd : undefined}
+                  onReorder={wordBankMode === "level" ? handleReorder : undefined}
+                  label={wordBankMode === "collections" ? "Custom Collection Words" : activeTab === "vocabulary" ? "Vocabulary" : "Phrases"}
                   targetLabel={activeLanguage === "arabic" ? "Arabic" : "French"}
                   rtl={langConfig.rtl}
                 />
@@ -1677,7 +1693,7 @@ export function FlashcardApp() {
         activeLanguage={activeLanguage}
         nativeLanguage={(user?.user_metadata?.native_language as string) || "english"}
         onSave={handleSaveCollection}
-        editingCollection={collectionToEdit}
+        editingCollection={editingCollection}
         mode={collectionModalMode}
       />
 

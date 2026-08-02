@@ -235,7 +235,7 @@ export function NewCollectionModal({
                     onClick={() => setSelectedCategory(selectedCategory === cat.value ? undefined : cat.value)}
                     className="flex items-center gap-1.5 px-3 py-2.5 rounded-full text-xs font-semibold transition-all"
                     style={selectedCategory === cat.value
-                      ? { background: 'linear-gradient(135deg, #f97316, #fb923c)', color: '#fff', border: '1px solid transparent' }
+                      ? { background: 'linear-gradient(135deg, #a855f7, #c084fc)', color: '#fff', border: '1px solid transparent' }
                       : { background: '#111111', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.08)' }
                     }
                   >
@@ -258,7 +258,7 @@ export function NewCollectionModal({
                       onClick={() => setSelectedDialect(d.code)}
                       className="flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-semibold transition-all"
                       style={selectedDialect === d.code
-                        ? { background: 'linear-gradient(135deg, #f97316, #fb923c)', color: '#fff', border: '1px solid transparent' }
+                        ? { background: 'linear-gradient(135deg, #a855f7, #c084fc)', color: '#fff', border: '1px solid transparent' }
                         : { background: '#111111', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.08)' }
                       }
                     >
@@ -411,7 +411,7 @@ export function NewCollectionModal({
 
           {/* Sticky Create button */}
           <div className="sticky bottom-0 px-5 pt-3 pb-7" style={{ background: '#050505' }}>
-            <div className="p-[1.5px] rounded-full" style={{ background: 'linear-gradient(135deg, #9b5cf6, #ec4899)' }}>
+            <div className="p-[1.5px] rounded-full" style={{ background: 'linear-gradient(135deg, #B875FF, #9b5cf6)' }}>
               <button
                 type="button"
                 onClick={handleSave}
