@@ -165,6 +165,10 @@ export function FlashcardApp() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const logoRef = useRef<HTMLDivElement>(null);
 
+  const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
+  const [langSplash, setLangSplash] = useState<Language | null>(null);
+  const [activeNavTab, setActiveNavTab] = useState<NavTab>("home");
+
   useEffect(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
@@ -180,9 +184,6 @@ export function FlashcardApp() {
     onScroll();
     return () => el.removeEventListener('scroll', onScroll);
   }, [activeNavTab]);
-  const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
-  const [langSplash, setLangSplash] = useState<Language | null>(null);
-  const [activeNavTab, setActiveNavTab] = useState<NavTab>("home");
   const [onboardingDone, setOnboardingDone] = useState(false);
   const [homeTab, setHomeTab] = useState<"levels" | "personal">("levels");
 
