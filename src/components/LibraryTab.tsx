@@ -114,6 +114,7 @@ export function LibraryTab({
                   </div>
                 </>
               )}
+              </div>
             </div>
           </div>
 
