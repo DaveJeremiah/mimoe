@@ -387,4 +387,35 @@
     transform-origin: center;
     animation-delay: var(--dot-delay, 0ms);
   }
+
+  /* ── Header Logo Scroll Animation ── */
+  .logo-large-container {
+    max-height: 48px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    opacity: 1;
+    overflow: hidden;
+    transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .header-scrolled .logo-large-container {
+    max-height: 0px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    opacity: 0;
+  }
+  .logo-large {
+    transform: scale(1);
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .header-scrolled .logo-large {
+    transform: scale(0.75);
+  }
+  .logo-small {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .header-scrolled .logo-small {
+    opacity: 1;
+    transition-delay: 0.1s;
+  }
 }

@@ -163,7 +163,7 @@ export function FlashcardApp() {
   const [isWordBankOpen, setIsWordBankOpen] = useState(false);
   const [wordBankMode, setWordBankMode] = useState<"courses" | "collections" | "level" | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const logoRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
 
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
   const [langSplash, setLangSplash] = useState<Language | null>(null);
@@ -173,10 +173,13 @@ export function FlashcardApp() {
     const el = scrollContainerRef.current;
     if (!el) return;
     const onScroll = () => {
-      if (logoRef.current) {
+      if (headerRef.current) {
         const y = el.scrollTop;
-        const scale = Math.max(0.8, 1.4 - y / 100);
-        logoRef.current.style.transform = `translateX(-50%) translateY(-50%) scale(${scale})`;
+        if (y > 30) {
+          headerRef.current.classList.add('header-scrolled');
+        } else {
+          headerRef.current.classList.remove('header-scrolled');
+        }
       }
     };
     el.addEventListener('scroll', onScroll, { passive: true });
@@ -1431,11 +1434,12 @@ export function FlashcardApp() {
       {/* Header logic — Unified Top Bar */}
       {!selectedLevelId && (
         <div 
-          className="sticky top-0 w-full flex flex-col z-[100] bg-[#0f0f13]/40 backdrop-blur-2xl border-b border-white/5 pb-5 px-5" 
+          ref={headerRef}
+          className="sticky top-0 w-full flex flex-col z-[100] bg-[#0f0f13]/80 backdrop-blur-2xl border-b border-white/5 pb-2" 
           style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 16px)' }}
         >
-          <div className="flex items-center justify-between mb-4">
-            <div className="relative">
+          <div className="flex items-center justify-between relative px-5 pt-1">
+            <div className="relative z-10">
               <button
                 onClick={() => setIsLangDropdownOpen(v => !v)}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold text-white/80 transition-all active:scale-95 bg-white/5 border border-white/10"
@@ -1484,28 +1488,25 @@ export function FlashcardApp() {
                         </button>
                       );
                     })}
-
                   </div>
                 </>
               )}
             </div>
 
-            <div 
-              ref={logoRef}
-              className="absolute top-1/2 left-1/2 flex items-center justify-center pointer-events-none"
-              style={{
-                transform: `translateX(-50%) translateY(-50%) scale(1.4)`,
-              }}
-            >
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none logo-small">
               <img src={logoLight} alt="mimoe" className="h-5 w-auto opacity-70" />
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 z-10">
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-white/80 transition-all bg-white/5 border border-white/10">
                 <span className="text-[14px]">🔥</span>
                 <span>{comboCount}</span>
               </div>
             </div>
+          </div>
+
+          <div className="flex justify-center w-full pointer-events-none logo-large-container">
+             <img src={logoLight} alt="mimoe" className="h-7 w-auto opacity-70 logo-large" />
           </div>
 
           {/* Unified Title for NodePath with Tabs */}
