@@ -162,7 +162,24 @@ export function FlashcardApp() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isWordBankOpen, setIsWordBankOpen] = useState(false);
   const [wordBankMode, setWordBankMode] = useState<"courses" | "collections" | "level" | null>(null);
-  const [scrollY, setScrollY] = useState(0);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const logoRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      if (logoRef.current) {
+        const y = el.scrollTop;
+        const scale = Math.max(0.75, 1.25 - y / 150);
+        logoRef.current.style.transform = `translateX(-50%) scale(${scale})`;
+      }
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    // Call once to set initial scale
+    onScroll();
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [activeNavTab]);
   const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
   const [langSplash, setLangSplash] = useState<Language | null>(null);
   const [activeNavTab, setActiveNavTab] = useState<NavTab>("home");
@@ -1473,10 +1490,11 @@ export function FlashcardApp() {
             </div>
 
             <div 
+              ref={logoRef}
               className="absolute left-1/2 flex items-center justify-center pointer-events-none"
               style={{
                 top: 2,
-                transform: `translateX(-50%) scale(${Math.max(0.75, 1.25 - scrollY / 150)})`,
+                transform: `translateX(-50%) scale(1.25)`,
                 transformOrigin: 'top center',
                 transition: 'transform 0.1s ease-out'
               }}
@@ -1488,9 +1506,9 @@ export function FlashcardApp() {
               {activeNavTab === "home" && (
                 <button 
                   onClick={() => { setWordBankMode("courses"); setIsWordBankOpen(true); }}
-                  className="p-1.5 rounded-full text-white/80 transition-colors bg-white/5 border border-white/10 hover:bg-white/10"
+                  className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-bold transition-colors"
                 >
-                  <BookOpen className="w-4 h-4" />
+                  Word Bank
                 </button>
               )}
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-white/80 transition-all bg-white/5 border border-white/10">
@@ -1526,8 +1544,8 @@ export function FlashcardApp() {
 
       {/* Content */}
       <div 
+        ref={scrollContainerRef}
         className={`flex-1 w-full flex flex-col items-center min-h-0 scrollbar-none ${selectedLevelId ? 'justify-center' : 'justify-start overflow-y-auto pb-0'}`}
-        onScroll={(e) => setScrollY(e.currentTarget.scrollTop)}
       >
         {!selectedLevelId ? (
           <div className="w-full overflow-x-hidden">

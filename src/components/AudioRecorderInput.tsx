@@ -217,8 +217,8 @@ export function AudioRecorderInput({ value, onChange, disabled }: Props) {
               type="button" onClick={startRecording} disabled={disabled}
               className="group relative flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[11px] font-bold text-white overflow-hidden active:scale-95 transition-transform"
               style={{
-                background: "linear-gradient(135deg,#9b5cf6 0%,#c026d3 45%,#ec4899 100%)",
-                boxShadow: "0 4px 16px rgba(155,92,246,0.45)",
+                background: "linear-gradient(135deg,#a855f7 0%,#c084fc 100%)",
+                boxShadow: "0 4px 16px rgba(168,85,247,0.45)",
               }}
             >
               {/* sliding sheen */}
